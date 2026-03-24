@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 260px;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+/* Leaflet map overrides */
+.leaflet-container {
+  @apply rounded-lg;
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}
+
+/* Chart wrapper */
+.chart-export-wrapper {
+  @apply relative;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+/* Print styles for report export */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
