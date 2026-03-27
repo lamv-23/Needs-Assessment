@@ -1,11 +1,22 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import type { Layer, PathOptions } from 'leaflet';
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import MapLegend from './MapLegend';
 import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for Leaflet marker icons in Next.js
+if (typeof window !== 'undefined') {
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+    iconUrl: '/leaflet/marker-icon.png',
+    shadowUrl: '/leaflet/marker-shadow.png',
+  });
+}
 
 interface ChoroplethMapInnerProps {
   geoJsonData: FeatureCollection;
@@ -51,10 +62,29 @@ export default function ChoroplethMapInner({
   zoom = 10,
   legendTitle,
 }: ChoroplethMapInnerProps) {
+  // Debug logging
+  useEffect(() => {
+    console.log('ChoroplethMapInner mounting with:', {
+      featuresCount: geoJsonData.features.length,
+      valueField,
+      colorScaleLength: colorScale.length,
+    });
+  }, [geoJsonData, valueField, colorScale.length]);
+
   const { breaks, minValue, maxValue } = useMemo(() => {
     const values = geoJsonData.features
       .map((f) => f.properties?.[valueField] as number)
-      .filter((v) => v != null);
+      .filter((v) => v != null && !isNaN(v));
+    
+    if (values.length === 0) {
+      console.warn(`No valid values found for field: ${valueField}`);
+      return {
+        breaks: [],
+        minValue: 0,
+        maxValue: 100,
+      };
+    }
+    
     const min = Math.min(...values);
     const max = Math.max(...values);
     return {

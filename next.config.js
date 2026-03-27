@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config) => {
-    config.externals = [...(config.externals || []), 'better-sqlite3'];
-    return config;
+  // Prevent better-sqlite3 (native module) from being bundled by webpack (Next.js 14)
+  experimental: {
+    serverComponentsExternalPackages: ['better-sqlite3'],
   },
 };
 

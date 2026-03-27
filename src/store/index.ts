@@ -32,7 +32,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  selectedArea: null,
+  selectedArea: { id: 'lga_sydney', name: 'City of Sydney', type: 'lga' },
   comparisonAreas: [],
   benchmarkArea: null,
   selectedYear: 2021,

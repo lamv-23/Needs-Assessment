@@ -14,8 +14,11 @@ import {
   getHousingData,
   getGrowthData,
 } from '@/lib/data/sample-data';
+import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
 import { formatNumber, formatPercent, formatCurrency, CHART_COLORS } from '@/lib/utils';
 import { Plus, X, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import type { DataMeta } from '@/hooks/useLiveData';
 import type { Area } from '@/types';
 
 function ChangeIndicator({ value, benchmark }: { value: number; benchmark: number }) {
@@ -52,14 +55,31 @@ export default function ComparePage() {
     setSelectedAreas(selectedAreas.filter(a => a.id !== areaId));
   };
 
-  const areasData = selectedAreas.map(area => ({
-    area,
-    demographics: getDemographicsData(area.id, selectedYear),
-    transport: getTransportData(area.id, selectedYear),
-    economy: getEconomyData(area.id, selectedYear),
-    housing: getHousingData(area.id, selectedYear),
-    growth: getGrowthData(area.id),
-  }));
+  const areasData = selectedAreas.map(area => {
+    const projections = getProjectionsForArea(area.id).length > 0
+      ? getProjectionsForArea(area.id)
+      : getProjectionsForArea(area.name);
+    const pop2021 = projections.find(d => d.year === 2021)?.totalPopulation;
+    const pop2041 = projections.find(d => d.year === 2041)?.totalPopulation;
+    const nswGrowthRate = pop2021 && pop2041 && pop2021 > 0
+      ? Math.round(((pop2041 / pop2021) ** (1 / 20) - 1) * 1000) / 10
+      : null;
+    const sampleGrowth = getGrowthData(area.id);
+    return {
+      area,
+      demographics: getDemographicsData(area.id, selectedYear),
+      transport: getTransportData(area.id, selectedYear),
+      economy: getEconomyData(area.id, selectedYear),
+      housing: getHousingData(area.id, selectedYear),
+      growth: {
+        ...sampleGrowth,
+        projectedGrowthRate: nswGrowthRate ?? sampleGrowth.projectedGrowthRate,
+        pop2021: pop2021 ?? null,
+        pop2041: pop2041 ?? null,
+        hasNSWData: projections.length > 0,
+      },
+    };
+  });
 
   const benchmarkDemo = getDemographicsData(GREATER_SYDNEY_BENCHMARK.id, selectedYear);
   const benchmarkTransport = getTransportData(GREATER_SYDNEY_BENCHMARK.id, selectedYear);
@@ -67,7 +87,8 @@ export default function ComparePage() {
 
   // Comparison indicators
   const indicators = [
-    { label: 'Total Population', getValue: (d: typeof areasData[0]) => d.demographics.totalPopulation, format: formatNumber, benchmark: benchmarkDemo.totalPopulation },
+    { label: 'Total Population (2021)', getValue: (d: typeof areasData[0]) => d.growth.pop2021 ?? d.demographics.totalPopulation, format: formatNumber, benchmark: benchmarkDemo.totalPopulation },
+    { label: 'Projected Population (2041)', getValue: (d: typeof areasData[0]) => d.growth.pop2041 ?? 0, format: formatNumber, benchmark: 0 },
     { label: 'Median Age', getValue: (d: typeof areasData[0]) => d.demographics.medianAge, format: (v: number) => v.toFixed(1), benchmark: benchmarkDemo.medianAge },
     { label: 'SEIFA Score', getValue: (d: typeof areasData[0]) => d.demographics.seifaScore, format: (v: number) => v.toString(), benchmark: benchmarkDemo.seifaScore },
     { label: 'Car Mode Share (%)', getValue: (d: typeof areasData[0]) => d.transport.journeyToWork[0].value, format: (v: number) => formatPercent(v), benchmark: benchmarkTransport.journeyToWork[0].value },
@@ -76,7 +97,7 @@ export default function ComparePage() {
     { label: 'Unemployment (%)', getValue: (d: typeof areasData[0]) => d.economy.unemploymentRate, format: (v: number) => formatPercent(v), benchmark: benchmarkEconomy.unemploymentRate },
     { label: 'Median Income ($/wk)', getValue: (d: typeof areasData[0]) => d.economy.medianWeeklyIncome, format: (v: number) => formatCurrency(v), benchmark: benchmarkEconomy.medianWeeklyIncome },
     { label: 'Median Rent ($/wk)', getValue: (d: typeof areasData[0]) => d.housing.medianWeeklyRent, format: (v: number) => formatCurrency(v), benchmark: 0 },
-    { label: 'Growth Rate (%/yr)', getValue: (d: typeof areasData[0]) => d.growth.annualGrowthRate, format: (v: number) => formatPercent(v), benchmark: 0 },
+    { label: 'Projected Growth Rate (%/yr)', getValue: (d: typeof areasData[0]) => d.growth.projectedGrowthRate, format: (v: number) => formatPercent(v), benchmark: 0 },
   ];
 
   // Chart data for mode share comparison
@@ -94,11 +115,21 @@ export default function ComparePage() {
 
   const availableLGAs = SAMPLE_AREAS.filter(a => a.type === 'lga' && !selectedAreas.find(s => s.id === a.id));
 
+  const compareMeta: DataMeta = {
+    source: 'NSW DPE Population Projections (population) · Sample indicators (transport, economy, housing)',
+    lastRefreshed: null,
+    liveFields: areasData.some(d => d.growth.hasNSWData) ? ['populationProjections'] : [],
+    sampleFields: ['demographics', 'transport', 'economy', 'housing'],
+    hasLiveData: areasData.some(d => d.growth.hasNSWData),
+  };
+
   return (
     <div>
       <Header title="Compare Areas" subtitle="Side-by-side comparison with Greater Sydney benchmark" />
 
       <div className="p-6 space-y-6">
+        {/* Data source attribution */}
+        <DataSourceBadge meta={compareMeta} />
         {/* Area Selection */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <div className="flex items-center gap-3 flex-wrap">
@@ -190,6 +221,32 @@ export default function ComparePage() {
                 height={350}
               />
             </ChartWrapper>
+
+            {/* NSW DPE Population Projection Comparison */}
+            {areasData.some(d => d.growth.hasNSWData) && (
+              <ChartWrapper
+                title="Population Projection Comparison (NSW DPE)"
+                subtitle="Annual projections 2021–2041 by LGA"
+              >
+                <NeedsBarChart
+                  data={[2021, 2026, 2031, 2036, 2041].map(year => {
+                    const row: Record<string, number | string> = { name: String(year) };
+                    areasData.forEach(d => {
+                      const projections = getProjectionsForArea(d.area.id).length > 0
+                        ? getProjectionsForArea(d.area.id)
+                        : getProjectionsForArea(d.area.name);
+                      const p = projections.find(p => p.year === year);
+                      const shortName = d.area.name.length > 15 ? d.area.name.substring(0, 15) + '…' : d.area.name;
+                      row[shortName] = p?.totalPopulation ?? 0;
+                    });
+                    return row;
+                  })}
+                  dataKeys={areasData.map(d => d.area.name.length > 15 ? d.area.name.substring(0, 15) + '…' : d.area.name)}
+                  colors={CHART_COLORS}
+                  height={350}
+                />
+              </ChartWrapper>
+            )}
           </>
         )}
 

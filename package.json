@@ -7,7 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed": "tsx scripts/seed-db.ts"
+    "seed": "tsx scripts/seed-db.ts",
+    "seed:static": "tsx scripts/seed-db.ts --static",
+    "seed:abs": "tsx scripts/seed-db.ts --abs",
+    "clean": "rm -rf .next",
+    "fresh": "rm -rf .next && next dev",
+    "parse:population": "node parse-projections.js",
+    "parse:employment": "node parse-employment.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
@@ -16,7 +22,7 @@
     "jspdf": "^2.5.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.468.0",
-    "next": "^14.2.0",
+    "next": "^14.1.4",
     "papaparse": "^5.4.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

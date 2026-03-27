@@ -4,16 +4,19 @@ import Header from '@/components/layout/Header';
 import StatCard from '@/components/ui/StatCard';
 import ChartWrapper from '@/components/charts/ChartWrapper';
 import { useAppStore } from '@/store';
-import { getEducationData } from '@/lib/data/sample-data';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
 import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsLineChart from '@/components/charts/LineChart';
+import { useLiveData } from '@/hooks/useLiveData';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 
 export default function EducationPage() {
   const { selectedArea, selectedYear } = useAppStore();
 
   const areaId = selectedArea?.id ?? 'lga_sydney';
-  const data = getEducationData(areaId, selectedYear);
+  const year = selectedYear;
+
+  const { education: { data, meta } } = useLiveData(areaId, year);
 
   // Find the top attainment level
   const topAttainment = data.attainment.reduce((max, item) =>
@@ -31,12 +34,15 @@ export default function EducationPage() {
       <Header title="Education" />
 
       <main className="p-6 space-y-6">
+        {/* Data source attribution — always visible */}
+        <DataSourceBadge meta={meta} />
+
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <StatCard
             label={`Top Attainment: ${topAttainment.name}`}
             value={formatPercent(topAttainment.value)}
-            subtitle="Highest share of population"
+            subtitle={meta.liveFields.includes('attainment') ? 'ABS Census 2021' : 'Highest share of population'}
           />
           <StatCard
             label="Total School Enrolment"

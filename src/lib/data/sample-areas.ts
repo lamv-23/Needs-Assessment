@@ -37,6 +37,7 @@ export const SAMPLE_AREAS: Area[] = [
   { id: 'lga_fairfield', name: 'Fairfield', type: 'lga', centroidLat: -33.8694, centroidLng: 150.9556 },
   { id: 'lga_hawkesbury', name: 'Hawkesbury', type: 'lga', centroidLat: -33.5800, centroidLng: 150.7500 },
   { id: 'lga_blue_mountains', name: 'Blue Mountains', type: 'lga', centroidLat: -33.7167, centroidLng: 150.3117 },
+  { id: 'lga_central_coast', name: 'Central Coast', type: 'lga', centroidLat: -33.4300, centroidLng: 151.3430 },
 
   // SA2s (sample for City of Sydney and Parramatta)
   { id: 'sa2_sydney_cbd', name: 'Sydney - Haymarket - The Rocks', type: 'sa2', parentId: 'lga_sydney', centroidLat: -33.8688, centroidLng: 151.2079 },

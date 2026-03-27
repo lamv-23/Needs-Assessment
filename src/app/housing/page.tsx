@@ -6,20 +6,19 @@ import ChartWrapper from '@/components/charts/ChartWrapper';
 import NeedsPieChart from '@/components/charts/PieChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useAppStore } from '@/store';
-import { getHousingData } from '@/lib/data/sample-data';
-import { formatNumber, formatCurrency, CHART_COLORS } from '@/lib/utils';
+import { formatCurrency, CHART_COLORS } from '@/lib/utils';
 import { Home, DollarSign, Building2, Key } from 'lucide-react';
-
-const DEFAULT_AREA = { id: 'lga_sydney', name: 'City of Sydney', type: 'lga' as const };
+import { useLiveData } from '@/hooks/useLiveData';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 
 export default function HousingPage() {
   const { selectedArea, selectedYear } = useAppStore();
 
-  const area = selectedArea ?? DEFAULT_AREA;
+  const area = selectedArea ?? { id: 'lga_sydney', name: 'City of Sydney', type: 'lga' as const };
   const areaId = area.id;
   const year = selectedYear;
 
-  const data = getHousingData(areaId, year);
+  const { housing: { data, meta } } = useLiveData(areaId, year);
 
   // Find the top dwelling type and top tenure type by value
   const topDwelling = data.dwellingTypes.reduce((max, d) => (d.value > max.value ? d : max), data.dwellingTypes[0]);
@@ -29,34 +28,38 @@ export default function HousingPage() {
     <div>
       <Header
         title="Housing & Land Use"
-        subtitle={`${area.name} — ${year} Census Data`}
+        subtitle={`${area.name} — ${year}`}
       />
 
       <div className="p-6 space-y-6">
+        {/* Data source attribution — always visible */}
+        <DataSourceBadge meta={meta} />
+
         {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             icon={DollarSign}
             label="Median Weekly Rent"
             value={formatCurrency(data.medianWeeklyRent)}
-            subtitle="Per week"
+            subtitle={meta.liveFields.includes('medianWeeklyRent') ? 'ABS 2021 Census' : 'Per week (indicative)'}
           />
           <StatCard
             icon={Home}
             label="Median House Price"
             value={formatCurrency(data.medianHousePrice)}
+            subtitle="Indicative"
           />
           <StatCard
             icon={Building2}
             label="Top Dwelling Type"
             value={`${topDwelling.name} (${topDwelling.value}%)`}
-            subtitle="Most common dwelling structure"
+            subtitle={meta.liveFields.includes('dwellingTypes') ? 'ABS 2021 Census' : 'Most common dwelling structure'}
           />
           <StatCard
             icon={Key}
             label="Top Tenure Type"
             value={`${topTenure.name} (${topTenure.value}%)`}
-            subtitle="Most common tenure arrangement"
+            subtitle={meta.liveFields.includes('tenure') ? 'ABS 2021 Census' : 'Most common tenure arrangement'}
           />
         </div>
 

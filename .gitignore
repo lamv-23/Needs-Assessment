@@ -32,9 +32,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# database
-*.db
+# database — ignore by default but allow the committed seed file
 *.db-journal
+*.db-shm
+*.db-wal
+!data/cache.db
 
 # IDE
 .idea/

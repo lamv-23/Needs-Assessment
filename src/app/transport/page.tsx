@@ -7,66 +7,80 @@ import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsPieChart from '@/components/charts/PieChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useAppStore } from '@/store';
-import { getTransportData } from '@/lib/data/sample-data';
+import { getTransportMetricsForArea, getLatestTransportMetrics } from '@/lib/data/tfnsw-transport';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
-import { Clock, Train, Car, Bus } from 'lucide-react';
-
-const DEFAULT_AREA = { id: 'lga_sydney', name: 'City of Sydney' };
+import { Clock, Train, Car, Bus, TrendingDown } from 'lucide-react';
+import { useLiveData } from '@/hooks/useLiveData';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 
 export default function TransportPage() {
   const { selectedArea, selectedYear } = useAppStore();
 
-  const area = selectedArea ?? DEFAULT_AREA;
+  const area = selectedArea ?? { id: 'lga_sydney', name: 'City of Sydney' };
   const areaId = area.id;
   const year = selectedYear;
 
-  const data = getTransportData(areaId, year);
+  const { transport: { data, meta } } = useLiveData(areaId, year);
+
+  // Static TfNSW transport metrics (from bundled data until TfNSW API key is set)
+  const tfnswMetrics = getTransportMetricsForArea(areaId);
+  const hasTfnswData = tfnswMetrics.length > 0;
+  const latestTfnswMetrics = getLatestTransportMetrics(areaId);
 
   // Calculate car and PT mode shares from journey to work data
-  const carModes = data.journeyToWork.filter(
-    (m) => m.name.startsWith('Car')
-  );
-  const carModeShare = carModes.reduce((sum, m) => sum + m.value, 0);
+  const carModeShare = data.journeyToWork
+    .filter((m: { name: string; value: number }) => m.name.startsWith('Car'))
+    .reduce((sum: number, m: { name: string; value: number }) => sum + m.value, 0);
 
-  const ptModes = data.journeyToWork.filter((m) =>
-    ['Train', 'Bus', 'Ferry'].includes(m.name)
-  );
-  const ptModeShare = ptModes.reduce((sum, m) => sum + m.value, 0);
+  const ptModeShare = data.journeyToWork
+    .filter((m: { name: string; value: number }) => ['Train', 'Bus', 'Ferry'].includes(m.name))
+    .reduce((sum: number, m: { name: string; value: number }) => sum + m.value, 0);
 
   return (
     <div>
       <Header
         title="Transport & Commuting"
-        subtitle={`${area.name} — ${year} Census Data`}
+        subtitle={`${area.name} — ${year}`}
       />
 
       <div className="p-6 space-y-6">
+        {/* Data source attribution — always visible */}
+        <DataSourceBadge meta={meta} />
+
         {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             icon={Clock}
             label="Average Commute Time"
-            value={`${data.avgCommute}`}
-            subtitle="Minutes (one way)"
+            value={latestTfnswMetrics ? `${latestTfnswMetrics.averageCommuteTime} min` : `${data.avgCommute}`}
+            subtitle={hasTfnswData ? `TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}` : "Minutes (one way)"}
           />
           <StatCard
             icon={Train}
-            label="PT Annual Patronage"
-            value={formatNumber(data.ptPatronage)}
-            subtitle="Estimated annual trips"
+            label="PT Patronage"
+            value={latestTfnswMetrics ? `${(latestTfnswMetrics.ptPatronagePerCapita).toFixed(1)}` : formatNumber(data.ptPatronage)}
+            subtitle={hasTfnswData ? "Trips per capita per day" : "Estimated annual trips"}
           />
           <StatCard
             icon={Car}
             label="Car Mode Share"
-            value={formatPercent(carModeShare)}
-            subtitle="Driver + passenger combined"
+            value={latestTfnswMetrics ? `${latestTfnswMetrics.modeShareCar.toFixed(1)}%` : formatPercent(carModeShare)}
+            subtitle={hasTfnswData ? `TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}` : "Driver + passenger"}
           />
           <StatCard
             icon={Bus}
             label="Public Transport Mode Share"
-            value={formatPercent(ptModeShare)}
-            subtitle="Train + bus + ferry"
+            value={latestTfnswMetrics ? `${latestTfnswMetrics.modeSharePT.toFixed(1)}%` : formatPercent(ptModeShare)}
+            subtitle={hasTfnswData ? `TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}` : "Train + bus + ferry"}
           />
+          {hasTfnswData && (
+            <StatCard
+              icon={TrendingDown}
+              label="Active Transport"
+              value={`${latestTfnswMetrics?.modeShareActive.toFixed(1)}%`}
+              subtitle={`TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}`}
+            />
+          )}
         </div>
 
         {/* Charts Grid */}
@@ -88,13 +102,75 @@ export default function TransportPage() {
             />
           </ChartWrapper>
 
+          {/* TfNSW Mode Share Trends - if available */}
+          {hasTfnswData && (
+            <ChartWrapper
+              title="Mode Share Trends (2019-2026)"
+              subtitle="TfNSW Transport Metrics — Historical trends"
+              className="lg:col-span-2"
+            >
+              <NeedsLineChart
+                data={tfnswMetrics.map(m => ({
+                  year: m.year,
+                  'Car': m.modeShareCar,
+                  'PT': m.modeSharePT,
+                  'Active': m.modeShareActive,
+                }))}
+                dataKeys={['Car', 'PT', 'Active']}
+                colors={[CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[5]]}
+                xAxisKey="year"
+                height={350}
+              />
+            </ChartWrapper>
+          )}
+
+          {/* PT Patronage Trend - if available */}
+          {hasTfnswData && (
+            <ChartWrapper
+              title="PT Patronage Trend (2019-2026)"
+              subtitle="Trips per capita per day — historical"
+              className="lg:col-span-2"
+            >
+              <NeedsLineChart
+                data={tfnswMetrics.map(m => ({
+                  year: m.year,
+                  'PT Patronage': m.ptPatronagePerCapita,
+                }))}
+                dataKeys={['PT Patronage']}
+                colors={[CHART_COLORS[2]]}
+                xAxisKey="year"
+                height={350}
+              />
+            </ChartWrapper>
+          )}
+
+          {/* Commute Time Trend - if available */}
+          {hasTfnswData && (
+            <ChartWrapper
+              title="Average Commute Time (2019-2026)"
+              subtitle="TfNSW data — minutes one way"
+              className="lg:col-span-2"
+            >
+              <NeedsLineChart
+                data={tfnswMetrics.map(m => ({
+                  year: m.year,
+                  'Commute Time': m.averageCommuteTime,
+                }))}
+                dataKeys={['Commute Time']}
+                colors={[CHART_COLORS[1]]}
+                xAxisKey="year"
+                height={300}
+              />
+            </ChartWrapper>
+          )}
+
           {/* Mode Share Trend */}
           <ChartWrapper
             title="Mode Share Trend"
             subtitle="Change in transport modes across census years"
           >
             <NeedsLineChart
-              data={data.modeShareTrend.map((d) => ({ ...d, name: String(d.year) }))}
+              data={data.modeShareTrend.map((d: { year: number; car: number; train: number; bus: number; active: number; wfh: number }) => ({ ...d, name: String(d.year) }))}
               dataKeys={['car', 'train', 'bus', 'active', 'wfh']}
               colors={[
                 CHART_COLORS[0],

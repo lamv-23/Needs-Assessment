@@ -17,6 +17,7 @@ import {
   getHousingData,
   getGrowthData,
 } from '@/lib/data/sample-data';
+import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
 import { formatNumber, formatPercent, formatCurrency, CHART_COLORS } from '@/lib/utils';
 import {
   FileText,
@@ -65,6 +66,11 @@ export default function ReportPage() {
   const reportRef = useRef<HTMLDivElement>(null);
 
   const area = selectedArea || SAMPLE_AREAS.find(a => a.id === 'lga_sydney')!;
+
+  // Fetch NSW projections
+  const nswProjections = getProjectionsForArea(area.id).length > 0
+    ? getProjectionsForArea(area.id)
+    : getProjectionsForArea(area.name);
 
   const toggleSection = (id: string) => {
     setSections(sections.map(s => s.id === id ? { ...s, included: !s.included } : s));

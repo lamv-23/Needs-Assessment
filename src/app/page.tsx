@@ -4,6 +4,7 @@ import Header from '@/components/layout/Header';
 import StatCard from '@/components/ui/StatCard';
 import { useAppStore } from '@/store';
 import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
+import { getProjectionsForArea, PROJECTION_LGAS } from '@/lib/data/nsw-projections-data';
 import Link from 'next/link';
 import {
   Users,
@@ -72,6 +73,16 @@ const modules = [
 export default function DashboardPage() {
   const { selectedArea } = useAppStore();
 
+  // NSW projection data for the selected area (if available)
+  const areaProjections = selectedArea
+    ? (getProjectionsForArea(selectedArea.id).length > 0
+        ? getProjectionsForArea(selectedArea.id)
+        : getProjectionsForArea(selectedArea.name))
+    : [];
+  const areaHasProjections = areaProjections.length > 0;
+  const areaPop2021 = areaProjections.find(d => d.year === 2021)?.totalPopulation;
+  const areaPop2041 = areaProjections.find(d => d.year === 2041)?.totalPopulation;
+
   return (
     <div>
       <Header
@@ -85,14 +96,14 @@ export default function DashboardPage() {
           <StatCard
             icon={MapPin}
             label="Coverage Areas"
-            value="35"
-            subtitle="LGAs in Greater Sydney region"
+            value={PROJECTION_LGAS.length.toString()}
+            subtitle="NSW LGAs with DPE projections"
           />
           <StatCard
             icon={Users}
-            label="Population (2021)"
-            value="5.3M"
-            subtitle="Greater Sydney estimated population"
+            label={areaHasProjections && areaPop2021 ? `${selectedArea!.name} (2021)` : 'Population (2021)'}
+            value={areaHasProjections && areaPop2021 ? areaPop2021.toLocaleString() : '5.3M'}
+            subtitle={areaHasProjections ? 'NSW DPE Projection base year' : 'Greater Sydney estimated population'}
           />
           <StatCard
             icon={Train}
@@ -102,9 +113,9 @@ export default function DashboardPage() {
           />
           <StatCard
             icon={BarChart3}
-            label="Projections"
-            value="2041"
-            subtitle="DPE population projections"
+            label={areaHasProjections && areaPop2041 ? `${selectedArea!.name} (2041)` : 'Projections'}
+            value={areaHasProjections && areaPop2041 ? areaPop2041.toLocaleString() : '2041'}
+            subtitle={areaHasProjections ? 'NSW DPE projected population' : 'DPE population projections'}
           />
         </div>
 

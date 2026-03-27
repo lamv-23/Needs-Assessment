@@ -58,6 +58,7 @@ const AREA_PROFILES: Record<string, {
   lga_sutherland: { density: 'low', urbanType: 'outer', ptAccess: 'medium', affluence: 'medium' },
   lga_hawkesbury: { density: 'low', urbanType: 'outer', ptAccess: 'low', affluence: 'medium' },
   lga_blue_mountains: { density: 'low', urbanType: 'outer', ptAccess: 'low', affluence: 'medium' },
+  lga_central_coast: { density: 'low', urbanType: 'regional', ptAccess: 'low', affluence: 'medium' },
   lga_newcastle: { density: 'medium', urbanType: 'regional', ptAccess: 'medium', affluence: 'medium' },
   lga_lake_macquarie: { density: 'low', urbanType: 'regional', ptAccess: 'low', affluence: 'medium' },
   lga_wollongong: { density: 'medium', urbanType: 'regional', ptAccess: 'medium', affluence: 'medium' },
