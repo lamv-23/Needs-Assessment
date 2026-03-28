@@ -8,15 +8,18 @@
  * - No API key required
  * - LGA codes are 5-digit ABS 2021 LGA codes
  * 
- * PCHAR codes for G01 (confirmed from live API):
- *   S_1 = Total persons (use with SEXP=3)
- *   Age groups: 0_4, 5_9, 10_14, 15_19, 20_24, 25_34, 35_44, 45_54, 55_64, 65_74, 75_84, 85ov
- *   Marital status: S_1..S_6
- *   Dwelling type: D_1_3, D_O
- *   Country of birth: C_1, B_11, B_O
- *   Language: L_1201, L_O
- *   Ancestry: A_1..A_T
- *   Education: E_1..E_5
+ * Dataset → table mapping (confirmed from live API probing):
+ *   G01  → C21_G01_LGA  : SEXP × PCHAR (age, sex, birthplace, language)
+ *   G02  → C21_G02_LGA  : MEDAVG (1=age, 2=hh_income, 3=mortgage, 6=rent, 8=avg_hhd_size)
+ *   G33  → C21_G36_LGA  : DWTSTRD × SUM (11=sep house, 2=semi, 3=flat, 9=other)
+ *   G36  → C21_G37_LGA  : TENLLD × STRD (1=owned, 2=mortgage, 3=rented, 9=other)
+ *   G51  → C21_G53_LGA  : SEXP × INDP × QALLP (A-S ANZSIC division codes)
+ *   G55  → null         : No ABS SDMX endpoint for Census journey-to-work at LGA
+ *   G46  → C21_G16_LGA  : SEXP × HSCP × AGEP (1=Yr12, 2=Yr11, 3=Yr10, 4=Yr9, 5=Yr8-, 6=none)
+ *   G49  → C21_G49_LGA  : SEXP × QALLP × AGEP (1=postgrad, 2=grad_dip, 3=bach, 51=adv_dip, 4=cert3/4)
+ *   SEIFA→ ABS_SEIFA2021_LGA: LGA_2021 × SEIFAINDEXTYPE × SEIFA_MEASURE=SCORE
+ *   LABOUR→ C21_G46_LGA : SEXP × LFSP × AGEP (1=FT emp, 2=PT emp, 3=away, 4=unemp, 5+=NILF)
+ *   ERP  → ABS_ANNUAL_ERP_LGA2021: LGA_2021 × SEX_ABS × AGE=TOT (multi-year)
  */
 
 const ABS_BASE = 'https://data.api.abs.gov.au/rest/data';
@@ -318,22 +321,20 @@ export async function fetchG02(lgaCode: string): Promise<G02Data | null> {
 
   const data = parseSdmxXml(xml);
 
-  // G02 uses MEASURE dimension codes
-  // Median_Age_Persons, Median_Tot_Hhd_Inc_Weekly, Median_Mtg_Repay_Monthly, Median_Rent_Weekly, Avg_Hhd_Size
-  const medianAge = lookupValue(data, { MEASURE: 'MED_AGE_PERSONS', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { MEASURE: 'Median_Age_Persons', REGION: lgaCode }, '2021');
-
-  const medianIncome = lookupValue(data, { MEASURE: 'MED_TOT_HHD_INC_WEEKLY', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { MEASURE: 'Median_Tot_Hhd_Inc_Weekly', REGION: lgaCode }, '2021');
-
-  const medianMortgage = lookupValue(data, { MEASURE: 'MED_MTG_REPAY_MONTHLY', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { MEASURE: 'Median_Mtg_Repay_Monthly', REGION: lgaCode }, '2021');
-
-  const medianRent = lookupValue(data, { MEASURE: 'MED_RENT_WEEKLY', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { MEASURE: 'Median_Rent_Weekly', REGION: lgaCode }, '2021');
-
-  const avgHhSize = lookupValue(data, { MEASURE: 'AVG_HHD_SIZE', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { MEASURE: 'Avg_Hhd_Size', REGION: lgaCode }, '2021');
+  // G02 uses MEDAVG numeric codes (confirmed from ABS API):
+  // MEDAVG=1 → median age of persons
+  // MEDAVG=2 → median weekly household income
+  // MEDAVG=3 → median monthly mortgage repayment
+  // MEDAVG=4 → median weekly personal income
+  // MEDAVG=5 → median weekly family income
+  // MEDAVG=6 → median weekly rent
+  // MEDAVG=7 → average motor vehicles per dwelling
+  // MEDAVG=8 → average household size (persons per dwelling)
+  const medianAge = lookupValue(data, { MEDAVG: '1', REGION: lgaCode }, '2021');
+  const medianIncome = lookupValue(data, { MEDAVG: '2', REGION: lgaCode }, '2021');
+  const medianMortgage = lookupValue(data, { MEDAVG: '3', REGION: lgaCode }, '2021');
+  const medianRent = lookupValue(data, { MEDAVG: '6', REGION: lgaCode }, '2021');
+  const avgHhSize = lookupValue(data, { MEDAVG: '8', REGION: lgaCode }, '2021');
 
   if (medianAge === null && medianIncome === null) return null;
 
@@ -347,6 +348,8 @@ export async function fetchG02(lgaCode: string): Promise<G02Data | null> {
 }
 
 // ─── G33: Dwelling Structure ──────────────────────────────────────────────────
+// NOTE: C21_G33_LGA is household income × composition (wrong table).
+// Dwelling structure data is in C21_G36_LGA using DWTSTRD dimension + SUM=D.
 
 export interface G33Data {
   separateHouse: number;
@@ -357,23 +360,27 @@ export interface G33Data {
 }
 
 export async function fetchG33(lgaCode: string): Promise<G33Data | null> {
-  const url = `${ABS_BASE}/C21_G33_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  // C21_G36_LGA: Dwelling structure by LGA
+  // DWTSTRD codes (confirmed from ABS API):
+  //   11 = Separate house
+  //   2  = Semi-detached, row/terrace/townhouse (21=owned, 22=rented subtypes)
+  //   3  = Flat, unit or apartment (31-35 subtypes)
+  //   9  = Other dwelling
+  //   _T = Total private dwellings
+  // SUM=D filters to dwelling counts (vs SUM=P for persons)
+  const url = `${ABS_BASE}/C21_G36_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
 
-  // G33 DWELLING_STRUCTURE codes vary - try common patterns
-  // DS_1 or H_1_1 = Separate house, DS_2 = Semi-detached, DS_3 = Flat/apartment
-  const separateHouse = lookupValue(data, { DWELLING_STRUCTURE: 'DS_1', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { DWELLING_STRUCTURE: '1', REGION: lgaCode }, '2021') ?? 0;
-  const semiDetached = lookupValue(data, { DWELLING_STRUCTURE: 'DS_2', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { DWELLING_STRUCTURE: '2', REGION: lgaCode }, '2021') ?? 0;
-  const flatApt = lookupValue(data, { DWELLING_STRUCTURE: 'DS_3', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { DWELLING_STRUCTURE: '3', REGION: lgaCode }, '2021') ?? 0;
-  const other = lookupValue(data, { DWELLING_STRUCTURE: 'DS_5', REGION: lgaCode }, '2021') ?? 0;
+  const separateHouse = lookupValue(data, { DWTSTRD: '11', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
+  const semiDetached  = lookupValue(data, { DWTSTRD: '2', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
+  const flatApt       = lookupValue(data, { DWTSTRD: '3', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
+  const other         = lookupValue(data, { DWTSTRD: '9', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
+  const total         = lookupValue(data, { DWTSTRD: '_T', SUM: 'D', REGION: lgaCode }, '2021')
+                        ?? (separateHouse + semiDetached + flatApt + other);
 
-  const total = separateHouse + semiDetached + flatApt + other;
   if (total === 0) return null;
 
   return {
@@ -386,29 +393,38 @@ export async function fetchG33(lgaCode: string): Promise<G33Data | null> {
 }
 
 // ─── G36: Tenure Type ────────────────────────────────────────────────────────
+// NOTE: C21_G36_LGA is dwelling structure (used for G33 above).
+// Tenure type data is in C21_G37_LGA using TENLLD dimension + STRD=_T.
 
 export interface G36Data {
   owned: number;       // Fully owned
   mortgage: number;    // Owned with mortgage
-  rented: number;      // Rented
+  rented: number;      // Total rented
   other: number;
 }
 
 export async function fetchG36(lgaCode: string): Promise<G36Data | null> {
-  const url = `${ABS_BASE}/C21_G36_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  // C21_G37_LGA: Tenure type × dwelling structure by LGA
+  // TENLLD codes (confirmed from ABS API, STRD=_T for all dwelling types):
+  //   1  = Owned outright
+  //   2  = Owned with mortgage
+  //   3  = Rented (total — all landlord types combined)
+  //   4  = Rented from private landlord
+  //   5  = Rented from real estate agent
+  //   6  = Rented from state/territory housing authority
+  //   7  = Rented from community housing
+  //   9  = Other tenure
+  //   _T = Total occupied private dwellings
+  const url = `${ABS_BASE}/C21_G37_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
 
-  const owned = lookupValue(data, { TENURE_TYPE: 'TT_1', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { TENURE_TYPE: '1', REGION: lgaCode }, '2021') ?? 0;
-  const mortgage = lookupValue(data, { TENURE_TYPE: 'TT_2', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { TENURE_TYPE: '2', REGION: lgaCode }, '2021') ?? 0;
-  const rented = lookupValue(data, { TENURE_TYPE: 'TT_3', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { TENURE_TYPE: '3', REGION: lgaCode }, '2021') ?? 0;
-  const other = lookupValue(data, { TENURE_TYPE: 'TT_5', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { TENURE_TYPE: '5', REGION: lgaCode }, '2021') ?? 0;
+  const owned    = lookupValue(data, { TENLLD: '1', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
+  const mortgage = lookupValue(data, { TENLLD: '2', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
+  const rented   = lookupValue(data, { TENLLD: '3', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
+  const other    = lookupValue(data, { TENLLD: '9', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
 
   const total = owned + mortgage + rented + other;
   if (total === 0) return null;
@@ -422,36 +438,41 @@ export async function fetchG36(lgaCode: string): Promise<G36Data | null> {
 }
 
 // ─── G51: Industry of Employment ──────────────────────────────────────────────
+// NOTE: C21_G51_LGA is qualification × occupation (wrong table).
+// Industry of employment is in C21_G53_LGA using INDP single-letter ANZSIC codes.
 
 export interface G51Data {
   industries: Array<{ name: string; code: string; employed: number }>;
   totalEmployed: number;
 }
 
+// INDP single-letter ANZSIC division codes (confirmed from ABS API C21_G53_LGA):
 const INDUSTRY_LABELS: Record<string, string> = {
-  IND_1: 'Agriculture, Forestry & Fishing',
-  IND_2: 'Mining',
-  IND_3: 'Manufacturing',
-  IND_4: 'Electricity, Gas, Water & Waste',
-  IND_5: 'Construction',
-  IND_6: 'Wholesale Trade',
-  IND_7: 'Retail Trade',
-  IND_8: 'Accommodation & Food Services',
-  IND_9: 'Transport, Postal & Warehousing',
-  IND_10: 'Information Media & Telecommunications',
-  IND_11: 'Financial & Insurance Services',
-  IND_12: 'Rental, Hiring & Real Estate',
-  IND_13: 'Professional, Scientific & Technical',
-  IND_14: 'Administrative & Support Services',
-  IND_15: 'Public Administration & Safety',
-  IND_16: 'Education & Training',
-  IND_17: 'Health Care & Social Assistance',
-  IND_18: 'Arts & Recreation Services',
-  IND_19: 'Other Services',
+  A: 'Agriculture, Forestry & Fishing',
+  B: 'Mining',
+  C: 'Manufacturing',
+  D: 'Electricity, Gas, Water & Waste Services',
+  E: 'Construction',
+  F: 'Wholesale Trade',
+  G: 'Retail Trade',
+  H: 'Accommodation & Food Services',
+  I: 'Transport, Postal & Warehousing',
+  J: 'Information Media & Telecommunications',
+  K: 'Financial & Insurance Services',
+  L: 'Rental, Hiring & Real Estate',
+  M: 'Professional, Scientific & Technical Services',
+  N: 'Administrative & Support Services',
+  O: 'Public Administration & Safety',
+  P: 'Education & Training',
+  Q: 'Health Care & Social Assistance',
+  R: 'Arts & Recreation Services',
+  S: 'Other Services',
 };
 
 export async function fetchG51(lgaCode: string): Promise<G51Data | null> {
-  const url = `${ABS_BASE}/C21_G51_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  // C21_G53_LGA: Industry of employment × qualification × sex by LGA
+  // Use SEXP=3 (all persons) and QALLP=_T (all qualifications) for total industry counts
+  const url = `${ABS_BASE}/C21_G53_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
@@ -461,8 +482,7 @@ export async function fetchG51(lgaCode: string): Promise<G51Data | null> {
   let total = 0;
 
   for (const [code, name] of Object.entries(INDUSTRY_LABELS)) {
-    const v = lookupValue(data, { INDUSTRY: code, SEX: '3', REGION: lgaCode }, '2021')
-      ?? lookupValue(data, { INDUSTRY: code, REGION: lgaCode }, '2021') ?? 0;
+    const v = lookupValue(data, { INDP: code, SEXP: '3', QALLP: '_T', REGION: lgaCode }, '2021') ?? 0;
     if (v > 0) {
       industries.push({ name, code, employed: Math.round(v) });
       total += v;
@@ -478,6 +498,10 @@ export async function fetchG51(lgaCode: string): Promise<G51Data | null> {
 }
 
 // ─── G55: Method of Travel to Work ───────────────────────────────────────────
+// NOTE: C21_G55_LGA is industry × hours worked (wrong table).
+// The ABS SDMX API does not expose a Census journey-to-work table at LGA level
+// via the REST endpoint. This fetcher returns null and the app falls back to
+// sample data for transport mode split.
 
 export interface G55Data {
   car_driver: number;
@@ -493,46 +517,10 @@ export interface G55Data {
   total: number;
 }
 
-export async function fetchG55(lgaCode: string): Promise<G55Data | null> {
-  const url = `${ABS_BASE}/C21_G55_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
-  const xml = await fetchWithRetry(url);
-  if (!xml) return null;
-
-  const data = parseSdmxXml(xml);
-
-  const get = (methodCode: string) =>
-    lookupValue(data, { METHOD_TRAVEL: methodCode, SEX: '3', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { METHOD_TRAVEL: methodCode, REGION: lgaCode }, '2021')
-    ?? 0;
-
-  // G55 method of travel codes
-  const carDriver = get('MOT_1');
-  const carPassenger = get('MOT_2');
-  const train = get('MOT_3');
-  const bus = get('MOT_4');
-  const ferry = get('MOT_5');
-  const tram = get('MOT_6');
-  const bicycle = get('MOT_7');
-  const walked = get('MOT_8');
-  const workedHome = get('MOT_11');
-  const other = get('MOT_12');
-
-  const total = carDriver + carPassenger + train + bus + ferry + tram + bicycle + walked + workedHome + other;
-  if (total === 0) return null;
-
-  return {
-    car_driver: Math.round(carDriver),
-    car_passenger: Math.round(carPassenger),
-    train: Math.round(train),
-    bus: Math.round(bus),
-    ferry: Math.round(ferry),
-    tram: Math.round(tram),
-    bicycle: Math.round(bicycle),
-    walked: Math.round(walked),
-    worked_home: Math.round(workedHome),
-    other: Math.round(other),
-    total: Math.round(total),
-  };
+export async function fetchG55(_lgaCode: string): Promise<G55Data | null> {
+  // No ABS SDMX endpoint available for Census journey-to-work at LGA level.
+  // The app will use sample/static data for transport mode splits.
+  return null;
 }
 
 // ─── SEIFA ───────────────────────────────────────────────────────────────────
@@ -545,29 +533,29 @@ export interface SEIFAData {
 }
 
 export async function fetchSEIFA(lgaCode: string): Promise<SEIFAData | null> {
-  const url = `${ABS_BASE}/SEIFA_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  // ABS_SEIFA2021_LGA: SEIFA 2021 scores by LGA
+  // Uses LGA_2021 (not REGION) as the region dimension
+  // SEIFAINDEXTYPE: IRSD, IRSAD, IER, IEO
+  // SEIFA_MEASURE: SCORE (index score), DECILE, PERCENTILE, etc.
+  const url = `${ABS_BASE}/ABS_SEIFA2021_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
 
   // SEIFA measure codes
-  const irsd = lookupValue(data, { MEASURE: 'IRSD', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { INDEX_TYPE: 'IRSD', REGION: lgaCode }, '2021');
-  const irsad = lookupValue(data, { MEASURE: 'IRSAD', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { INDEX_TYPE: 'IRSAD', REGION: lgaCode }, '2021');
-  const ier = lookupValue(data, { MEASURE: 'IER', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { INDEX_TYPE: 'IER', REGION: lgaCode }, '2021');
-  const ieo = lookupValue(data, { MEASURE: 'IEO', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { INDEX_TYPE: 'IEO', REGION: lgaCode }, '2021');
+  const irsd  = lookupValue(data, { SEIFAINDEXTYPE: 'IRSD',  SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
+  const irsad = lookupValue(data, { SEIFAINDEXTYPE: 'IRSAD', SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
+  const ier   = lookupValue(data, { SEIFAINDEXTYPE: 'IER',   SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
+  const ieo   = lookupValue(data, { SEIFAINDEXTYPE: 'IEO',   SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
 
   if (irsd === null) return null;
 
   return {
-    irsd: Math.round(irsd ?? 1000),
+    irsd:  Math.round(irsd  ?? 1000),
     irsad: Math.round(irsad ?? 1000),
-    ier: Math.round(ier ?? 1000),
-    ieo: Math.round(ieo ?? 1000),
+    ier:   Math.round(ier   ?? 1000),
+    ieo:   Math.round(ieo   ?? 1000),
   };
 }
 
@@ -581,37 +569,41 @@ export interface LabourData {
 }
 
 export async function fetchLabour(lgaCode: string): Promise<LabourData | null> {
-  // C21_G57_LGA: Census 2021 Table G57 — Labour Force Status by LGA
-  // LFSF: 1=FT employed, 2=PT employed, 3=away from work, 4=unemployed FT, 5=unemployed PT,
-  //        6=NILF, 7-10=other, _T=total, _N=not stated
-  // FINF: family income — use _T (all incomes) to get aggregate counts
-  const url = `${ABS_BASE}/C21_G57_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  // C21_G46_LGA: Labour Force Status × age × sex by LGA (person-level counts)
+  // LFSP codes (confirmed from ABS API):
+  //   1  = Employed, worked full-time
+  //   2  = Employed, worked part-time
+  //   3  = Employed, away from work
+  //   4  = Unemployed, looking for work (full-time or part-time)
+  //   5  = Not in the labour force (retired/home duties/students etc)
+  //   6-10 = Other NILF sub-categories
+  //   _N = Not stated / not applicable (includes under 15)
+  //   _T = Total aged 15+ (excludes not applicable)
+  // Use SEXP=3 (Persons) and AGEP=_T (all ages 15+)
+  const url = `${ABS_BASE}/C21_G46_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
 
-  // Sum employed across FT + PT + away from work (LFSF 1+2+3), aggregated over FINF=_T
-  const employed =
-    (lookupValue(data, { LFSF: '1', FINF: '_T', REGION: lgaCode }, '2021') ?? 0) +
-    (lookupValue(data, { LFSF: '2', FINF: '_T', REGION: lgaCode }, '2021') ?? 0) +
-    (lookupValue(data, { LFSF: '3', FINF: '_T', REGION: lgaCode }, '2021') ?? 0);
+  const get = (code: string) =>
+    lookupValue(data, { LFSP: code, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021') ?? 0;
 
-  // Sum unemployed (LFSF 4+5)
-  const unemployed =
-    (lookupValue(data, { LFSF: '4', FINF: '_T', REGION: lgaCode }, '2021') ?? 0) +
-    (lookupValue(data, { LFSF: '5', FINF: '_T', REGION: lgaCode }, '2021') ?? 0);
+  const empFT   = get('1');
+  const empPT   = get('2');
+  const empAway = get('3');
+  const unemp   = get('4');
+  const total   = get('_T');
 
-  // Total civilian population 15+ (LFSF=_T, FINF=_T)
-  const total = lookupValue(data, { LFSF: '_T', FINF: '_T', REGION: lgaCode }, '2021');
+  if (total === 0) return null;
 
-  if (total === null || total === 0) return null;
+  const employed    = empFT + empPT + empAway;
+  const labourForce = employed + unemp;
 
-  const labourForce = employed + unemployed;
   return {
-    unemploymentRate: labourForce > 0 ? (unemployed / labourForce) * 100 : 0,
-    participationRate: (labourForce / total) * 100,
-    employmentRate: (employed / total) * 100,
+    unemploymentRate:  labourForce > 0 ? (unemp / labourForce) * 100 : 0,
+    participationRate: total > 0 ? (labourForce / total) * 100 : 0,
+    employmentRate:    total > 0 ? (employed / total) * 100 : 0,
     dataYear: 2021,
   };
 }
@@ -624,8 +616,11 @@ export interface ERPData {
 }
 
 export async function fetchERP(lgaCode: string): Promise<ERPData | null> {
-  // ERP_LGA: Annual ERP by LGA
-  const url = `${ABS_BASE}/ERP_LGA?startPeriod=2016&endPeriod=2023&dimensionAtObservation=AllDimensions`;
+  // ABS_ANNUAL_ERP_LGA2021: Annual ERP by LGA (uses LGA_2021 boundary)
+  // Uses LGA_2021 (not REGION) as the region dimension
+  // SEX_ABS: 1=Male, 2=Female, 3=Persons
+  // AGE: TOT = all ages total
+  const url = `${ABS_BASE}/ABS_ANNUAL_ERP_LGA2021?startPeriod=2016&endPeriod=2023&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
@@ -635,8 +630,7 @@ export async function fetchERP(lgaCode: string): Promise<ERPData | null> {
   let latestYear = 0;
 
   for (let year = 2016; year <= 2023; year++) {
-    const v = lookupValue(data, { REGION: lgaCode, SEX: '3' }, year.toString())
-      ?? lookupValue(data, { REGION: lgaCode }, year.toString());
+    const v = lookupValue(data, { LGA_2021: lgaCode, SEX_ABS: '3', AGE: 'TOT' }, year.toString());
     if (v !== null && v > 0) {
       byYear[year] = Math.round(v);
       latestYear = Math.max(latestYear, year);
@@ -649,6 +643,8 @@ export async function fetchERP(lgaCode: string): Promise<ERPData | null> {
 }
 
 // ─── G46: Highest Year of School Completed ───────────────────────────────────
+// NOTE: C21_G46_LGA is labour force status × age (wrong table).
+// School completion data is in C21_G16_LGA using HSCP dimension.
 
 export interface EducationData {
   year12: number;
@@ -661,32 +657,41 @@ export interface EducationData {
 }
 
 export async function fetchG46(lgaCode: string): Promise<EducationData | null> {
-  const url = `${ABS_BASE}/C21_G46_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  // C21_G16_LGA: Highest year of school completed × age × sex by LGA
+  // HSCP codes (confirmed from ABS API):
+  //   1 = Year 12
+  //   2 = Year 11
+  //   3 = Year 10
+  //   4 = Year 9
+  //   5 = Year 8 or below
+  //   6 = Did not go to school
+  //   _N = Not stated
+  //   _T = Total
+  // Use SEXP=3 (Persons) and AGEP=_T (all ages 15+)
+  const url = `${ABS_BASE}/C21_G16_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
 
   const get = (code: string) =>
-    lookupValue(data, { SCHOOLING: code, SEX: '3', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { SCHOOLING: code, REGION: lgaCode }, '2021')
-    ?? 0;
+    lookupValue(data, { HSCP: code, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021') ?? 0;
 
-  const yr12 = get('Y12');
-  const yr11 = get('Y11');
-  const yr10 = get('Y10');
-  const yr9 = get('Y9');
-  const yr8 = get('Y8OB');
-  const ns = get('NS');
+  const yr12   = get('1');
+  const yr11   = get('2');
+  const yr10   = get('3');
+  const yr9    = get('4');
+  const yr8    = get('5') + get('6'); // year 8 or below + did not go to school
+  const ns     = get('_N');
+  const total  = get('_T');
 
-  const total = yr12 + yr11 + yr10 + yr9 + yr8 + ns;
   if (total === 0) return null;
 
   return {
     year12: Math.round(yr12),
     year11: Math.round(yr11),
     year10: Math.round(yr10),
-    year9: Math.round(yr9),
+    year9:  Math.round(yr9),
     year8orBelow: Math.round(yr8),
     notStated: Math.round(ns),
     totalPopulation: Math.round(total),
@@ -708,6 +713,17 @@ export interface QualificationData {
 }
 
 export async function fetchG49(lgaCode: string): Promise<QualificationData | null> {
+  // C21_G49_LGA: Non-school qualifications × age × sex by LGA
+  // QALLP codes (confirmed from ABS API, SEXP=3 AGEP=_T):
+  //   1  = Postgraduate degree
+  //   2  = Graduate diploma / Graduate certificate
+  //   3  = Bachelor degree
+  //   51 = Advanced diploma / Diploma
+  //   4  = Certificate III / IV
+  //   52 = Certificate I / II
+  //   0  = No non-school qualification
+  //   _N = Not stated / inadequately described
+  //   _T = Total
   const url = `${ABS_BASE}/C21_G49_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
@@ -715,32 +731,30 @@ export async function fetchG49(lgaCode: string): Promise<QualificationData | nul
   const data = parseSdmxXml(xml);
 
   const get = (code: string) =>
-    lookupValue(data, { QUALIFICATION: code, SEX: '3', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { QUALIFICATION: code, REGION: lgaCode }, '2021')
-    ?? 0;
+    lookupValue(data, { QALLP: code, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021') ?? 0;
 
-  const pg = get('PGD');
-  const gd = get('GD');
-  const bach = get('BD');
-  const adv = get('AVD');
-  const c34 = get('C34');
-  const c12 = get('C12');
-  const nq = get('NQ');
-  const ns = get('NS');
+  const pg   = get('1');
+  const gd   = get('2');
+  const bach = get('3');
+  const adv  = get('51');
+  const c34  = get('4');
+  const c12  = get('52');
+  const nq   = get('0');
+  const ns   = get('_N');
+  const total = get('_T');
 
-  const total = pg + gd + bach + adv + c34 + c12 + nq + ns;
   if (total === 0) return null;
 
   return {
-    postgrad: Math.round(pg),
-    grad_diploma: Math.round(gd),
-    bachelor: Math.round(bach),
-    adv_diploma: Math.round(adv),
-    cert3_4: Math.round(c34),
-    cert1_2: Math.round(c12),
+    postgrad:         Math.round(pg),
+    grad_diploma:     Math.round(gd),
+    bachelor:         Math.round(bach),
+    adv_diploma:      Math.round(adv),
+    cert3_4:          Math.round(c34),
+    cert1_2:          Math.round(c12),
     no_qualification: Math.round(nq),
-    not_stated: Math.round(ns),
-    total: Math.round(total),
+    not_stated:       Math.round(ns),
+    total:            Math.round(total),
   };
 }
 

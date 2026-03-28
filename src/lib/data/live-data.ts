@@ -156,12 +156,13 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
   let ageDistribution = sample.ageDistribution;
   if (g01 && Object.keys(g01.ageGroups).length > 0) {
     const maleRatio = totalPopulation > 0 ? malePopulation / totalPopulation : 0.49;
-    // Map G01 PCHAR codes to display labels
+    // Map G01 PCHAR codes to display labels (ABS 2021 SDMX codes)
     const codeToLabel: Record<string, string> = {
-      '0_4': '0-4', '5_9': '5-14', '10_14': '5-14',
+      '0_4': '0-4',
+      '5_14': '5-14',
       '15_19': '15-24', '20_24': '15-24',
       '25_34': '25-34', '35_44': '35-44', '45_54': '45-54',
-      '55_64': '55-64', '65_74': '65-74', '75_84': '75+', '85ov': '75+',
+      '55_64': '55-64', '65_74': '65-74', '75_84': '75+', 'GE85': '75+',
     };
     const merged: Record<string, number> = {};
     for (const [code, count] of Object.entries(g01.ageGroups)) {
