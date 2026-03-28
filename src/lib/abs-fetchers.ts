@@ -29,44 +29,44 @@ const DEFAULT_HEADERS = {
 // Maps internal area IDs to 5-digit ABS LGA codes (2021 ASGS)
 
 export const LGA_CODE_MAP: Record<string, string> = {
-  lga_sydney:       '17200',
-  lga_parramatta:   '16350',
-  lga_blacktown:    '10500',
-  lga_penrith:      '16260',
-  lga_camden:       '11500',
-  lga_liverpool:    '14000',
-  lga_fairfield:    '12250',
-  lga_bankstown:    '10750', // Canterbury-Bankstown
-  lga_sutherland:   '17750',
-  lga_hornsby:      '13110',
-  lga_ku_ring_gai:  '13500',
-  lga_northern_beaches: '14700',
-  lga_manly:        '14700', // Northern Beaches
-  lga_willoughby:   '18450',
-  lga_lane_cove:    '13600',
-  lga_mosman:       '14700', // part of Northern Beaches
-  lga_north_sydney: '14900',
-  lga_ryde:         '17000',
-  lga_hunters_hill: '13200',
-  lga_strathfield:  '17550',
-  lga_burwood:      '11300',
-  lga_canada_bay:   '11700',
-  lga_inner_west:   '13350',
-  lga_bayside:      '10450',
-  lga_georges_river: '12750',
-  lga_hurstville:   '12750', // Georges River
-  lga_kogarah:      '12750',
-  lga_rockdale:     '10450', // Bayside
-  lga_botany_bay:   '10900',
-  lga_randwick:     '16550',
-  lga_waverley:     '18150',
-  lga_woollahra:    '18700',
-  lga_blue_mountains: '10750',
-  lga_wollondilly:  '18550',
-  lga_hawkesbury:   '13000',
-  lga_hills:        '13250', // Hills Shire
-  lga_cumberland:   '12100',
-  benchmark_gsy:    '1GSYD', // Greater Sydney benchmark
+  lga_sydney:           '17200', // Sydney
+  lga_parramatta:       '16260', // Parramatta
+  lga_blacktown:        '10750', // Blacktown
+  lga_penrith:          '16350', // Penrith
+  lga_camden:           '11450', // Camden
+  lga_liverpool:        '14900', // Liverpool
+  lga_fairfield:        '12850', // Fairfield
+  lga_bankstown:        '11570', // Canterbury-Bankstown
+  lga_sutherland:       '17150', // Sutherland Shire
+  lga_hornsby:          '14000', // Hornsby
+  lga_ku_ring_gai:      '14500', // Ku-ring-gai
+  lga_northern_beaches: '15990', // Northern Beaches
+  lga_manly:            '15990', // Northern Beaches (Manly amalgamated into Northern Beaches)
+  lga_willoughby:       '18250', // Willoughby
+  lga_lane_cove:        '14700', // Lane Cove
+  lga_mosman:           '15350', // Mosman
+  lga_north_sydney:     '15950', // North Sydney
+  lga_ryde:             '16700', // Ryde
+  lga_hunters_hill:     '14100', // Hunters Hill
+  lga_strathfield:      '17100', // Strathfield
+  lga_burwood:          '11300', // Burwood
+  lga_canada_bay:       '11520', // Canada Bay
+  lga_inner_west:       '14170', // Inner West
+  lga_bayside:          '10500', // Bayside (NSW)
+  lga_georges_river:    '12930', // Georges River
+  lga_hurstville:       '12930', // Georges River (Hurstville amalgamated into Georges River)
+  lga_kogarah:          '12930', // Georges River (Kogarah amalgamated into Georges River)
+  lga_rockdale:         '10500', // Bayside (Rockdale amalgamated into Bayside)
+  lga_botany_bay:       '10500', // Bayside (Botany Bay amalgamated into Bayside)
+  lga_randwick:         '16550', // Randwick
+  lga_waverley:         '18050', // Waverley
+  lga_woollahra:        '18500', // Woollahra
+  lga_blue_mountains:   '10900', // Blue Mountains
+  lga_wollondilly:      '18400', // Wollondilly
+  lga_hawkesbury:       '13800', // Hawkesbury
+  lga_hills:            '17420', // The Hills Shire
+  lga_cumberland:       '12380', // Cumberland
+  benchmark_gsy:        '1GSYD', // Greater Sydney benchmark
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -106,56 +106,85 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Parse SDMX-ML XML into a map of { dimensionKey → value }
- * dimensionKey is formed by joining all SeriesKey values with ':' then ':' + ObsValue period
+ * Parse SDMX-ML Generic XML (dimensionAtObservation=AllDimensions format) into a flat map.
  *
- * Returns flat map: Record<string, number>
- * Key format: "DIM1=val1,DIM2=val2,...,TIME=period"
+ * The ABS API returns observations in this format:
+ *   <generic:Obs>
+ *     <generic:ObsKey>
+ *       <generic:Value id="TIME_PERIOD" value="2021" />
+ *       <generic:Value id="SEXP" value="3" />
+ *       <generic:Value id="PCHAR" value="S_1" />
+ *       <generic:Value id="REGION" value="17200" />
+ *       ...
+ *     </generic:ObsKey>
+ *     <generic:ObsValue value="241521" />
+ *   </generic:Obs>
+ *
+ * Returns flat map where key = "DIM1=val1,DIM2=val2,..." (excluding TIME_PERIOD which is stored separately as TIME=)
+ * Key format: "TIME_PERIOD=2021,SEXP=3,PCHAR=S_1,REGION=17200" (all dims joined)
  */
 function parseSdmxXml(xml: string): Map<string, number> {
   const result = new Map<string, number>();
 
-  // Extract dimension names from the KeyFamilyRef / structure (order matters)
-  // Each <Series> has multiple <Value concept="..." value="..."/> children
-  // Each <Obs> has <Time> and <ObsValue value="..."/>
+  // Match each <generic:Obs>...</generic:Obs> block
+  // Use a non-greedy match; strip namespace prefix for robustness
+  const obsRegex = /<(?:\w+:)?Obs>([\s\S]*?)<\/(?:\w+:)?Obs>/g;
+  let obsMatch: RegExpExecArray | null;
 
-  // Match all <Series ...>...</Series> blocks
-  const seriesRegex = /<Series>([\s\S]*?)<\/Series>/g;
-  let seriesMatch: RegExpExecArray | null;
+  while ((obsMatch = obsRegex.exec(xml)) !== null) {
+    const obsBlock = obsMatch[1];
 
-  while ((seriesMatch = seriesRegex.exec(xml)) !== null) {
-    const seriesBlock = seriesMatch[1];
-
-    // Extract series key dimensions
+    // Extract all dimension values from ObsKey
+    // Handles both <generic:Value id="X" value="Y"/> and <Value id="X" value="Y"/>
     const dims: Record<string, string> = {};
-    const dimRegex = /<Value concept="([^"]+)" value="([^"]*)"\s*\/>/g;
+    const dimRegex = /<(?:\w+:)?Value\s+id="([^"]+)"\s+value="([^"]*)"\s*\/>/g;
     let dimMatch: RegExpExecArray | null;
-    while ((dimMatch = dimRegex.exec(seriesBlock)) !== null) {
+    while ((dimMatch = dimRegex.exec(obsBlock)) !== null) {
       dims[dimMatch[1]] = dimMatch[2];
     }
 
-    // Extract observations
-    const obsRegex = /<Obs><Time>([^<]*)<\/Time><ObsValue value="([^"]*)"\s*\/>/g;
-    let obsMatch: RegExpExecArray | null;
-    while ((obsMatch = obsRegex.exec(seriesBlock)) !== null) {
-      const period = obsMatch[1].trim();
-      const value = parseFloat(obsMatch[2]);
-      if (!isNaN(value)) {
-        // Build key: sorted dimension entries + TIME
-        const dimsStr = Object.entries(dims)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(',');
-        result.set(`${dimsStr},TIME=${period}`, value);
-      }
-    }
+    // Extract observation value from <generic:ObsValue value="..."/>
+    const obsValueMatch = /<(?:\w+:)?ObsValue\s+value="([^"]*)"\s*\/>/.exec(obsBlock);
+    if (!obsValueMatch) continue;
+
+    const value = parseFloat(obsValueMatch[1]);
+    if (isNaN(value)) continue;
+
+    // Build key from all dimensions (including TIME_PERIOD)
+    const key = Object.entries(dims)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(',');
+
+    result.set(key, value);
   }
 
   return result;
 }
 
 /**
+ * Normalise a TIME_PERIOD value: "2021-Q1" → "2021", "2021" → "2021"
+ */
+function normaliseTime(t: string): string {
+  return t.split('-')[0];
+}
+
+/**
+ * Parse a flat key string "DIM1=val1,DIM2=val2,..." into a Record.
+ */
+function parseKey(key: string): Record<string, string> {
+  const dims: Record<string, string> = {};
+  for (const part of key.split(',')) {
+    const eqIdx = part.indexOf('=');
+    if (eqIdx === -1) continue;
+    dims[part.slice(0, eqIdx)] = part.slice(eqIdx + 1);
+  }
+  return dims;
+}
+
+/**
  * Look up a value in the parsed SDMX map.
- * Partial match: all provided dims must match, TIME must match if given.
+ * Partial match: all provided dims must match.
+ * `time` is matched against the TIME_PERIOD dimension (normalised to year).
  */
 function lookupValue(
   data: Map<string, number>,
@@ -163,18 +192,13 @@ function lookupValue(
   time?: string
 ): number | null {
   for (const [key, value] of Array.from(data.entries())) {
-    const parts = key.split(',');
-    const keyDims: Record<string, string> = {};
-    for (const part of parts) {
-      const [k, v] = part.split('=');
-      keyDims[k] = v;
-    }
+    const keyDims = parseKey(key);
 
     let match = true;
     for (const [k, v] of Object.entries(dims)) {
       if (keyDims[k] !== v) { match = false; break; }
     }
-    if (time && keyDims['TIME'] !== time) match = false;
+    if (time && normaliseTime(keyDims['TIME_PERIOD'] ?? '') !== time) match = false;
 
     if (match) return value;
   }
@@ -191,19 +215,13 @@ function sumValues(
 ): number {
   let total = 0;
   for (const [key, value] of Array.from(data.entries())) {
-    const parts = key.split(',');
-    const keyDims: Record<string, string> = {};
-    for (const part of parts) {
-      const eqIdx = part.indexOf('=');
-      if (eqIdx === -1) continue;
-      keyDims[part.slice(0, eqIdx)] = part.slice(eqIdx + 1);
-    }
+    const keyDims = parseKey(key);
 
     let match = true;
     for (const [k, v] of Object.entries(dims)) {
       if (keyDims[k] !== v) { match = false; break; }
     }
-    if (time && keyDims['TIME'] !== time) match = false;
+    if (time && normaliseTime(keyDims['TIME_PERIOD'] ?? '') !== time) match = false;
 
     if (match) total += value;
   }
@@ -223,9 +241,11 @@ export interface G01Data {
   indigenousPopulation: number;
 }
 
+// Age group PCHAR codes as returned by the ABS API (C21_G01_LGA)
+// Note: API uses 5_14 (combined 5-14) and GE85 (85+), not 5_9/10_14/85ov
 const AGE_PCHAR_CODES = [
-  '0_4', '5_9', '10_14', '15_19', '20_24', '25_34',
-  '35_44', '45_54', '55_64', '65_74', '75_84', '85ov',
+  '0_4', '5_14', '15_19', '20_24', '25_34',
+  '35_44', '45_54', '55_64', '65_74', '75_84', 'GE85',
 ];
 
 export async function fetchG01(lgaCode: string): Promise<G01Data | null> {
@@ -561,28 +581,38 @@ export interface LabourData {
 }
 
 export async function fetchLabour(lgaCode: string): Promise<LabourData | null> {
-  // Regional labour market uses SA2/SA3/SA4 not LGA — use SA4 as proxy
-  // ERP_LFSP dataset: Labour Force Status by region
-  const url = `${ABS_BASE}/LF/1.0.0.1.3?startPeriod=2023&endPeriod=2023&dimensionAtObservation=AllDimensions`;
+  // C21_G57_LGA: Census 2021 Table G57 — Labour Force Status by LGA
+  // LFSF: 1=FT employed, 2=PT employed, 3=away from work, 4=unemployed FT, 5=unemployed PT,
+  //        6=NILF, 7-10=other, _T=total, _N=not stated
+  // FINF: family income — use _T (all incomes) to get aggregate counts
+  const url = `${ABS_BASE}/C21_G57_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
 
-  // Labour force data at SA4 level - use MEASURE codes
-  // For LGA level, we approximate using nearest SA4
-  // MEASURE: UR = unemployment rate, PR = participation rate, ER = employment-to-population ratio
-  const ur = lookupValue(data, { MEASURE: 'UR', REGION: lgaCode }, '2023');
-  const pr = lookupValue(data, { MEASURE: 'PR', REGION: lgaCode }, '2023');
-  const er = lookupValue(data, { MEASURE: 'ER', REGION: lgaCode }, '2023');
+  // Sum employed across FT + PT + away from work (LFSF 1+2+3), aggregated over FINF=_T
+  const employed =
+    (lookupValue(data, { LFSF: '1', FINF: '_T', REGION: lgaCode }, '2021') ?? 0) +
+    (lookupValue(data, { LFSF: '2', FINF: '_T', REGION: lgaCode }, '2021') ?? 0) +
+    (lookupValue(data, { LFSF: '3', FINF: '_T', REGION: lgaCode }, '2021') ?? 0);
 
-  if (ur === null) return null;
+  // Sum unemployed (LFSF 4+5)
+  const unemployed =
+    (lookupValue(data, { LFSF: '4', FINF: '_T', REGION: lgaCode }, '2021') ?? 0) +
+    (lookupValue(data, { LFSF: '5', FINF: '_T', REGION: lgaCode }, '2021') ?? 0);
 
+  // Total civilian population 15+ (LFSF=_T, FINF=_T)
+  const total = lookupValue(data, { LFSF: '_T', FINF: '_T', REGION: lgaCode }, '2021');
+
+  if (total === null || total === 0) return null;
+
+  const labourForce = employed + unemployed;
   return {
-    unemploymentRate: ur,
-    participationRate: pr ?? 60,
-    employmentRate: er ?? (pr ? pr - ur : 55),
-    dataYear: 2023,
+    unemploymentRate: labourForce > 0 ? (unemployed / labourForce) * 100 : 0,
+    participationRate: (labourForce / total) * 100,
+    employmentRate: (employed / total) * 100,
+    dataYear: 2021,
   };
 }
 
