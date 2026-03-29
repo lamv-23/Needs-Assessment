@@ -32,44 +32,164 @@ const DEFAULT_HEADERS = {
 // Maps internal area IDs to 5-digit ABS LGA codes (2021 ASGS)
 
 export const LGA_CODE_MAP: Record<string, string> = {
-  lga_sydney:           '17200', // Sydney
-  lga_parramatta:       '16260', // Parramatta
-  lga_blacktown:        '10750', // Blacktown
-  lga_penrith:          '16350', // Penrith
-  lga_camden:           '11450', // Camden
-  lga_liverpool:        '14900', // Liverpool
-  lga_fairfield:        '12850', // Fairfield
-  lga_bankstown:        '11570', // Canterbury-Bankstown
-  lga_sutherland:       '17150', // Sutherland Shire
-  lga_hornsby:          '14000', // Hornsby
-  lga_ku_ring_gai:      '14500', // Ku-ring-gai
-  lga_northern_beaches: '15990', // Northern Beaches
-  lga_manly:            '15990', // Northern Beaches (Manly amalgamated into Northern Beaches)
-  lga_willoughby:       '18250', // Willoughby
-  lga_lane_cove:        '14700', // Lane Cove
-  lga_mosman:           '15350', // Mosman
-  lga_north_sydney:     '15950', // North Sydney
-  lga_ryde:             '16700', // Ryde
-  lga_hunters_hill:     '14100', // Hunters Hill
-  lga_strathfield:      '17100', // Strathfield
-  lga_burwood:          '11300', // Burwood
-  lga_canada_bay:       '11520', // Canada Bay
-  lga_inner_west:       '14170', // Inner West
-  lga_bayside:          '10500', // Bayside (NSW)
-  lga_georges_river:    '12930', // Georges River
-  lga_hurstville:       '12930', // Georges River (Hurstville amalgamated into Georges River)
-  lga_kogarah:          '12930', // Georges River (Kogarah amalgamated into Georges River)
-  lga_rockdale:         '10500', // Bayside (Rockdale amalgamated into Bayside)
-  lga_botany_bay:       '10500', // Bayside (Botany Bay amalgamated into Bayside)
-  lga_randwick:         '16550', // Randwick
-  lga_waverley:         '18050', // Waverley
-  lga_woollahra:        '18500', // Woollahra
-  lga_blue_mountains:   '10900', // Blue Mountains
-  lga_wollondilly:      '18400', // Wollondilly
-  lga_hawkesbury:       '13800', // Hawkesbury
-  lga_hills:            '17420', // The Hills Shire
-  lga_cumberland:       '12380', // Cumberland
-  benchmark_gsy:        '1GSYD', // Greater Sydney benchmark
+  // ── Greater Sydney ───────────────────────────────────────────────────────────
+  lga_sydney:                  '17200', // City of Sydney
+  lga_parramatta:              '16260', // City of Parramatta
+  lga_blacktown:               '10750', // Blacktown
+  lga_penrith:                 '16350', // Penrith
+  lga_camden:                  '11450', // Camden
+  lga_campbelltown:            '11500', // Campbelltown (NSW)
+  lga_liverpool:               '14900', // Liverpool
+  lga_fairfield:               '12850', // Fairfield
+  lga_bankstown:               '11570', // Canterbury-Bankstown (legacy alias)
+  lga_canterbury_bankstown:    '11570', // Canterbury-Bankstown
+  lga_sutherland:              '17150', // Sutherland Shire
+  lga_hornsby:                 '14000', // Hornsby
+  lga_ku_ring_gai:             '14500', // Ku-ring-gai
+  lga_northern_beaches:        '15990', // Northern Beaches
+  lga_manly:                   '15990', // Northern Beaches (Manly amalgamated)
+  lga_willoughby:              '18250', // Willoughby
+  lga_lane_cove:               '14700', // Lane Cove
+  lga_mosman:                  '15350', // Mosman
+  lga_north_sydney:            '15950', // North Sydney
+  lga_ryde:                    '16700', // City of Ryde
+  lga_hunters_hill:            '14100', // Hunters Hill
+  lga_strathfield:             '17100', // Strathfield
+  lga_burwood:                 '11300', // Burwood
+  lga_canada_bay:              '11520', // Canada Bay
+  lga_inner_west:              '14170', // Inner West
+  lga_bayside:                 '10500', // Bayside (NSW)
+  lga_georges_river:           '12930', // Georges River
+  lga_hurstville:              '12930', // Georges River (Hurstville amalgamated)
+  lga_kogarah:                 '12930', // Georges River (Kogarah amalgamated)
+  lga_rockdale:                '10500', // Bayside (Rockdale amalgamated)
+  lga_botany_bay:              '10500', // Bayside (Botany Bay amalgamated)
+  lga_randwick:                '16550', // Randwick
+  lga_waverley:                '18050', // Waverley
+  lga_woollahra:               '18500', // Woollahra
+  lga_blue_mountains:          '10900', // Blue Mountains
+  lga_wollondilly:             '18400', // Wollondilly
+  lga_hawkesbury:              '13800', // Hawkesbury
+  lga_hills:                   '17420', // The Hills Shire
+  lga_cumberland:              '12380', // Cumberland
+
+  // ── Hunter ───────────────────────────────────────────────────────────────────
+  lga_newcastle:               '15900', // Newcastle
+  lga_lake_macquarie:          '14650', // Lake Macquarie
+  lga_cessnock:                '11720', // Cessnock
+  lga_maitland:                '15050', // Maitland
+  lga_port_stephens:           '16400', // Port Stephens
+  lga_singleton:               '17000', // Singleton
+  lga_muswellbrook:            '15650', // Muswellbrook
+  lga_upper_hunter:            '17620', // Upper Hunter Shire
+  lga_dungog:                  '12700', // Dungog
+  lga_maitland_surrounds:      '15050', // Maitland (same code)
+
+  // ── Central Coast ────────────────────────────────────────────────────────────
+  lga_central_coast:           '11650', // Central Coast (NSW)
+
+  // ── Illawarra-Shoalhaven ─────────────────────────────────────────────────────
+  lga_wollongong:              '18450', // Wollongong
+  lga_shellharbour:            '16900', // Shellharbour
+  lga_kiama:                   '14400', // Kiama
+  lga_shoalhaven:              '16950', // Shoalhaven
+  lga_wingecarribee:           '18350', // Wingecarribee
+
+  // ── South East & Tablelands ──────────────────────────────────────────────────
+  lga_queanbeyan_palerang:     '16490', // Queanbeyan-Palerang Regional
+  lga_snowy_monaro:            '17040', // Snowy Monaro Regional
+  lga_eurobodalla:             '12750', // Eurobodalla
+  lga_bega_valley:             '10550', // Bega Valley
+  lga_goulburn_mulwaree:       '13310', // Goulburn Mulwaree
+  lga_hilltops:                '13910', // Hilltops
+  lga_yass_valley:             '18710', // Yass Valley
+  lga_upper_lachlan:           '17640', // Upper Lachlan Shire
+
+  // ── New England & North West ──────────────────────────────────────────────────
+  lga_tamworth:                '17310', // Tamworth Regional
+  lga_armidale:                '10180', // Armidale Regional
+  lga_uralla:                  '17650', // Uralla
+  lga_walcha:                  '17850', // Walcha
+  lga_gunnedah:                '13550', // Gunnedah
+  lga_narrabri:                '15750', // Narrabri
+  lga_moree_plains:            '15300', // Moree Plains
+  lga_inverell:                '14220', // Inverell
+  lga_glen_innes_severn:       '13010', // Glen Innes Severn
+  lga_tenterfield:             '17400', // Tenterfield
+  lga_liverpool_plains:        '14920', // Liverpool Plains
+  lga_gwydir:                  '13660', // Gwydir
+
+  // ── North Coast ───────────────────────────────────────────────────────────────
+  lga_tweed:                   '17550', // Tweed
+  lga_byron:                   '11350', // Byron
+  lga_ballina:                 '10250', // Ballina
+  lga_lismore:                 '14850', // Lismore
+  lga_richmond_valley:         '16610', // Richmond Valley
+  lga_kyogle:                  '14550', // Kyogle
+  lga_coffs_harbour:           '11800', // Coffs Harbour
+  lga_bellingen:               '10600', // Bellingen
+  lga_nambucca_valley:         '15700', // Nambucca Valley
+  lga_kempsey:                 '14350', // Kempsey
+  lga_port_macquarie_hastings: '16380', // Port Macquarie-Hastings
+  lga_mid_coast:               '15240', // Mid-Coast
+  lga_clarence_valley:         '11730', // Clarence Valley
+
+  // ── Central West & Orana ──────────────────────────────────────────────────────
+  lga_dubbo:                   '12390', // Dubbo Regional
+  lga_orange:                  '16150', // Orange
+  lga_bathurst:                '10470', // Bathurst Regional
+  lga_lithgow:                 '14870', // Lithgow
+  lga_cabonne:                 '11400', // Cabonne
+  lga_blayney:                 '10850', // Blayney
+  lga_oberon:                  '16100', // Oberon
+  lga_mid_western:             '15270', // Mid-Western Regional
+  lga_warrumbungle:            '18020', // Warrumbungle Shire
+  lga_gilgandra:               '12950', // Gilgandra
+  lga_coonamble:               '12150', // Coonamble
+  lga_narromine:               '15850', // Narromine
+  lga_parkes:                  '16200', // Parkes
+  lga_forbes:                  '12900', // Forbes
+  lga_lachlan:                 '14600', // Lachlan
+  lga_weddin:                  '18100', // Weddin
+  lga_cowra:                   '12350', // Cowra
+  lga_bland:                   '10800', // Bland
+  lga_bogan:                   '10950', // Bogan
+  lga_cobar:                   '11750', // Cobar
+
+  // ── Riverina-Murray ───────────────────────────────────────────────────────────
+  lga_wagga_wagga:             '17750', // Wagga Wagga
+  lga_albury:                  '10050', // Albury
+  lga_griffith:                '13450', // Griffith
+  lga_leeton:                  '14750', // Leeton
+  lga_narrandera:              '15800', // Narrandera
+  lga_murrumbidgee:            '15560', // Murrumbidgee
+  lga_coolamon:                '12000', // Coolamon
+  lga_temora:                  '17350', // Temora
+  lga_junee:                   '14300', // Junee
+  lga_cootamundra_gundagai:    '12160', // Cootamundra-Gundagai Regional
+  lga_snowy_valleys:           '17080', // Snowy Valleys
+  lga_federation:              '12870', // Federation
+  lga_greater_hume:            '13340', // Greater Hume Shire
+  lga_berrigan:                '10650', // Berrigan
+  lga_edward_river:            '12730', // Edward River
+  lga_murray_river:            '15520', // Murray River
+  lga_hay:                     '13850', // Hay
+  lga_carrathool:              '11600', // Carrathool
+  lga_lockhart:                '14950', // Lockhart
+
+  // ── Far West ─────────────────────────────────────────────────────────────────
+  lga_broken_hill:             '11250', // Broken Hill
+  lga_wentworth:               '18200', // Wentworth
+  lga_balranald:               '10300', // Balranald
+  lga_central_darling:         '11700', // Central Darling
+  lga_bourke:                  '11150', // Bourke
+  lga_brewarrina:              '11200', // Brewarrina
+  lga_walgett:                 '17900', // Walgett
+  lga_warren:                  '17950', // Warren
+
+  // ── Benchmarks ───────────────────────────────────────────────────────────────
+  benchmark_gsy:               '1GSYD', // Greater Sydney benchmark
+  benchmark_nsw:               '1NSW',  // NSW state benchmark
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

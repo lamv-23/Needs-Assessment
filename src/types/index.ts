@@ -2,6 +2,7 @@ export interface Area {
   id: string;
   name: string;
   type: 'sa2' | 'lga' | 'suburb' | 'postcode' | 'custom';
+  region?: string;
   parentId?: string;
   centroidLat?: number;
   centroidLng?: number;
