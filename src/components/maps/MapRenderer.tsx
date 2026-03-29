@@ -44,9 +44,19 @@ export default function MapRenderer({
   useEffect(() => {
     if (typeof window === 'undefined' || !containerRef.current) return;
 
+    // Capture the container synchronously so the async callback can check it
+    const container = containerRef.current;
+
     import('leaflet').then((L) => {
+      // Bail out if the component unmounted before the dynamic import resolved
+      if (!container || !document.contains(container)) return;
+      // Bail out if Leaflet already initialised this container (StrictMode double-invoke)
+      if ((container as any)._leaflet_id) return;
+      // Bail out if we already have a map instance
+      if (mapRef.current) return;
+
       LRef.current = L;
-      const map = L.map(containerRef.current!).setView([-33.8688, 151.2093], 10);
+      const map = L.map(container).setView([-33.8688, 151.2093], 10);
       mapRef.current = map;
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution:

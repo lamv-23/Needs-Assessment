@@ -51,8 +51,9 @@ export default function SimpleMap({
       return;
     }
 
-    // Prevent multiple initializations
-    if (mapRef.current) {
+    // Prevent multiple initializations (also guards against StrictMode double-invoke
+    // where Leaflet leaves _leaflet_id on the DOM node after cleanup)
+    if (mapRef.current || (containerRef.current as any)._leaflet_id) {
       console.log('[Map] Already initialized, skipping');
       return;
     }
@@ -125,6 +126,13 @@ export default function SimpleMap({
     } catch (error) {
       console.error('[Map] Error during initialization:', error);
     }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, []); // Only run once on mount
 
   return (
