@@ -130,6 +130,9 @@ export default function DemographicsPage() {
             title="Population Pyramid"
             subtitle="Age and sex distribution"
             className="lg:col-span-2"
+            data={data.ageDistribution}
+            dataKeys={['male', 'female']}
+            xAxisKey="ageGroup"
           >
             <PopulationPyramid data={data.ageDistribution} height={400} />
           </ChartWrapper>
@@ -137,6 +140,8 @@ export default function DemographicsPage() {
           <ChartWrapper
             title="Country of Birth"
             subtitle="Top countries of birth for residents"
+            data={data.countriesOfBirth}
+            dataKeys={['value']}
           >
             <NeedsPieChart
               data={data.countriesOfBirth}
@@ -149,6 +154,8 @@ export default function DemographicsPage() {
           <ChartWrapper
             title="Household Composition"
             subtitle="Percentage of households by type"
+            data={data.householdComposition}
+            dataKeys={['value']}
           >
             <NeedsBarChart
               data={data.householdComposition}
@@ -167,6 +174,11 @@ export default function DemographicsPage() {
               title="Language Spoken at Home"
               subtitle="Top 10 languages — number of residents (ABS Census 2021)"
               className="lg:col-span-2"
+              data={[...data.languageGroups!]
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 10)
+                .map(l => ({ name: l.name, value: l.count }))}
+              dataKeys={['value']}
             >
               <NeedsBarChart
                 data={[...data.languageGroups!]

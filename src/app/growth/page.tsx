@@ -105,6 +105,9 @@ export default function GrowthPage() {
               ? 'NSW DPE projections 2021–2041 (annual) with historical data'
               : 'Historical census data and future projections (indicative)'}
             className="lg:col-span-2"
+            data={populationTimeline}
+            dataKeys={['population']}
+            xAxisKey="year"
           >
             <NeedsLineChart
               data={populationTimeline}
@@ -122,6 +125,9 @@ export default function GrowthPage() {
               ? 'TfNSW employment projections 2021–2041 (annual)'
               : 'Historical and projected employment (indicative)'}
             className="lg:col-span-2"
+            data={data.employmentGrowth}
+            dataKeys={['jobs']}
+            xAxisKey="year"
           >
             <NeedsLineChart
               data={data.employmentGrowth}
@@ -137,6 +143,12 @@ export default function GrowthPage() {
             title="Population vs Employment Growth"
             subtitle="Annual growth rate comparison (2021–2041)"
             className="lg:col-span-2"
+            data={[
+              { category: 'Population', growth: data.projectedGrowthRate },
+              { category: 'Employment', growth: employmentGrowthRate },
+            ]}
+            dataKeys={['growth']}
+            xAxisKey="category"
           >
             <NeedsBarChart
               data={[
@@ -155,6 +167,12 @@ export default function GrowthPage() {
               title="Building Approvals"
               subtitle="Monthly residential building approvals (ABS Building Approvals)"
               className="lg:col-span-2"
+              data={data.buildingApprovals!.map(b => ({
+                period: `${b.year}-${String(b.month).padStart(2, '0')}`,
+                approvals: b.residentialCount,
+              }))}
+              dataKeys={['approvals']}
+              xAxisKey="period"
             >
               <NeedsLineChart
                 data={data.buildingApprovals!.map(b => ({

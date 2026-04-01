@@ -637,6 +637,9 @@ export default function StrategicAlignmentPage() {
           <ChartWrapper
             title="Population Projections 2011–2041"
             subtitle="Historical (ABS ERP / Census) + projected (NSW DPE 2024)"
+            data={popChartData}
+            dataKeys={['Population']}
+            xAxisKey="year"
           >
             <p className="text-sm text-gray-500 mb-4">
               Population growth is the primary driver of transport demand and the key evidence base for
@@ -658,6 +661,9 @@ export default function StrategicAlignmentPage() {
         <ChartWrapper
           title="Population & Employment Growth (2011–2041)"
           subtitle="Combined view — ABS ERP / Census + NSW DPE projections + TfNSW TZP24 employment forecasts"
+          data={combinedGrowthData}
+          dataKeys={['Population', 'Employment']}
+          xAxisKey="year"
         >
           <p className="text-sm text-gray-500 mb-4">
             Overlaying population and employment projections on the same axis demonstrates the total
@@ -680,6 +686,8 @@ export default function StrategicAlignmentPage() {
           <ChartWrapper
             title="Population Growth Rate by 5-Year Period"
             subtitle="Percentage change per period — historical and projected"
+            data={popPeriods}
+            dataKeys={['Growth (%)']}
           >
             <p className="text-sm text-gray-500 mb-4">
               Breaking growth into 5-year intervals reveals whether demand pressure is accelerating or
@@ -699,6 +707,9 @@ export default function StrategicAlignmentPage() {
           <ChartWrapper
             title="Jobs-to-Population Ratio (2011–2041)"
             subtitle="Employment per 100 residents — proxy for self-containment and commute trip generation"
+            data={jobsRatioData}
+            dataKeys={['Jobs per 100 persons']}
+            xAxisKey="year"
           >
             <p className="text-sm text-gray-500 mb-4">
               The jobs-to-population ratio is an indicator of local economic self-containment. A rising

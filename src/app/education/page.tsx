@@ -56,6 +56,8 @@ export default function EducationPage() {
           <ChartWrapper
             title="Educational Attainment"
             subtitle="Population share by qualification level (%)"
+            data={data.attainment}
+            dataKeys={['value']}
           >
             <NeedsBarChart
               data={data.attainment}
@@ -71,6 +73,8 @@ export default function EducationPage() {
           <ChartWrapper
             title="School Enrolment"
             subtitle="Number of students by education level"
+            data={data.schoolEnrolment}
+            dataKeys={['value']}
           >
             <NeedsBarChart
               data={data.schoolEnrolment}
@@ -87,6 +91,9 @@ export default function EducationPage() {
           <ChartWrapper
             title="Qualification Trends"
             subtitle="Percentage of population with qualifications over time"
+            data={data.qualificationTrend}
+            dataKeys={['bachelor', 'diploma', 'certificate']}
+            xAxisKey="year"
           >
             <NeedsLineChart
               data={data.qualificationTrend}
