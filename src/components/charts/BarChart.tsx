@@ -22,6 +22,17 @@ interface BarChartProps {
   height?: number;
 }
 
+const TICK_STYLE = { fontSize: 11, fontFamily: 'Inter, system-ui, sans-serif', fill: '#374151' };
+const LABEL_STYLE = { fontWeight: 600, fontSize: 12, fill: '#111827' };
+const TOOLTIP_STYLE = {
+  backgroundColor: '#fff',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  fontSize: 12,
+  fontFamily: 'Inter, system-ui, sans-serif',
+};
+
 export default function BarChart({
   data,
   dataKeys,
@@ -40,14 +51,15 @@ export default function BarChart({
         layout={isVertical ? 'vertical' : 'horizontal'}
         margin={{ top: 5, right: 30, left: 20, bottom: xAxisLabel ? 30 : 5 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.8} />
         {isVertical ? (
           <>
             <XAxis
               type="number"
+              tick={TICK_STYLE}
               label={
                 xAxisLabel
-                  ? { value: xAxisLabel, position: 'bottom', offset: 10 }
+                  ? { value: xAxisLabel, position: 'bottom', offset: 10, style: LABEL_STYLE }
                   : undefined
               }
             />
@@ -55,14 +67,10 @@ export default function BarChart({
               type="category"
               dataKey="name"
               width={120}
+              tick={TICK_STYLE}
               label={
                 yAxisLabel
-                  ? {
-                      value: yAxisLabel,
-                      angle: -90,
-                      position: 'insideLeft',
-                      offset: -10,
-                    }
+                  ? { value: yAxisLabel, angle: -90, position: 'insideLeft', offset: -10, style: LABEL_STYLE }
                   : undefined
               }
             />
@@ -71,40 +79,31 @@ export default function BarChart({
           <>
             <XAxis
               dataKey="name"
+              tick={TICK_STYLE}
               label={
                 xAxisLabel
-                  ? { value: xAxisLabel, position: 'bottom', offset: 10 }
+                  ? { value: xAxisLabel, position: 'bottom', offset: 10, style: LABEL_STYLE }
                   : undefined
               }
             />
             <YAxis
+              tick={TICK_STYLE}
               label={
                 yAxisLabel
-                  ? {
-                      value: yAxisLabel,
-                      angle: -90,
-                      position: 'insideLeft',
-                      offset: -10,
-                    }
+                  ? { value: yAxisLabel, angle: -90, position: 'insideLeft', offset: -10, style: LABEL_STYLE }
                   : undefined
               }
             />
           </>
         )}
-        <Tooltip
-          contentStyle={{
-            backgroundColor: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-          }}
-        />
+        <Tooltip contentStyle={TOOLTIP_STYLE} />
         <Legend />
         {dataKeys.map((key, index) => (
           <Bar
             key={key}
             dataKey={key}
             fill={colors[index % colors.length]}
-            radius={[2, 2, 0, 0]}
+            radius={[3, 3, 0, 0]}
           />
         ))}
       </RechartsBarChart>
