@@ -9,6 +9,7 @@ import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { getEmployed2021 } from '@/lib/data/economy-helpers';
 
 export default function EconomyPage() {
   const { selectedArea, selectedYear } = useAppStore();
@@ -51,7 +52,7 @@ export default function EconomyPage() {
           {data.employmentTrend.length > 0 && (
             <StatCard
               label="Employed (2021)"
-              value={data.employmentTrend[0]?.employed?.toLocaleString() ?? '—'}
+              value={getEmployed2021(data.employmentTrend)?.toLocaleString() ?? '—'}
               subtitle={meta.liveFields.includes('employmentTrend') ? 'TfNSW TZP24 baseline' : 'Indicative'}
             />
           )}

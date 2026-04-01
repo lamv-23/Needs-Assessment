@@ -7,7 +7,7 @@ import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsPieChart from '@/components/charts/PieChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useAppStore } from '@/store';
-import { getTransportMetricsForArea, getLatestTransportMetrics } from '@/lib/data/tfnsw-transport';
+import { getTransportMetricsForArea, getLatestTransportMetrics, TRANSPORT_DATA_NOTE } from '@/lib/data/tfnsw-transport';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
 import { Clock, Train, Car, Bus, TrendingDown } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
@@ -53,32 +53,32 @@ export default function TransportPage() {
             icon={Clock}
             label="Average Commute Time"
             value={latestTfnswMetrics ? `${latestTfnswMetrics.averageCommuteTime} min` : `${data.avgCommute}`}
-            subtitle={hasTfnswData ? `TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}` : "Minutes (one way)"}
+            subtitle={hasTfnswData ? `Modelled estimate (${tfnswMetrics[tfnswMetrics.length - 1]?.year})` : "Minutes (one way)"}
           />
           <StatCard
             icon={Train}
             label="PT Patronage"
             value={latestTfnswMetrics ? `${(latestTfnswMetrics.ptPatronagePerCapita).toFixed(1)}` : formatNumber(data.ptPatronage)}
-            subtitle={hasTfnswData ? "Trips per capita per day" : "Estimated annual trips"}
+            subtitle={hasTfnswData ? "Trips per capita per day (modelled)" : "Estimated annual trips"}
           />
           <StatCard
             icon={Car}
             label="Car Mode Share"
             value={latestTfnswMetrics ? `${latestTfnswMetrics.modeShareCar.toFixed(1)}%` : formatPercent(carModeShare)}
-            subtitle={hasTfnswData ? `TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}` : "Driver + passenger"}
+            subtitle={hasTfnswData ? `Modelled estimate (${tfnswMetrics[tfnswMetrics.length - 1]?.year})` : "Driver + passenger"}
           />
           <StatCard
             icon={Bus}
             label="Public Transport Mode Share"
             value={latestTfnswMetrics ? `${latestTfnswMetrics.modeSharePT.toFixed(1)}%` : formatPercent(ptModeShare)}
-            subtitle={hasTfnswData ? `TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}` : "Train + bus + ferry"}
+            subtitle={hasTfnswData ? `Modelled estimate (${tfnswMetrics[tfnswMetrics.length - 1]?.year})` : "Train + bus + ferry"}
           />
           {hasTfnswData && (
             <StatCard
               icon={TrendingDown}
               label="Active Transport"
               value={`${latestTfnswMetrics?.modeShareActive.toFixed(1)}%`}
-              subtitle={`TfNSW ${tfnswMetrics[tfnswMetrics.length - 1]?.year}`}
+              subtitle={`Modelled estimate (${tfnswMetrics[tfnswMetrics.length - 1]?.year})`}
             />
           )}
         </div>
@@ -102,11 +102,19 @@ export default function TransportPage() {
             />
           </ChartWrapper>
 
+          {/* TfNSW data disclaimer */}
+          {hasTfnswData && (
+            <div className="lg:col-span-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <span className="mt-0.5 shrink-0">⚠</span>
+              <span>{TRANSPORT_DATA_NOTE}</span>
+            </div>
+          )}
+
           {/* TfNSW Mode Share Trends - if available */}
           {hasTfnswData && (
             <ChartWrapper
               title="Mode Share Trends (2019-2026)"
-              subtitle="TfNSW Transport Metrics — Historical trends"
+              subtitle="TfNSW Transport Metrics — Modelled trend estimates"
               className="lg:col-span-2"
             >
               <NeedsLineChart

@@ -16,6 +16,7 @@ import {
 } from '@/lib/data/sample-data';
 import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
 import { formatNumber, formatPercent, formatCurrency, CHART_COLORS } from '@/lib/utils';
+import { getCarModeShare, getPTModeShare } from '@/lib/data/transport-helpers';
 import { Plus, X, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import type { DataMeta } from '@/hooks/useLiveData';
@@ -91,8 +92,8 @@ export default function ComparePage() {
     { label: 'Projected Population (2041)', getValue: (d: typeof areasData[0]) => d.growth.pop2041 ?? 0, format: formatNumber, benchmark: 0 },
     { label: 'Median Age', getValue: (d: typeof areasData[0]) => d.demographics.medianAge, format: (v: number) => v.toFixed(1), benchmark: benchmarkDemo.medianAge },
     { label: 'SEIFA Score', getValue: (d: typeof areasData[0]) => d.demographics.seifaScore, format: (v: number) => v.toString(), benchmark: benchmarkDemo.seifaScore },
-    { label: 'Car Mode Share (%)', getValue: (d: typeof areasData[0]) => d.transport.journeyToWork[0].value, format: (v: number) => formatPercent(v), benchmark: benchmarkTransport.journeyToWork[0].value },
-    { label: 'PT Mode Share (%)', getValue: (d: typeof areasData[0]) => d.transport.journeyToWork[2].value + d.transport.journeyToWork[3].value, format: (v: number) => formatPercent(v), benchmark: benchmarkTransport.journeyToWork[2].value + benchmarkTransport.journeyToWork[3].value },
+    { label: 'Car Mode Share (%)', getValue: (d: typeof areasData[0]) => getCarModeShare(d.transport.journeyToWork), format: (v: number) => formatPercent(v), benchmark: getCarModeShare(benchmarkTransport.journeyToWork) },
+    { label: 'PT Mode Share (%)', getValue: (d: typeof areasData[0]) => getPTModeShare(d.transport.journeyToWork), format: (v: number) => formatPercent(v), benchmark: getPTModeShare(benchmarkTransport.journeyToWork) },
     { label: 'Avg Commute (min)', getValue: (d: typeof areasData[0]) => d.transport.avgCommute, format: (v: number) => v.toString(), benchmark: benchmarkTransport.avgCommute },
     { label: 'Unemployment (%)', getValue: (d: typeof areasData[0]) => d.economy.unemploymentRate, format: (v: number) => formatPercent(v), benchmark: benchmarkEconomy.unemploymentRate },
     { label: 'Median Income ($/wk)', getValue: (d: typeof areasData[0]) => d.economy.medianWeeklyIncome, format: (v: number) => formatCurrency(v), benchmark: benchmarkEconomy.medianWeeklyIncome },
@@ -103,13 +104,14 @@ export default function ComparePage() {
   // Chart data for mode share comparison
   const modeShareComparison = selectedAreas.map(area => {
     const t = getTransportData(area.id, selectedYear);
+    const jtw = t.journeyToWork;
     return {
       name: area.name.length > 15 ? area.name.substring(0, 15) + '...' : area.name,
-      'Car': t.journeyToWork[0].value,
-      'Train': t.journeyToWork[2].value,
-      'Bus': t.journeyToWork[3].value,
-      'Active': t.journeyToWork[5].value + t.journeyToWork[6].value,
-      'WFH': t.journeyToWork[7].value,
+      'Car': getCarModeShare(jtw),
+      'Train': jtw.find(m => m.name === 'Train')?.value ?? 0,
+      'Bus': jtw.find(m => m.name === 'Bus')?.value ?? 0,
+      'Active': (jtw.find(m => m.name === 'Cycling')?.value ?? 0) + (jtw.find(m => m.name === 'Walking')?.value ?? 0),
+      'WFH': jtw.find(m => m.name === 'Work from home')?.value ?? 0,
     };
   });
 

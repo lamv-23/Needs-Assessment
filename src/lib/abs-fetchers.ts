@@ -921,8 +921,21 @@ export async function fetchG34(lgaCode: string): Promise<VehicleData | null> {
 // ─── G62: Method of Travel to Work (corrected table) ─────────────────────────
 // Attempts C21_G62_LGA — the Census table for MTWP × sex.
 // Returns the same G55Data type (already defined above).
-// MTWP codes: 10=car driver, 20=car passenger, 36=train, 39=bus, 40=ferry,
-//             37=tram/light rail, 61=bicycle, 70=walked only, 80=worked at home, 90=other
+//
+// Confirmed MTWP codes (verified against live API for Sydney LGA 17200, 2026-04-01):
+//   Hierarchical totals (include all trips using that mode, incl. combinations):
+//     T_1 = all car trips (driver or passenger, alone or combined)
+//     233 = all train trips (alone or combined with other modes)
+//     234 = all bus trips (alone or combined)
+//     232 = all ferry/tram/light rail trips (alone or combined)
+//   Single-mode codes:
+//     6   = car as driver only
+//     2   = car as passenger only
+//     5   = bicycle only
+//     10  = walked only
+//     14  = worked at home
+//     11  = taxi, 12 = ride-share, 13 = other
+//     _T  = total workers (all modes, grand total)
 
 export async function fetchG62(lgaCode: string): Promise<G55Data | null> {
   const url = `${ABS_BASE}/C21_G62_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
@@ -934,23 +947,18 @@ export async function fetchG62(lgaCode: string): Promise<G55Data | null> {
     lookupValue(data, { MTWP: mtwp, SEXP: '3', REGION: lgaCode }, '2021')
     ?? sumValues(data, { MTWP: mtwp, REGION: lgaCode }, '2021');
 
-  // Confirmed MTWP codes from ABS SDMX API (C21_G62_LGA):
-  //   1=car driver, 2=car passenger, 3=truck, 4=motorcycle, 5=bicycle,
-  //   6=bus, 7=train, 8=tram/light rail, 9=ferry,
-  //   10=walked only, 11=taxi, 12=ride-share, 13=other, 14=worked at home,
-  //   16=did not go to work, 17=not stated, _T=total
-  const car_driver    = get('1');
-  const car_passenger = get('2');
-  const train         = get('7');
-  const bus           = get('6');
-  const ferry         = get('9');
-  const tram          = get('8');
+  // Use hierarchical totals for PT modes (count all trips using that mode).
+  // Use single-mode codes for car driver, bicycle, walked, worked at home.
+  const car_driver    = get('6');   // car driver only (single mode)
+  const car_passenger = get('2');   // car passenger only (single mode)
+  const train         = get('233'); // hierarchical: all trips using train
+  const bus           = get('234'); // hierarchical: all trips using bus
+  const ferry         = get('232'); // hierarchical: all trips using ferry/tram/light rail
+  const tram          = 0;          // included in ferry (code 232) above
   const bicycle       = get('5');
   const walked        = get('10');
   const worked_home   = get('14');
-  // Other = taxi + ride-share + other method
-  const other_raw     = get('11') + get('12') + get('13');
-  const other         = other_raw;
+  const other_raw     = get('11') + get('12') + get('13'); // taxi + ride-share + other
   const total         = lookupValue(data, { MTWP: '_T', SEXP: '3', REGION: lgaCode }, '2021')
     ?? sumValues(data, { MTWP: '_T', REGION: lgaCode }, '2021');
 

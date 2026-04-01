@@ -10,10 +10,13 @@
     "seed": "tsx scripts/seed-db.ts",
     "seed:static": "tsx scripts/seed-db.ts --static",
     "seed:abs": "tsx scripts/seed-db.ts --abs",
+    "seed:g62": "tsx scripts/reseed-g62.ts",
     "clean": "rm -rf .next",
     "fresh": "rm -rf .next && next dev",
     "parse:population": "node parse-projections.js",
-    "parse:employment": "node parse-employment.js"
+    "parse:employment": "node parse-employment.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
@@ -36,6 +39,7 @@
   "devDependencies": {
     "@tanstack/react-table": "^8.21.0",
     "@types/better-sqlite3": "^7.6.12",
+    "@types/jest": "^30.0.0",
     "@types/leaflet": "^1.9.14",
     "@types/node": "^22.0.0",
     "@types/papaparse": "^5.3.15",
@@ -44,8 +48,10 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
+    "jest": "^30.3.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.6",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

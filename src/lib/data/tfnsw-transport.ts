@@ -1,13 +1,17 @@
 /**
  * TfNSW Transport Data (2019-2026)
- * Source: Transport for NSW - Open Data Hub
- * 
- * Includes:
- * - Mode share percentages (car, public transport, active transport)
- * - Average commute time (minutes)
- * - PT patronage (trips per capita)
- * - Historical trends for key LGAs
+ *
+ * IMPORTANT: The mode share, commute time and PT patronage values in this file
+ * are modelled/estimated figures and are NOT sourced from official TfNSW Open Data.
+ * They are indicative trend estimates only and should not be cited as authoritative data.
+ * For verified statistics, contact TfNSW directly or consult the ABS Census journey-to-work data.
  */
+
+/**
+ * Disclaimer shown wherever this modelled data is displayed.
+ */
+export const TRANSPORT_DATA_NOTE =
+  'Modelled estimates only — not sourced from official TfNSW data. Indicative trend purposes only.';
 
 export interface TransportMetrics {
   year: number;
