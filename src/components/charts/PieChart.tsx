@@ -34,6 +34,15 @@ interface LabelProps {
 
 const RADIAN = Math.PI / 180;
 
+const TOOLTIP_STYLE = {
+  backgroundColor: '#fff',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  fontSize: 12,
+  fontFamily: 'Inter, system-ui, sans-serif',
+};
+
 function renderCustomLabel({
   cx,
   cy,
@@ -54,8 +63,9 @@ function renderCustomLabel({
       fill="#fff"
       textAnchor="middle"
       dominantBaseline="central"
-      fontSize={12}
+      fontSize={13}
       fontWeight={600}
+      fontFamily="Inter, system-ui, sans-serif"
     >
       {`${(percent * 100).toFixed(1)}%`}
     </text>
@@ -92,13 +102,9 @@ export default function PieChart({
         </Pie>
         <Tooltip
           formatter={(value: number) => value.toLocaleString()}
-          contentStyle={{
-            backgroundColor: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-          }}
+          contentStyle={TOOLTIP_STYLE}
         />
-        <Legend />
+        <Legend wrapperStyle={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12 }} />
       </RechartsPieChart>
     </ResponsiveContainer>
   );
