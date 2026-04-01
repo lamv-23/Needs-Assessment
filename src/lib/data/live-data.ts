@@ -34,7 +34,12 @@ import {
   type EmploymentProjection,
 } from './nsw-employment-projections';
 import { LGA_CODE_MAP } from '../abs-fetchers';
-import type { G01Data, G02Data, G33Data, G36Data, G51Data, G55Data, SEIFAData, LabourData, ERPData, EducationData as G46Data, QualificationData } from '../abs-fetchers';
+import type {
+  G01Data, G02Data, G33Data, G36Data, G51Data, G55Data, SEIFAData, LabourData, ERPData,
+  EducationData as G46Data, QualificationData,
+  VehicleData, DisabilityData, HouseholdIncomeData, LanguageData, BirthplaceData,
+  FamilyData, OccupationData, HousingStressData, BuildingApprovalsData,
+} from '../abs-fetchers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -224,7 +229,73 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
     sampleFields.push('seifaScore');
   }
 
-  sampleFields.push('householdComposition', 'populationDensity');
+  // Birthplace detail from G09 (replaces G01 binary born-overseas when available)
+  let birthplaceGroups = sample.birthplaceGroups;
+  if (lgaCode) {
+    const g09 = getABS<BirthplaceData>(lgaCode, 'G09');
+    if (g09 && g09.birthplaceGroups.length > 0) {
+      birthplaceGroups = g09.birthplaceGroups;
+      // Also update countriesOfBirth to use real counts from G09
+      countriesOfBirth = g09.birthplaceGroups.slice(0, 9).map(b => ({ name: b.name, value: b.count }));
+      liveFields.push('birthplaceGroups', 'countriesOfBirth');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    }
+  }
+
+  // Language spoken at home from G13
+  let languageGroups = sample.languageGroups;
+  let englishOnly = sample.englishOnly;
+  let limitedEnglish = sample.limitedEnglish;
+  if (lgaCode) {
+    const g13 = getABS<LanguageData>(lgaCode, 'G13');
+    if (g13 && g13.languageGroups.length > 0) {
+      languageGroups = g13.languageGroups;
+      englishOnly = g13.englishOnly;
+      limitedEnglish = g13.limitedEnglish;
+      liveFields.push('languageGroups', 'englishOnly', 'limitedEnglish');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    }
+  }
+
+  // Disability / need for assistance from G18
+  let disabilityRate = sample.disabilityRate;
+  let needsAssistance = sample.needsAssistance;
+  if (lgaCode) {
+    const g18 = getABS<DisabilityData>(lgaCode, 'G18');
+    if (g18 && g18.total > 0) {
+      disabilityRate = g18.rate;
+      needsAssistance = g18.needsAssistance;
+      liveFields.push('disabilityRate', 'needsAssistance');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    }
+  }
+
+  // Family composition from G25 (replaces sample householdComposition)
+  let familyComposition = sample.familyComposition;
+  let householdComposition = sample.householdComposition;
+  if (lgaCode) {
+    const g25 = getABS<FamilyData>(lgaCode, 'G25');
+    if (g25 && g25.totalHouseholds > 0) {
+      familyComposition = [
+        { name: 'Couple with children', value: g25.coupleWithChildren },
+        { name: 'Couple without children', value: g25.coupleNoChildren },
+        { name: 'One-parent family', value: g25.oneParentFamily },
+        { name: 'Other family', value: g25.otherFamily },
+        { name: 'Lone person', value: g25.lonePersonHousehold },
+        { name: 'Group household', value: g25.groupHousehold },
+      ].filter(f => f.value > 0);
+      householdComposition = familyComposition;
+      liveFields.push('familyComposition', 'householdComposition');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    } else {
+      sampleFields.push('familyComposition');
+    }
+  } else {
+    sampleFields.push('familyComposition');
+  }
+
+  sampleFields.push(...(['populationDensity'].filter(f => !liveFields.includes(f))));
+  if (!liveFields.includes('householdComposition')) sampleFields.push('householdComposition');
 
   return {
     data: {
@@ -236,6 +307,14 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
       ageDistribution,
       countriesOfBirth,
       seifaScore,
+      birthplaceGroups,
+      languageGroups,
+      englishOnly,
+      limitedEnglish,
+      disabilityRate,
+      needsAssistance,
+      familyComposition,
+      householdComposition,
     },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };
@@ -252,27 +331,29 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
   const sources: string[] = [];
   let fetchedAt: string | null = null;
 
-  // Try G55 (method of travel to work) from ABS
+  // Try G62 first (correct MTWP table), then G55 as fallback
   let journeyToWork = sample.journeyToWork;
   if (lgaCode) {
-    const g55 = getABS<G55Data>(lgaCode, 'G55');
-    const g55Meta = getABSMeta(lgaCode, 'G55');
-    if (g55 && g55.total > 0) {
-      const t = g55.total;
+    const g62 = getABS<G55Data>(lgaCode, 'G62');
+    const g55 = g62 ?? getABS<G55Data>(lgaCode, 'G55');
+    const jtw = g55;
+    const jtwMeta = getABSMeta(lgaCode, g62 ? 'G62' : 'G55');
+    if (jtw && jtw.total > 0) {
+      const t = jtw.total;
       journeyToWork = [
-        { name: 'Car (driver)', value: Math.round((g55.car_driver / t) * 1000) / 10 },
-        { name: 'Car (passenger)', value: Math.round((g55.car_passenger / t) * 1000) / 10 },
-        { name: 'Train', value: Math.round((g55.train / t) * 1000) / 10 },
-        { name: 'Bus', value: Math.round((g55.bus / t) * 1000) / 10 },
-        { name: 'Ferry', value: Math.round((g55.ferry / t) * 1000) / 10 },
-        { name: 'Cycling', value: Math.round((g55.bicycle / t) * 1000) / 10 },
-        { name: 'Walking', value: Math.round((g55.walked / t) * 1000) / 10 },
-        { name: 'Work from home', value: Math.round((g55.worked_home / t) * 1000) / 10 },
-        { name: 'Other', value: Math.round((g55.other / t) * 1000) / 10 },
+        { name: 'Car (driver)', value: Math.round((jtw.car_driver / t) * 1000) / 10 },
+        { name: 'Car (passenger)', value: Math.round((jtw.car_passenger / t) * 1000) / 10 },
+        { name: 'Train', value: Math.round((jtw.train / t) * 1000) / 10 },
+        { name: 'Bus', value: Math.round((jtw.bus / t) * 1000) / 10 },
+        { name: 'Ferry', value: Math.round((jtw.ferry / t) * 1000) / 10 },
+        { name: 'Cycling', value: Math.round((jtw.bicycle / t) * 1000) / 10 },
+        { name: 'Walking', value: Math.round((jtw.walked / t) * 1000) / 10 },
+        { name: 'Work from home', value: Math.round((jtw.worked_home / t) * 1000) / 10 },
+        { name: 'Other', value: Math.round((jtw.other / t) * 1000) / 10 },
       ];
       liveFields.push('journeyToWork');
       sources.push('ABS Census 2021');
-      fetchedAt = g55Meta?.fetchedAt ?? null;
+      fetchedAt = jtwMeta?.fetchedAt ?? null;
     } else {
       sampleFields.push('journeyToWork');
     }
@@ -327,7 +408,29 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
     }
   }
 
-  sampleFields.push(...(['vehicleOwnership'].filter(f => !liveFields.includes(f))));
+  // Vehicle ownership from G34
+  let vehicleOwnership = sample.vehicleOwnership;
+  let vehicleOwnershipRaw = sample.vehicleOwnershipRaw;
+  if (lgaCode) {
+    const g34 = getABS<VehicleData>(lgaCode, 'G34');
+    if (g34 && g34.totalDwellings > 0) {
+      const t = g34.totalDwellings;
+      vehicleOwnership = [
+        { name: '0 vehicles', value: Math.round((g34.noCar / t) * 1000) / 10 },
+        { name: '1 vehicle',  value: Math.round((g34.oneCar / t) * 1000) / 10 },
+        { name: '2 vehicles', value: Math.round((g34.twoCars / t) * 1000) / 10 },
+        { name: '3+ vehicles', value: Math.round((g34.threePlusCars / t) * 1000) / 10 },
+      ];
+      vehicleOwnershipRaw = g34;
+      liveFields.push('vehicleOwnership');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    } else {
+      sampleFields.push('vehicleOwnership');
+    }
+  } else {
+    sampleFields.push('vehicleOwnership');
+  }
+
   if (!liveFields.includes('modeShareTrend')) sampleFields.push('modeShareTrend');
   if (!liveFields.includes('avgCommute')) sampleFields.push('avgCommute', 'ptPatronage');
 
@@ -335,6 +438,8 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
     data: {
       ...sample,
       journeyToWork,
+      vehicleOwnership,
+      vehicleOwnershipRaw,
       modeShareTrend,
       avgCommute,
       ptPatronage,
@@ -426,6 +531,32 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
     sampleFields.push('employmentTrend');
   }
 
+  // Occupation from G60
+  let occupationByGroup = sample.occupationByGroup;
+  if (lgaCode) {
+    const g60 = getABS<OccupationData>(lgaCode, 'G60');
+    if (g60 && g60.occupations.length > 0) {
+      occupationByGroup = g60.occupations;
+      liveFields.push('occupationByGroup');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    }
+  }
+
+  // Household income distribution from G33_INCOME
+  let householdIncomeDistribution = sample.householdIncomeDistribution;
+  let lowIncomeHouseholds = sample.lowIncomeHouseholds;
+  let highIncomeHouseholds = sample.highIncomeHouseholds;
+  if (lgaCode) {
+    const g33Inc = getABS<HouseholdIncomeData>(lgaCode, 'G33_INCOME');
+    if (g33Inc && g33Inc.total > 0) {
+      householdIncomeDistribution = g33Inc.incomeRanges;
+      lowIncomeHouseholds = g33Inc.lowIncomeHouseholds;
+      highIncomeHouseholds = g33Inc.highIncomeHouseholds;
+      liveFields.push('householdIncomeDistribution', 'lowIncomeHouseholds', 'highIncomeHouseholds');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    }
+  }
+
   sampleFields.push('jobDensity');
 
   return {
@@ -436,6 +567,10 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
       medianWeeklyIncome,
       employmentByIndustry,
       employmentTrend,
+      occupationByGroup,
+      householdIncomeDistribution,
+      lowIncomeHouseholds,
+      highIncomeHouseholds,
     },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };
@@ -569,10 +704,23 @@ export function getLiveHousingData(areaId: string, year: number): LiveHousingRes
     sampleFields.push('dwellingTypes', 'tenure', 'medianWeeklyRent');
   }
 
+  // Housing stress from G43/G44
+  let mortgageStressRate = sample.mortgageStressRate;
+  let rentStressRate = sample.rentStressRate;
+  if (lgaCode) {
+    const hs = getABS<HousingStressData>(lgaCode, 'HOUSING_STRESS');
+    if (hs && (hs.rentTotal > 0 || hs.mortgageTotal > 0)) {
+      mortgageStressRate = hs.mortgageStressRate;
+      rentStressRate = hs.rentStressRate;
+      liveFields.push('mortgageStressRate', 'rentStressRate');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+    }
+  }
+
   sampleFields.push('medianHousePrice', 'housingTrend');
 
   return {
-    data: { ...sample, dwellingTypes, tenure, medianWeeklyRent },
+    data: { ...sample, dwellingTypes, tenure, medianWeeklyRent, mortgageStressRate, rentStressRate },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };
 }
@@ -674,6 +822,20 @@ export function getLiveGrowthData(areaId: string): LiveGrowthResult {
     }
   }
 
+  // Building approvals from ABS_BA_LGA
+  let buildingApprovals = sample.buildingApprovals;
+  let rollingAnnualApprovals = sample.rollingAnnualApprovals;
+  const lgaCodeForBA = getLGACode(areaId);
+  if (lgaCodeForBA) {
+    const ba = getABS<BuildingApprovalsData>(lgaCodeForBA, 'BUILDING_APPROVALS');
+    if (ba && ba.periods.length > 0) {
+      buildingApprovals = ba.periods;
+      rollingAnnualApprovals = ba.rollingAnnualDwellings;
+      liveFields.push('buildingApprovals', 'rollingAnnualApprovals');
+      if (!sources.includes('ABS Building Approvals')) sources.push('ABS Building Approvals');
+    }
+  }
+
   return {
     data: {
       populationHistory,
@@ -681,6 +843,8 @@ export function getLiveGrowthData(areaId: string): LiveGrowthResult {
       employmentGrowth,
       annualGrowthRate,
       projectedGrowthRate,
+      buildingApprovals,
+      rollingAnnualApprovals,
     },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };

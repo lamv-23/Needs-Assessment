@@ -148,7 +148,41 @@ export default function GrowthPage() {
               height={300}
             />
           </ChartWrapper>
+
+          {/* Building Approvals Trend — only shown when ABS building approvals data is available */}
+          {(data.buildingApprovals?.length ?? 0) > 0 && (
+            <ChartWrapper
+              title="Building Approvals"
+              subtitle="Monthly residential building approvals (ABS Building Approvals)"
+              className="lg:col-span-2"
+            >
+              <NeedsLineChart
+                data={data.buildingApprovals!.map(b => ({
+                  period: `${b.year}-${String(b.month).padStart(2, '0')}`,
+                  approvals: b.residentialCount,
+                }))}
+                dataKeys={['approvals']}
+                colors={[CHART_COLORS[5] ?? CHART_COLORS[0]]}
+                xAxisKey="period"
+                xAxisLabel="Period"
+                yAxisLabel="Residential Approvals"
+                height={350}
+              />
+            </ChartWrapper>
+          )}
         </div>
+
+        {/* Rolling Annual Approvals — only shown when ABS building approvals data is available */}
+        {data.rollingAnnualApprovals !== undefined && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={BarChart3}
+              label="Rolling Annual Approvals"
+              value={formatNumber(data.rollingAnnualApprovals)}
+              subtitle="Residential dwellings approved (12-month rolling — ABS)"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

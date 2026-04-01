@@ -13,8 +13,9 @@ import { useAppStore } from '@/store';
 import { useLiveData } from '@/hooks/useLiveData';
 import { METRICS, enrichGeoJSONWithMetric, getMetricColorScheme, type MetricKey } from '@/lib/data/demographic-indicators';
 import { formatNumber, CHART_COLORS } from '@/lib/utils';
-import { Users, Calendar, ShieldCheck, MapPin } from 'lucide-react';
+import { Users, Calendar, ShieldCheck, MapPin, Accessibility } from 'lucide-react';
 import type { FeatureCollection } from 'geojson';
+
 
 
 export default function DemographicsPage() {
@@ -33,7 +34,7 @@ export default function DemographicsPage() {
   useEffect(() => {
     const loadGeoJson = async () => {
       try {
-        const response = await fetch('/geo/lga-greater-sydney.json');
+        const response = await fetch('/geo/lga-nsw.json');
         const baseGeoJson = await response.json();
         const enriched = enrichGeoJSONWithMetric(baseGeoJson, selectedMetric);
         setGeoJsonData(enriched);
@@ -85,7 +86,7 @@ export default function DemographicsPage() {
 
         {/* Interactive Demographic Hotspot Map */}
         <ChartWrapper
-          title="Greater Sydney Demographic Hotspot Map"
+          title="NSW Demographic Hotspot Map"
           subtitle="Click on LGAs to select, use dropdown to change metric"
           className="lg:col-span-2"
         >
@@ -159,7 +160,41 @@ export default function DemographicsPage() {
               height={350}
             />
           </ChartWrapper>
+
+          {/* Language Spoken at Home — only shown when ABS G20 data is available */}
+          {(data.languageGroups?.length ?? 0) > 0 && (
+            <ChartWrapper
+              title="Language Spoken at Home"
+              subtitle="Top 10 languages — number of residents (ABS Census 2021)"
+              className="lg:col-span-2"
+            >
+              <NeedsBarChart
+                data={[...data.languageGroups!]
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 10)
+                  .map(l => ({ name: l.name, value: l.count }))}
+                dataKeys={['value']}
+                colors={[CHART_COLORS[3]]}
+                layout="horizontal"
+                xAxisLabel="Number of Residents"
+                yAxisLabel="Language"
+                height={400}
+              />
+            </ChartWrapper>
+          )}
         </div>
+
+        {/* Accessibility Needs — only shown when ABS G18 data is available */}
+        {data.disabilityRate !== undefined && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Accessibility}
+              label="Need Core Assistance"
+              value={`${data.disabilityRate.toFixed(1)}%`}
+              subtitle="Residents needing assistance with core activities (ABS 2021)"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

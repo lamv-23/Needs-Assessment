@@ -3,6 +3,7 @@
 import Header from '@/components/layout/Header';
 import StatCard from '@/components/ui/StatCard';
 import ChartWrapper from '@/components/charts/ChartWrapper';
+import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsPieChart from '@/components/charts/PieChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useAppStore } from '@/store';
@@ -90,6 +91,27 @@ export default function HousingPage() {
               height={350}
             />
           </ChartWrapper>
+
+          {/* Housing Stress — only shown when ABS G43/G44 data is available */}
+          {(data.mortgageStressRate !== undefined || data.rentStressRate !== undefined) && (
+            <ChartWrapper
+              title="Housing Stress"
+              subtitle="Households spending 30%+ of income on housing costs (ABS Census 2021)"
+            >
+              <NeedsBarChart
+                data={[
+                  ...(data.mortgageStressRate !== undefined ? [{ name: 'Mortgage Stress', value: data.mortgageStressRate }] : []),
+                  ...(data.rentStressRate !== undefined ? [{ name: 'Rental Stress', value: data.rentStressRate }] : []),
+                ]}
+                dataKeys={['value']}
+                colors={[CHART_COLORS[5] ?? CHART_COLORS[1]]}
+                layout="vertical"
+                xAxisLabel="Stress Rate (%)"
+                yAxisLabel="Housing Type"
+                height={250}
+              />
+            </ChartWrapper>
+          )}
 
           {/* Housing Stock Trend - full width */}
           <ChartWrapper

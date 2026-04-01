@@ -90,6 +90,44 @@ export default function EconomyPage() {
               height={400}
             />
           </ChartWrapper>
+
+          {/* Occupation by Group — only shown when ABS G60 data is available */}
+          {(data.occupationByGroup?.length ?? 0) > 0 && (
+            <ChartWrapper
+              title="Occupation by Group"
+              subtitle="Employed persons by occupation group (ABS Census 2021)"
+              className="lg:col-span-2"
+            >
+              <NeedsBarChart
+                data={data.occupationByGroup!.map(o => ({ name: o.name, value: o.employed }))}
+                dataKeys={['value']}
+                colors={[CHART_COLORS[4]]}
+                layout="horizontal"
+                xAxisLabel="Employed Persons"
+                yAxisLabel="Occupation Group"
+                height={400}
+              />
+            </ChartWrapper>
+          )}
+
+          {/* Household Income Distribution — only shown when ABS G33_INCOME data is available */}
+          {(data.householdIncomeDistribution?.length ?? 0) > 0 && (
+            <ChartWrapper
+              title="Household Income Distribution"
+              subtitle="Number of households by weekly income range (ABS Census 2021)"
+              className="lg:col-span-2"
+            >
+              <NeedsBarChart
+                data={data.householdIncomeDistribution!.map(h => ({ name: h.label, value: h.count }))}
+                dataKeys={['value']}
+                colors={[CHART_COLORS[1]]}
+                layout="vertical"
+                xAxisLabel="Weekly Income Range"
+                yAxisLabel="Number of Households"
+                height={400}
+              />
+            </ChartWrapper>
+          )}
         </div>
       </main>
     </div>

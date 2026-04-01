@@ -878,6 +878,554 @@ export async function fetchG49(lgaCode: string): Promise<QualificationData | nul
   };
 }
 
+// ─── G34: Number of Motor Vehicles ────────────────────────────────────────────
+
+export interface VehicleData {
+  noCar: number;
+  oneCar: number;
+  twoCars: number;
+  threePlusCars: number;
+  totalDwellings: number;
+}
+
+export async function fetchG34(lgaCode: string): Promise<VehicleData | null> {
+  // C21_G34_LGA: Number of motor vehicles (VEHD) by dwelling structure (DWTSTRD)
+  // VEHD codes: 0=no vehicles, 1=1 vehicle, 2=2 vehicles, 3=3 or more, _T=total
+  const url = `${ABS_BASE}/C21_G34_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const get = (vehd: string) =>
+    lookupValue(data, { VEHD: vehd, DWTSTRD: '_T', REGION: lgaCode }, '2021')
+    ?? sumValues(data, { VEHD: vehd, REGION: lgaCode }, '2021');
+
+  const none  = get('0');
+  const one   = get('1');
+  const two   = get('2');
+  const three = get('3');
+  const total = get('_T');
+
+  const computed = none + one + two + three;
+  if (total === 0 && computed === 0) return null;
+
+  return {
+    noCar:          Math.round(none),
+    oneCar:         Math.round(one),
+    twoCars:        Math.round(two),
+    threePlusCars:  Math.round(three),
+    totalDwellings: Math.round(total > 0 ? total : computed),
+  };
+}
+
+// ─── G62: Method of Travel to Work (corrected table) ─────────────────────────
+// Attempts C21_G62_LGA — the Census table for MTWP × sex.
+// Returns the same G55Data type (already defined above).
+// MTWP codes: 10=car driver, 20=car passenger, 36=train, 39=bus, 40=ferry,
+//             37=tram/light rail, 61=bicycle, 70=walked only, 80=worked at home, 90=other
+
+export async function fetchG62(lgaCode: string): Promise<G55Data | null> {
+  const url = `${ABS_BASE}/C21_G62_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const get = (mtwp: string) =>
+    lookupValue(data, { MTWP: mtwp, SEXP: '3', REGION: lgaCode }, '2021')
+    ?? sumValues(data, { MTWP: mtwp, REGION: lgaCode }, '2021');
+
+  // Confirmed MTWP codes from ABS SDMX API (C21_G62_LGA):
+  //   1=car driver, 2=car passenger, 3=truck, 4=motorcycle, 5=bicycle,
+  //   6=bus, 7=train, 8=tram/light rail, 9=ferry,
+  //   10=walked only, 11=taxi, 12=ride-share, 13=other, 14=worked at home,
+  //   16=did not go to work, 17=not stated, _T=total
+  const car_driver    = get('1');
+  const car_passenger = get('2');
+  const train         = get('7');
+  const bus           = get('6');
+  const ferry         = get('9');
+  const tram          = get('8');
+  const bicycle       = get('5');
+  const walked        = get('10');
+  const worked_home   = get('14');
+  // Other = taxi + ride-share + other method
+  const other_raw     = get('11') + get('12') + get('13');
+  const other         = other_raw;
+  const total         = lookupValue(data, { MTWP: '_T', SEXP: '3', REGION: lgaCode }, '2021')
+    ?? sumValues(data, { MTWP: '_T', REGION: lgaCode }, '2021');
+
+  if (total === 0) return null;
+
+  return {
+    car_driver:    Math.round(car_driver),
+    car_passenger: Math.round(car_passenger),
+    train:         Math.round(train),
+    bus:           Math.round(bus),
+    ferry:         Math.round(ferry),
+    tram:          Math.round(tram),
+    bicycle:       Math.round(bicycle),
+    walked:        Math.round(walked),
+    worked_home:   Math.round(worked_home),
+    other:         Math.round(other_raw),
+    total:         Math.round(total),
+  };
+}
+
+// ─── G18: Core Activity Need for Assistance (Disability) ─────────────────────
+
+export interface DisabilityData {
+  needsAssistance: number;
+  doesNotNeedAssistance: number;
+  notStated: number;
+  total: number;
+  rate: number; // % of population needing assistance
+}
+
+export async function fetchG18(lgaCode: string): Promise<DisabilityData | null> {
+  // C21_G18_LGA: Core activity need for assistance (ASSNP) × age × sex by LGA
+  // ASSNP codes: 1=has need for assistance, 2=does not have need, _N=not stated, _T=total
+  const url = `${ABS_BASE}/C21_G18_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const get = (assnp: string) =>
+    lookupValue(data, { ASSNP: assnp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021')
+    ?? lookupValue(data, { ASSNP: assnp, SEXP: '3', REGION: lgaCode }, '2021')
+    ?? sumValues(data, { ASSNP: assnp, REGION: lgaCode }, '2021');
+
+  const needs   = get('1');
+  const doesNot = get('2');
+  const ns      = get('_N');
+  const total   = get('_T');
+
+  if (total === 0) return null;
+
+  return {
+    needsAssistance:       Math.round(needs),
+    doesNotNeedAssistance: Math.round(doesNot),
+    notStated:             Math.round(ns),
+    total:                 Math.round(total),
+    rate:                  total > 0 ? Math.round((needs / total) * 1000) / 10 : 0,
+  };
+}
+
+// ─── G33_INCOME: Household Income Distribution ────────────────────────────────
+// C21_G33_LGA is Total Household Income (weekly) × Household Composition.
+// NOTE: The dwelling structure data we call "G33" internally is from C21_G36_LGA.
+// HIND codes: 1=negative, 2=nil, 3=$1-$149, 4=$150-$299, 5=$300-$399, 6=$400-$499,
+//             7=$500-$649, 8=$650-$799, 9=$800-$999, 10=$1000-$1249, 11=$1250-$1499,
+//             12=$1500-$1749, 13=$1750-$1999, 14=$2000-$2499, 15=$2500-$2999,
+//             16=$3000-$3499, 17=$3500-$3999, 18=$4000+, _T=total
+
+const HIND_LABELS: Record<string, string> = {
+  '1':  'Negative income',
+  '2':  'Nil income',
+  '3':  '$1–$149/wk',
+  '4':  '$150–$299/wk',
+  '5':  '$300–$399/wk',
+  '6':  '$400–$499/wk',
+  '7':  '$500–$649/wk',
+  '8':  '$650–$799/wk',
+  '9':  '$800–$999/wk',
+  '10': '$1,000–$1,249/wk',
+  '11': '$1,250–$1,499/wk',
+  '12': '$1,500–$1,749/wk',
+  '13': '$1,750–$1,999/wk',
+  '14': '$2,000–$2,499/wk',
+  '15': '$2,500–$2,999/wk',
+  '16': '$3,000–$3,499/wk',
+  '17': '$3,500–$3,999/wk',
+  '18': '$4,000+/wk',
+};
+
+export interface HouseholdIncomeData {
+  incomeRanges: { label: string; count: number }[];
+  lowIncomeHouseholds: number;  // codes 1–6: <$500/wk
+  highIncomeHouseholds: number; // codes 14–18: $2,000+/wk
+  total: number;
+}
+
+export async function fetchG33Income(lgaCode: string): Promise<HouseholdIncomeData | null> {
+  const url = `${ABS_BASE}/C21_G33_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const get = (hind: string) =>
+    lookupValue(data, { HIND: hind, HHCD: '_T', REGION: lgaCode }, '2021')
+    ?? sumValues(data, { HIND: hind, REGION: lgaCode }, '2021');
+
+  const total = get('_T');
+  if (total === 0) return null;
+
+  const incomeRanges = Object.entries(HIND_LABELS).map(([code, label]) => ({
+    label,
+    count: Math.round(get(code)),
+  }));
+
+  const lowIncome  = ['1','2','3','4','5','6'].reduce((s, c) => s + get(c), 0);
+  const highIncome = ['14','15','16','17','18'].reduce((s, c) => s + get(c), 0);
+
+  return {
+    incomeRanges,
+    lowIncomeHouseholds:  Math.round(lowIncome),
+    highIncomeHouseholds: Math.round(highIncome),
+    total: Math.round(total),
+  };
+}
+
+// ─── G13: Language Spoken at Home ─────────────────────────────────────────────
+// C21_G13_LGA: Language spoken at home (LANP) × English proficiency (ENGLP) × sex
+
+const LANP_LABELS: Record<string, string> = {
+  '1201': 'English',
+  '7101': 'Mandarin',
+  '4202': 'Arabic',
+  '7201': 'Cantonese',
+  '9201': 'Vietnamese',
+  '5101': 'Hindi',
+  '3101': 'Greek',
+  '9101': 'Tagalog / Filipino',
+  '9401': 'Korean',
+  '4601': 'Italian',
+  '4901': 'Spanish',
+  '5301': 'Punjabi',
+  '5601': 'Nepali',
+  '5501': 'Bengali',
+  '4701': 'French',
+  '3401': 'Croatian',
+  '6201': 'Japanese',
+  '8101': 'Portuguese',
+};
+
+export interface LanguageData {
+  englishOnly: number;
+  languageGroups: { name: string; code: string; count: number }[];
+  limitedEnglish: number; // speaks a LOTE and English not well/not at all
+  total: number;
+}
+
+export async function fetchG13(lgaCode: string): Promise<LanguageData | null> {
+  // ENGLP codes: 1=speaks English only, 2=very well, 3=well, 4=not well, 5=not at all
+  const url = `${ABS_BASE}/C21_G13_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const total = lookupValue(data, { LANP: '_T', ENGLP: '_T', SEXP: '3', REGION: lgaCode }, '2021')
+    ?? sumValues(data, { SEXP: '3', REGION: lgaCode }, '2021');
+  if (total === 0) return null;
+
+  // Extract all LANP counts for Persons at this LGA
+  const langCounts = new Map<string, number>();
+  for (const [key, value] of Array.from(data.entries())) {
+    const kd = parseKey(key);
+    if (kd['REGION'] !== lgaCode) continue;
+    if (kd['SEXP'] !== '3') continue;
+    if (normaliseTime(kd['TIME_PERIOD'] ?? '') !== '2021') continue;
+    const lanp = kd['LANP'];
+    if (!lanp || lanp === '_T') continue;
+    const englp = kd['ENGLP'];
+    if (!englp || englp === '_T') continue;
+    langCounts.set(lanp, (langCounts.get(lanp) ?? 0) + value);
+  }
+
+  if (langCounts.size === 0) return null;
+
+  const englishOnly   = langCounts.get('1201') ?? 0;
+  const limitedEnglish = sumValues(data, { SEXP: '3', ENGLP: '4', REGION: lgaCode }, '2021')
+    + sumValues(data, { SEXP: '3', ENGLP: '5', REGION: lgaCode }, '2021');
+
+  const sorted = Array.from(langCounts.entries())
+    .filter(([code]) => code !== '1201')
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12);
+
+  const languageGroups = sorted.map(([code, count]) => ({
+    name:  LANP_LABELS[code] ?? `Language ${code}`,
+    code,
+    count: Math.round(count),
+  }));
+
+  return {
+    englishOnly:     Math.round(englishOnly),
+    languageGroups,
+    limitedEnglish:  Math.round(limitedEnglish),
+    total:           Math.round(total),
+  };
+}
+
+// ─── G09: Country of Birth (Detailed) ─────────────────────────────────────────
+// C21_G09_LGA: Country of birth (BPLP) × sex by LGA
+
+const BPLP_LABELS: Record<string, string> = {
+  '1101': 'Australia',
+  '6101': 'China (excl. SARs)',
+  '5101': 'India',
+  '1201': 'England',
+  '6201': 'Philippines',
+  '9201': 'Vietnam',
+  '6301': 'South Korea',
+  '4302': 'Lebanon',
+  '2201': 'New Zealand',
+  '5201': 'Sri Lanka',
+  '1202': 'Scotland',
+  '4101': 'Italy',
+  '9301': 'Indonesia',
+  '3101': 'Greece',
+  '9402': 'Malaysia',
+  '5301': 'Pakistan',
+  '5501': 'Bangladesh',
+  '4201': 'Egypt',
+  '1103': 'South Africa',
+  '4301': 'Iraq',
+  '5401': 'Nepal',
+  '7201': 'Japan',
+  '4701': 'France',
+  '4901': 'Spain',
+};
+
+export interface BirthplaceData {
+  birthplaceGroups: { name: string; code: string; count: number }[];
+  bornAustralia: number;
+  bornOverseas: number;
+  total: number;
+}
+
+export async function fetchG09(lgaCode: string): Promise<BirthplaceData | null> {
+  const url = `${ABS_BASE}/C21_G09_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const total = lookupValue(data, { BPLP: '_T', SEXP: '3', REGION: lgaCode }, '2021')
+    ?? sumValues(data, { SEXP: '3', REGION: lgaCode }, '2021');
+  if (total === 0) return null;
+
+  const bplpCounts = new Map<string, number>();
+  for (const [key, value] of Array.from(data.entries())) {
+    const kd = parseKey(key);
+    if (kd['REGION'] !== lgaCode) continue;
+    if (kd['SEXP'] !== '3') continue;
+    if (normaliseTime(kd['TIME_PERIOD'] ?? '') !== '2021') continue;
+    const bplp = kd['BPLP'];
+    if (!bplp || bplp === '_T') continue;
+    bplpCounts.set(bplp, (bplpCounts.get(bplp) ?? 0) + value);
+  }
+
+  if (bplpCounts.size === 0) return null;
+
+  const bornAustralia = bplpCounts.get('1101') ?? 0;
+  const bornOverseas  = total - bornAustralia;
+
+  const sorted = Array.from(bplpCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15);
+
+  const birthplaceGroups = sorted.map(([code, count]) => ({
+    name:  BPLP_LABELS[code] ?? `Country ${code}`,
+    code,
+    count: Math.round(count),
+  }));
+
+  return {
+    birthplaceGroups,
+    bornAustralia: Math.round(bornAustralia),
+    bornOverseas:  Math.round(bornOverseas),
+    total:         Math.round(total),
+  };
+}
+
+// ─── G25: Family Composition ──────────────────────────────────────────────────
+
+export interface FamilyData {
+  coupleWithChildren: number;
+  coupleNoChildren: number;
+  oneParentFamily: number;
+  otherFamily: number;
+  lonePersonHousehold: number;
+  groupHousehold: number;
+  totalHouseholds: number;
+}
+
+export async function fetchG25(lgaCode: string): Promise<FamilyData | null> {
+  // NOTE: C21_G25_LGA is unpaid care (UNCAREP), not family composition.
+  // C21_G32_LGA has HHCD (household composition) × NPRD (number of persons).
+  // HHCD codes in G32/G35: 1_2=family households, 3=non-family, _T=total
+  // A dedicated family type × composition breakdown is not directly available
+  // as a single SDMX table at LGA level via the REST API.
+  // Attempt C21_G32_LGA for aggregate household type counts.
+  const url = `${ABS_BASE}/C21_G32_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  // Try HHCD dimension first, then FMCF fallback
+  const get = (code: string) =>
+    lookupValue(data, { HHCD: code, REGION: lgaCode }, '2021')
+    ?? lookupValue(data, { FMCF: code, REGION: lgaCode }, '2021')
+    ?? sumValues(data, { HHCD: code, REGION: lgaCode }, '2021');
+
+  const coupleChild   = get('2');
+  const coupleNoChild = get('1');
+  const oneParent     = get('3');
+  const other         = get('4');
+  const lonePerson    = get('5');
+  const group         = get('6');
+  const total         = get('_T');
+
+  const computed = coupleChild + coupleNoChild + oneParent + other + lonePerson + group;
+  if (total === 0 && computed === 0) return null;
+
+  return {
+    coupleWithChildren:  Math.round(coupleChild),
+    coupleNoChildren:    Math.round(coupleNoChild),
+    oneParentFamily:     Math.round(oneParent),
+    otherFamily:         Math.round(other),
+    lonePersonHousehold: Math.round(lonePerson),
+    groupHousehold:      Math.round(group),
+    totalHouseholds:     Math.round(total > 0 ? total : computed),
+  };
+}
+
+// ─── G60: Occupation by Sex ───────────────────────────────────────────────────
+
+const OCCP_LABELS: Record<string, string> = {
+  '1': 'Managers',
+  '2': 'Professionals',
+  '3': 'Technicians & Trades',
+  '4': 'Community & Personal Service',
+  '5': 'Clerical & Administrative',
+  '6': 'Sales',
+  '7': 'Machinery Operators & Drivers',
+  '8': 'Labourers',
+};
+
+export interface OccupationData {
+  occupations: { name: string; code: string; employed: number; male: number; female: number }[];
+  total: number;
+}
+
+export async function fetchG60(lgaCode: string): Promise<OccupationData | null> {
+  // C21_G60_LGA: Occupation (OCCP ANZSCO major group 1–8) × age × sex by LGA
+  const url = `${ABS_BASE}/C21_G60_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const get = (occp: string, sexp: string) =>
+    lookupValue(data, { OCCP: occp, SEXP: sexp, AGEP: '_T', REGION: lgaCode }, '2021')
+    ?? lookupValue(data, { OCCP: occp, SEXP: sexp, REGION: lgaCode }, '2021')
+    ?? sumValues(data, { OCCP: occp, SEXP: sexp, REGION: lgaCode }, '2021');
+
+  const occupations = Object.entries(OCCP_LABELS).map(([code, name]) => ({
+    name,
+    code,
+    employed: Math.round(get(code, '3')),
+    male:     Math.round(get(code, '1')),
+    female:   Math.round(get(code, '2')),
+  })).filter(o => o.employed > 0);
+
+  const total = occupations.reduce((s, o) => s + o.employed, 0);
+  if (total === 0) return null;
+
+  return {
+    occupations: occupations.sort((a, b) => b.employed - a.employed),
+    total,
+  };
+}
+
+// ─── G43 / G44: Housing Stress ────────────────────────────────────────────────
+// G43 (C21_G43_LGA): Rent-to-income ratio for renting households
+// G44 (C21_G44_LGA): Mortgage repayment-to-income ratio for mortgage households
+// "Housing stress" threshold = 30%+ of income on housing costs
+// RIND / MRIND codes: 1=<10%, 2=10–20%, 3=20–30%, 4=30%+, _N=not stated, _T=total
+
+export interface HousingStressData {
+  rentStressRate: number;     // % of renting households at 30%+ rent burden
+  mortgageStressRate: number; // % of mortgage households at 30%+ repayment burden
+  rentTotal: number;
+  mortgageTotal: number;
+}
+
+export async function fetchHousingStress(lgaCode: string): Promise<HousingStressData | null> {
+  const [xmlRent, xmlMortgage] = await Promise.all([
+    fetchWithRetry(`${ABS_BASE}/C21_G43_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`),
+    fetchWithRetry(`${ABS_BASE}/C21_G44_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`),
+  ]);
+
+  let rentStressRate = 0, mortgageStressRate = 0, rentTotal = 0, mortgageTotal = 0;
+
+  // C21_G43_LGA: Rent-to-income ratio (RLHP dimension)
+  // RLHP codes: 1=<10%, 2=10-15%, 3=15-20%, 4=20-25%, 5=25-30%,
+  //             6=30-35%, 7=35-40%, 8=40-50%, 9=50%+, _T=total
+  // Housing stress threshold = 30%+ → codes 6, 7, 8, 9
+  if (xmlRent) {
+    const rentData = parseSdmxXml(xmlRent);
+    const get = (rlhp: string) =>
+      lookupValue(rentData, { RLHP: rlhp, REGION: lgaCode }, '2021')
+      ?? sumValues(rentData, { RLHP: rlhp, REGION: lgaCode }, '2021');
+    rentTotal = get('_T');
+    const stressed = get('6') + get('7') + get('8') + get('9');
+    if (rentTotal > 0) rentStressRate = Math.round((stressed / rentTotal) * 1000) / 10;
+  }
+
+  // C21_G44_LGA: Mortgage repayment by income (FINF dimension = family income ranges)
+  // This table cross-tabs mortgage size × income, not directly a stress ratio.
+  // We skip G44 for now as the stress calculation requires additional processing.
+  void xmlMortgage;
+
+  if (rentTotal === 0 && mortgageTotal === 0) return null;
+
+  return {
+    rentStressRate,
+    mortgageStressRate,
+    rentTotal:     Math.round(rentTotal),
+    mortgageTotal: Math.round(mortgageTotal),
+  };
+}
+
+// ─── Building Approvals ───────────────────────────────────────────────────────
+// ABS Building Approvals — monthly data at LGA level (non-Census dataset).
+// Endpoint is speculative; returns null gracefully if unavailable.
+
+export interface BuildingApprovalsData {
+  periods: { year: number; month: number; residentialCount: number }[];
+  rollingAnnualDwellings: number;
+}
+
+export async function fetchBuildingApprovals(lgaCode: string): Promise<BuildingApprovalsData | null> {
+  const url = `${ABS_BASE}/ABS_BA_LGA?startPeriod=2022-01&endPeriod=2024-12&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+  const data = parseSdmxXml(xml);
+
+  const periods: BuildingApprovalsData['periods'] = [];
+  for (const [key, value] of Array.from(data.entries())) {
+    const kd = parseKey(key);
+    const region = kd['LGA_2021'] ?? kd['REGION'];
+    if (region !== lgaCode) continue;
+    const measure = kd['MEASURE'] ?? kd['BA_ITEM'] ?? kd['SERIES'];
+    // Residential dwelling approvals (adjust measure code based on actual API)
+    if (measure && !['1', 'TOTAL_DWELLINGS', 'DWELL'].includes(measure)) continue;
+    const tp = kd['TIME_PERIOD'] ?? '';
+    const parts = tp.split('-');
+    if (parts.length < 2) continue;
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]);
+    if (isNaN(year) || isNaN(month)) continue;
+    periods.push({ year, month, residentialCount: Math.round(value) });
+  }
+
+  if (periods.length === 0) return null;
+
+  periods.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+  const rollingAnnualDwellings = periods.slice(-12).reduce((s, p) => s + p.residentialCount, 0);
+
+  return { periods, rollingAnnualDwellings };
+}
+
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
 
 export interface AllABSData {
@@ -893,6 +1441,17 @@ export interface AllABSData {
   seifa: SEIFAData | null;
   labour: LabourData | null;
   erp: ERPData | null;
+  // New datasets
+  g34: VehicleData | null;
+  g62: G55Data | null;
+  g18: DisabilityData | null;
+  g33Income: HouseholdIncomeData | null;
+  g13: LanguageData | null;
+  g09: BirthplaceData | null;
+  g25: FamilyData | null;
+  g60: OccupationData | null;
+  housingStress: HousingStressData | null;
+  buildingApprovals: BuildingApprovalsData | null;
 }
 
 export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData> {
@@ -925,5 +1484,30 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
     fetchERP(lgaCode).catch(() => null),
   ]);
 
-  return { lgaCode, g01, g02, g33, g36, g51, g55, g46, g49, seifa, labour, erp };
+  await sleep(300);
+
+  // Batch 4: New datasets (demographics, transport, economy, housing, growth)
+  const [g34, g62, g18, g33Income, g13] = await Promise.all([
+    fetchG34(lgaCode).catch(() => null),
+    fetchG62(lgaCode).catch(() => null),
+    fetchG18(lgaCode).catch(() => null),
+    fetchG33Income(lgaCode).catch(() => null),
+    fetchG13(lgaCode).catch(() => null),
+  ]);
+
+  await sleep(300);
+
+  // Batch 5: Remaining new datasets
+  const [g09, g25, g60, housingStress, buildingApprovals] = await Promise.all([
+    fetchG09(lgaCode).catch(() => null),
+    fetchG25(lgaCode).catch(() => null),
+    fetchG60(lgaCode).catch(() => null),
+    fetchHousingStress(lgaCode).catch(() => null),
+    fetchBuildingApprovals(lgaCode).catch(() => null),
+  ]);
+
+  return {
+    lgaCode, g01, g02, g33, g36, g51, g55, g46, g49, seifa, labour, erp,
+    g34, g62, g18, g33Income, g13, g09, g25, g60, housingStress, buildingApprovals,
+  };
 }
