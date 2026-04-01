@@ -55,6 +55,27 @@ export const CHART_COLORS = [
   '#0D9488', // teal
 ];
 
+export const CHART_TICK_STYLE = {
+  fontSize: 11,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fill: '#374151',
+} as const;
+
+export const CHART_LABEL_STYLE = {
+  fontWeight: 600,
+  fontSize: 12,
+  fill: '#111827',
+} as const;
+
+export const CHART_TOOLTIP_STYLE = {
+  backgroundColor: '#fff',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  fontSize: 12,
+  fontFamily: 'Inter, system-ui, sans-serif',
+} as const;
+
 export const YEARS = [2011, 2016, 2021] as const;
 
 export const GREATER_SYDNEY_CENTER = { lat: -33.8688, lng: 151.2093 };

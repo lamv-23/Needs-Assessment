@@ -10,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { CHART_COLORS } from '@/lib/utils';
+import { CHART_COLORS, CHART_TICK_STYLE, CHART_LABEL_STYLE, CHART_TOOLTIP_STYLE } from '@/lib/utils';
 
 interface StackedBarProps {
   data: Array<Record<string, string | number>>;
@@ -21,17 +21,6 @@ interface StackedBarProps {
   yAxisLabel?: string;
   height?: number;
 }
-
-const TICK_STYLE = { fontSize: 11, fontFamily: 'Inter, system-ui, sans-serif', fill: '#374151' };
-const LABEL_STYLE = { fontWeight: 600, fontSize: 12, fill: '#111827' };
-const TOOLTIP_STYLE = {
-  backgroundColor: '#fff',
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-  fontSize: 12,
-  fontFamily: 'Inter, system-ui, sans-serif',
-};
 
 export default function StackedBar({
   data,
@@ -56,10 +45,10 @@ export default function StackedBar({
           <>
             <XAxis
               type="number"
-              tick={TICK_STYLE}
+              tick={CHART_TICK_STYLE}
               label={
                 xAxisLabel
-                  ? { value: xAxisLabel, position: 'bottom', offset: 10, style: LABEL_STYLE }
+                  ? { value: xAxisLabel, position: 'bottom', offset: 10, style: CHART_LABEL_STYLE }
                   : undefined
               }
             />
@@ -67,10 +56,10 @@ export default function StackedBar({
               type="category"
               dataKey="name"
               width={120}
-              tick={TICK_STYLE}
+              tick={CHART_TICK_STYLE}
               label={
                 yAxisLabel
-                  ? { value: yAxisLabel, angle: -90, position: 'insideLeft', offset: -10, style: LABEL_STYLE }
+                  ? { value: yAxisLabel, angle: -90, position: 'insideLeft', offset: -10, style: CHART_LABEL_STYLE }
                   : undefined
               }
             />
@@ -79,24 +68,24 @@ export default function StackedBar({
           <>
             <XAxis
               dataKey="name"
-              tick={TICK_STYLE}
+              tick={CHART_TICK_STYLE}
               label={
                 xAxisLabel
-                  ? { value: xAxisLabel, position: 'bottom', offset: 10, style: LABEL_STYLE }
+                  ? { value: xAxisLabel, position: 'bottom', offset: 10, style: CHART_LABEL_STYLE }
                   : undefined
               }
             />
             <YAxis
-              tick={TICK_STYLE}
+              tick={CHART_TICK_STYLE}
               label={
                 yAxisLabel
-                  ? { value: yAxisLabel, angle: -90, position: 'insideLeft', offset: -10, style: LABEL_STYLE }
+                  ? { value: yAxisLabel, angle: -90, position: 'insideLeft', offset: -10, style: CHART_LABEL_STYLE }
                   : undefined
               }
             />
           </>
         )}
-        <Tooltip contentStyle={TOOLTIP_STYLE} />
+        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
         <Legend wrapperStyle={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12 }} />
         {dataKeys.map((key, index) => (
           <Bar

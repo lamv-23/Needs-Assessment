@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, CHART_TICK_STYLE, CHART_TOOLTIP_STYLE } from '@/lib/utils';
 
 interface PyramidDataItem {
   ageGroup: string;
@@ -26,21 +26,11 @@ interface PopulationPyramidProps {
   femaleColor?: string;
 }
 
-const TICK_STYLE = { fontSize: 11, fontFamily: 'Inter, system-ui, sans-serif', fill: '#374151' };
-const TOOLTIP_STYLE = {
-  backgroundColor: '#fff',
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-  fontSize: 12,
-  fontFamily: 'Inter, system-ui, sans-serif',
-};
-
 export default function PopulationPyramid({
   data,
   height = 500,
   maleColor = '#2563EB',
-  femaleColor = '#DC2626',
+  femaleColor = '#ec4899',
 }: PopulationPyramidProps) {
   const transformedData = data.map((item) => ({
     ageGroup: item.ageGroup,
@@ -67,20 +57,20 @@ export default function PopulationPyramid({
           type="number"
           domain={[-maxValue * 1.1, maxValue * 1.1]}
           tickFormatter={formatTick}
-          tick={TICK_STYLE}
+          tick={CHART_TICK_STYLE}
         />
         <YAxis
           type="category"
           dataKey="ageGroup"
           width={80}
-          tick={TICK_STYLE}
+          tick={CHART_TICK_STYLE}
         />
         <Tooltip
           formatter={(value: number, name: string) => [
             formatNumber(Math.abs(value)),
             name.charAt(0).toUpperCase() + name.slice(1),
           ]}
-          contentStyle={TOOLTIP_STYLE}
+          contentStyle={CHART_TOOLTIP_STYLE}
         />
         <Legend
           formatter={(value: string) =>
