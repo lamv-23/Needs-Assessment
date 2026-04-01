@@ -13,10 +13,24 @@ interface ChartWrapperProps {
   className?: string;
   data?: Array<Record<string, unknown>>;
   dataKeys?: string[];
+  xAxisKey?: string;
 }
 
 function toHeaderLabel(key: string): string {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  // Split camelCase (e.g. 'modeShareCar' → 'mode Share Car')
+  const spaced = key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ');
+  // Uppercase known short acronyms, capitalize the rest
+  return spaced
+    .split(' ')
+    .map((word) => {
+      const upper = word.toUpperCase();
+      // Treat 2-3 char all-lowercase words as acronyms (wfh, pt, cbd, etc.)
+      if (word.length <= 3 && word === word.toLowerCase()) return upper;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
 }
 
 export default function ChartWrapper({
@@ -26,6 +40,7 @@ export default function ChartWrapper({
   className,
   data,
   dataKeys,
+  xAxisKey = 'name',
 }: ChartWrapperProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -41,7 +56,6 @@ export default function ChartWrapper({
         backgroundColor: '#ffffff',
         scale: 3,
         useCORS: true,
-        allowTaint: false,
       });
       const link = document.createElement('a');
       link.download = `${title.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -58,21 +72,20 @@ export default function ChartWrapper({
   const handleExportExcel = () => {
     if (!data || data.length === 0) return;
     setDropdownOpen(false);
-
-    // Determine columns: use dataKeys if provided, else all keys from first row
-    const allKeys = dataKeys && dataKeys.length > 0
-      ? ['name', ...dataKeys].filter((k) => k in data[0])
-      : Object.keys(data[0]);
-
-    const headerRow = allKeys.map(toHeaderLabel);
-    const dataRows = data.map((row) => allKeys.map((k) => row[k] ?? ''));
-
-    const worksheet = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
-    const workbook = XLSX.utils.book_new();
-    // Excel sheet names max 31 chars
-    const sheetName = title.slice(0, 31);
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    XLSX.writeFile(workbook, `${title.replace(/\s+/g, '_').toLowerCase()}.xlsx`);
+    try {
+      const allKeys = dataKeys && dataKeys.length > 0
+        ? [xAxisKey, ...dataKeys].filter((k) => k in data[0])
+        : Object.keys(data[0]);
+      const headerRow = allKeys.map(toHeaderLabel);
+      const dataRows = data.map((row) => allKeys.map((k) => row[k] ?? ''));
+      const worksheet = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+      const workbook = XLSX.utils.book_new();
+      const sheetName = title.slice(0, 31);
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      XLSX.writeFile(workbook, `${title.replace(/\s+/g, '_').toLowerCase()}.xlsx`);
+    } catch (error) {
+      console.error('Failed to export Excel:', error);
+    }
   };
 
   const hasExcelData = data && data.length > 0;
