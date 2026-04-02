@@ -106,7 +106,7 @@ export default function BusinessCasePage() {
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= 297;
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
+        position -= 297;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= 297;
