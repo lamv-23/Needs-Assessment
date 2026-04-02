@@ -63,8 +63,9 @@ export default function BusinessCasePage() {
   const primaryArea = SAMPLE_AREAS.find(a => a.id === primaryAreaId);
   const { demographics, transport, economy, growth } = useLiveData(primaryAreaId, selectedYear);
 
-  const nswProjections = getProjectionsForArea(primaryAreaId).length > 0
-    ? getProjectionsForArea(primaryAreaId)
+  const projectionsByid = getProjectionsForArea(primaryAreaId);
+  const nswProjections = projectionsByid.length > 0
+    ? projectionsByid
     : getProjectionsForArea(primaryArea?.name ?? '');
 
   const handleGenerate = (config: { projectName: string; areaIds: string[]; themes: ThemeKey[] }) => {
@@ -106,7 +107,7 @@ export default function BusinessCasePage() {
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= 297;
       while (heightLeft > 0) {
-        position -= 297;
+        position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= 297;
@@ -339,7 +340,7 @@ export default function BusinessCasePage() {
       {wizardOpen && (
         <WizardModal
           onGenerate={handleGenerate}
-          onClose={() => projectName ? setWizardOpen(false) : undefined}
+          onClose={projectName ? () => setWizardOpen(false) : undefined}
         />
       )}
 

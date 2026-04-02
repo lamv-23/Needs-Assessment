@@ -40,7 +40,7 @@ interface BusinessCaseState {
 
 export const useBusinessCaseStore = create<BusinessCaseState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       projectName: '',
       projectType: null,
       areaIds: [],
