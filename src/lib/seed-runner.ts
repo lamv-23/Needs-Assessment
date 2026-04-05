@@ -115,6 +115,17 @@ async function seedABS(lgaFilter?: string): Promise<void> {
       if (data.seifa) upsertABSCache(lgaCode, 'SEIFA', data.seifa, 2021);
       if (data.labour) upsertABSCache(lgaCode, 'LABOUR', data.labour, data.labour.dataYear);
       if (data.erp) upsertABSCache(lgaCode, 'ERP', data.erp, data.erp.latestYear);
+      // New datasets
+      if (data.g34) upsertABSCache(lgaCode, 'G34', data.g34, 2021);
+      if (data.g62) upsertABSCache(lgaCode, 'G62', data.g62, 2021);
+      if (data.g18) upsertABSCache(lgaCode, 'G18', data.g18, 2021);
+      if (data.g33Income) upsertABSCache(lgaCode, 'G33_INCOME', data.g33Income, 2021);
+      if (data.g13) upsertABSCache(lgaCode, 'G13', data.g13, 2021);
+      if (data.g09) upsertABSCache(lgaCode, 'G09', data.g09, 2021);
+      if (data.g25) upsertABSCache(lgaCode, 'G25', data.g25, 2021);
+      if (data.g60) upsertABSCache(lgaCode, 'G60', data.g60, 2021);
+      if (data.housingStress) upsertABSCache(lgaCode, 'HOUSING_STRESS', data.housingStress, 2021);
+      if (data.buildingApprovals) upsertABSCache(lgaCode, 'BUILDING_APPROVALS', data.buildingApprovals, 2024);
 
       success++;
       // Rate limit

@@ -1,6 +1,14 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { Outfit } from 'next/font/google';
 import Sidebar from '@/components/layout/Sidebar';
+import MainLayout from '@/components/layout/MainLayout';
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Transport Needs Assessment Tool',
@@ -13,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={outfit.variable}>
       <head>
         <link
           rel="stylesheet"
@@ -22,11 +30,9 @@ export default function RootLayout({
           crossOrigin=""
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased font-outfit">
         <Sidebar />
-        <main className="ml-[260px] min-h-screen transition-all duration-300">
-          {children}
-        </main>
+        <MainLayout>{children}</MainLayout>
       </body>
     </html>
   );

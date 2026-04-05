@@ -85,6 +85,14 @@ export interface DemographicsData {
   householdComposition: { name: string; value: number }[];
   seifaScore: number;
   populationDensity: number;
+  // New live fields (optional — populated from ABS when available)
+  birthplaceGroups?: { name: string; code: string; count: number }[];
+  languageGroups?: { name: string; code: string; count: number }[];
+  englishOnly?: number;
+  limitedEnglish?: number;
+  disabilityRate?: number;
+  needsAssistance?: number;
+  familyComposition?: { name: string; value: number }[];
 }
 
 export function getDemographicsData(areaId: string, year: number): DemographicsData {
@@ -166,6 +174,8 @@ export interface TransportData {
   modeShareTrend: { year: number; car: number; train: number; bus: number; active: number; wfh: number }[];
   ptPatronage: number;
   avgCommute: number;
+  // Live fields from ABS G34
+  vehicleOwnershipRaw?: { noCar: number; oneCar: number; twoCars: number; threePlusCars: number; totalDwellings: number };
 }
 
 export function getTransportData(areaId: string, year: number): TransportData {
@@ -276,6 +286,11 @@ export interface EconomyData {
   medianWeeklyIncome: number;
   jobDensity: number;
   employmentTrend: { year: number; employed: number; unemployed: number }[];
+  // New live fields
+  occupationByGroup?: { name: string; code: string; employed: number; male: number; female: number }[];
+  householdIncomeDistribution?: { label: string; count: number }[];
+  lowIncomeHouseholds?: number;
+  highIncomeHouseholds?: number;
 }
 
 export function getEconomyData(areaId: string, year: number): EconomyData {
@@ -374,6 +389,9 @@ export interface HousingData {
   medianWeeklyRent: number;
   medianHousePrice: number;
   housingTrend: { year: number; houses: number; apartments: number; townhouses: number }[];
+  // New live fields
+  mortgageStressRate?: number;
+  rentStressRate?: number;
 }
 
 export function getHousingData(areaId: string, year: number): HousingData {
@@ -433,6 +451,9 @@ export interface GrowthData {
   employmentGrowth: { year: number; jobs: number }[];
   annualGrowthRate: number;
   projectedGrowthRate: number;
+  // New live fields
+  buildingApprovals?: { year: number; month: number; residentialCount: number }[];
+  rollingAnnualApprovals?: number;
 }
 
 export function getGrowthData(areaId: string): GrowthData {
