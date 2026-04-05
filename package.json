@@ -13,13 +13,13 @@
     "seed:g62": "tsx scripts/reseed-g62.ts",
     "clean": "rm -rf .next",
     "fresh": "rm -rf .next && next dev",
-    "parse:population": "node parse-projections.js",
-    "parse:employment": "node parse-employment.js",
+    "parse:population": "node scripts/parse-projections.js",
+    "parse:employment": "node scripts/parse-employment.js",
     "test": "jest",
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^11.10.0",
     "clsx": "^2.1.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",

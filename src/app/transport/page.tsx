@@ -90,6 +90,8 @@ export default function TransportPage() {
             title="Journey to Work — Mode Share"
             subtitle="Percentage of workers by transport mode"
             className="lg:col-span-2"
+            data={data.journeyToWork}
+            dataKeys={['value']}
           >
             <NeedsBarChart
               data={data.journeyToWork}
@@ -116,6 +118,14 @@ export default function TransportPage() {
               title="Mode Share Trends (2019-2026)"
               subtitle="TfNSW Transport Metrics — Modelled trend estimates"
               className="lg:col-span-2"
+              data={tfnswMetrics.map(m => ({
+                year: m.year,
+                'Car': m.modeShareCar,
+                'PT': m.modeSharePT,
+                'Active': m.modeShareActive,
+              }))}
+              dataKeys={['Car', 'PT', 'Active']}
+              xAxisKey="year"
             >
               <NeedsLineChart
                 data={tfnswMetrics.map(m => ({
@@ -138,6 +148,12 @@ export default function TransportPage() {
               title="PT Patronage Trend (2019-2026)"
               subtitle="Trips per capita per day — historical"
               className="lg:col-span-2"
+              data={tfnswMetrics.map(m => ({
+                year: m.year,
+                'PT Patronage': m.ptPatronagePerCapita,
+              }))}
+              dataKeys={['PT Patronage']}
+              xAxisKey="year"
             >
               <NeedsLineChart
                 data={tfnswMetrics.map(m => ({
@@ -158,6 +174,12 @@ export default function TransportPage() {
               title="Average Commute Time (2019-2026)"
               subtitle="TfNSW data — minutes one way"
               className="lg:col-span-2"
+              data={tfnswMetrics.map(m => ({
+                year: m.year,
+                'Commute Time': m.averageCommuteTime,
+              }))}
+              dataKeys={['Commute Time']}
+              xAxisKey="year"
             >
               <NeedsLineChart
                 data={tfnswMetrics.map(m => ({
@@ -176,6 +198,9 @@ export default function TransportPage() {
           <ChartWrapper
             title="Mode Share Trend"
             subtitle="Change in transport modes across census years"
+            data={data.modeShareTrend.map((d: { year: number; car: number; train: number; bus: number; active: number; wfh: number }) => ({ ...d, name: String(d.year) }))}
+            dataKeys={['car', 'train', 'bus', 'active', 'wfh']}
+            xAxisKey="year"
           >
             <NeedsLineChart
               data={data.modeShareTrend.map((d: { year: number; car: number; train: number; bus: number; active: number; wfh: number }) => ({ ...d, name: String(d.year) }))}
@@ -197,6 +222,8 @@ export default function TransportPage() {
           <ChartWrapper
             title="Vehicle Ownership"
             subtitle="Households by number of vehicles"
+            data={data.vehicleOwnership}
+            dataKeys={['value']}
           >
             <NeedsPieChart
               data={data.vehicleOwnership}

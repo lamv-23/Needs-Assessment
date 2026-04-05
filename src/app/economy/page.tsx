@@ -63,6 +63,8 @@ export default function EconomyPage() {
           <ChartWrapper
             title="Employment by Industry"
             subtitle="Share of employed persons (%)"
+            data={data.employmentByIndustry}
+            dataKeys={['value']}
           >
             <NeedsBarChart
               data={data.employmentByIndustry}
@@ -80,6 +82,9 @@ export default function EconomyPage() {
             subtitle={meta.liveFields.includes('employmentTrend')
               ? 'Employed persons by place of work — TfNSW TZP24 (2021–2041)'
               : 'Employed and unemployed persons over time (indicative)'}
+            data={data.employmentTrend}
+            dataKeys={meta.liveFields.includes('employmentTrend') ? ['employed'] : ['employed', 'unemployed']}
+            xAxisKey="year"
           >
             <NeedsLineChart
               data={data.employmentTrend}
@@ -98,6 +103,8 @@ export default function EconomyPage() {
               title="Occupation by Group"
               subtitle="Employed persons by occupation group (ABS Census 2021)"
               className="lg:col-span-2"
+              data={data.occupationByGroup!.map(o => ({ name: o.name, value: o.employed }))}
+              dataKeys={['value']}
             >
               <NeedsBarChart
                 data={data.occupationByGroup!.map(o => ({ name: o.name, value: o.employed }))}
@@ -117,6 +124,8 @@ export default function EconomyPage() {
               title="Household Income Distribution"
               subtitle="Number of households by weekly income range (ABS Census 2021)"
               className="lg:col-span-2"
+              data={data.householdIncomeDistribution!.map(h => ({ name: h.label, value: h.count }))}
+              dataKeys={['value']}
             >
               <NeedsBarChart
                 data={data.householdIncomeDistribution!.map(h => ({ name: h.label, value: h.count }))}

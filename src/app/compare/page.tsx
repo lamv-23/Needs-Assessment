@@ -215,7 +215,12 @@ export default function ComparePage() {
             </div>
 
             {/* Mode Share Comparison Chart */}
-            <ChartWrapper title="Journey to Work Mode Share Comparison" subtitle={`Census ${selectedYear}`}>
+            <ChartWrapper
+              title="Journey to Work Mode Share Comparison"
+              subtitle={`Census ${selectedYear}`}
+              data={modeShareComparison}
+              dataKeys={['Car', 'Train', 'Bus', 'Active', 'WFH']}
+            >
               <NeedsBarChart
                 data={modeShareComparison}
                 dataKeys={['Car', 'Train', 'Bus', 'Active', 'WFH']}
@@ -229,6 +234,19 @@ export default function ComparePage() {
               <ChartWrapper
                 title="Population Projection Comparison (NSW DPE)"
                 subtitle="Annual projections 2021–2041 by LGA"
+                data={[2021, 2026, 2031, 2036, 2041].map(year => {
+                  const row: Record<string, number | string> = { name: String(year) };
+                  areasData.forEach(d => {
+                    const projections = getProjectionsForArea(d.area.id).length > 0
+                      ? getProjectionsForArea(d.area.id)
+                      : getProjectionsForArea(d.area.name);
+                    const p = projections.find(p => p.year === year);
+                    const shortName = d.area.name.length > 15 ? d.area.name.substring(0, 15) + '…' : d.area.name;
+                    row[shortName] = p?.totalPopulation ?? 0;
+                  });
+                  return row;
+                })}
+                dataKeys={areasData.map(d => d.area.name.length > 15 ? d.area.name.substring(0, 15) + '…' : d.area.name)}
               >
                 <NeedsBarChart
                   data={[2021, 2026, 2031, 2036, 2041].map(year => {

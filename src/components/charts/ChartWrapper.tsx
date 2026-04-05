@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
-import { Download, ChevronDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { Download, ChevronDown, Clipboard, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ChartWrapperProps {
@@ -10,6 +11,23 @@ interface ChartWrapperProps {
   subtitle?: string;
   children: React.ReactNode;
   className?: string;
+  data?: Array<Record<string, unknown>>;
+  dataKeys?: string[];
+  xAxisKey?: string;
+}
+
+function toHeaderLabel(key: string): string {
+  const spaced = key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ');
+  return spaced
+    .split(' ')
+    .map((word) => {
+      const upper = word.toUpperCase();
+      if (word.length <= 3 && word === word.toLowerCase()) return upper;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
 }
 
 export default function ChartWrapper({
@@ -17,19 +35,30 @@ export default function ChartWrapper({
   subtitle,
   children,
   className,
+  data,
+  dataKeys,
+  xAxisKey = 'name',
 }: ChartWrapperProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const captureCanvas = async () => {
+    if (!chartRef.current) return null;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return html2canvas(chartRef.current, {
+      backgroundColor: '#ffffff',
+      scale: 3,
+      useCORS: true,
+    });
+  };
 
   const handleExportPNG = async () => {
-    if (!chartRef.current) return;
     setExporting(true);
     try {
-      const canvas = await html2canvas(chartRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-      });
+      const canvas = await captureCanvas();
+      if (!canvas) return;
       const link = document.createElement('a');
       link.download = `${title.replace(/\s+/g, '_').toLowerCase()}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -41,6 +70,44 @@ export default function ChartWrapper({
       setDropdownOpen(false);
     }
   };
+
+  const handleCopyToClipboard = async () => {
+    if (!navigator.clipboard) return;
+    try {
+      const canvas = await captureCanvas();
+      if (!canvas) return;
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }, 'image/png');
+    } catch (error) {
+      console.error('Failed to copy chart:', error);
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (!data || data.length === 0) return;
+    setDropdownOpen(false);
+    try {
+      const allKeys = dataKeys && dataKeys.length > 0
+        ? [xAxisKey, ...dataKeys].filter((k) => k in data[0])
+        : Object.keys(data[0]);
+      const headerRow = allKeys.map(toHeaderLabel);
+      const dataRows = data.map((row) => allKeys.map((k) => row[k] ?? ''));
+      const worksheet = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+      const workbook = XLSX.utils.book_new();
+      const sheetName = title.slice(0, 31);
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      XLSX.writeFile(workbook, `${title.replace(/\s+/g, '_').toLowerCase()}.xlsx`);
+    } catch (error) {
+      console.error('Failed to export Excel:', error);
+    }
+  };
+
+  const hasExcelData = data && data.length > 0;
+  const clipboardSupported = typeof navigator !== 'undefined' && !!navigator.clipboard;
 
   return (
     <div
@@ -56,31 +123,54 @@ export default function ChartWrapper({
             <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
           )}
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-            disabled={exporting}
-          >
-            <Download className="w-4 h-4" />
-            <ChevronDown className="w-3 h-3" />
-          </button>
-          {dropdownOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setDropdownOpen(false)}
-              />
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[160px]">
-                <button
-                  onClick={handleExportPNG}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Download as PNG
-                </button>
-              </div>
-            </>
+        <div className="flex items-center gap-1">
+          {clipboardSupported && (
+            <button
+              onClick={handleCopyToClipboard}
+              title="Copy chart to clipboard"
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              {copied ? (
+                <Check className="w-4 h-4 text-green-600" />
+              ) : (
+                <Clipboard className="w-4 h-4" />
+              )}
+            </button>
           )}
+          <div className="relative">
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+              disabled={exporting}
+            >
+              <Download className="w-4 h-4" />
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {dropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setDropdownOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg py-1 min-w-[180px]">
+                  <button
+                    onClick={handleExportPNG}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Download PNG (3x)
+                  </button>
+                  {hasExcelData && (
+                    <button
+                      onClick={handleExportExcel}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Download Excel (.xlsx)
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
       <div ref={chartRef}>{children}</div>

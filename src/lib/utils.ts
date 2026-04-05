@@ -43,17 +43,38 @@ export function calculateCAGR(
 }
 
 export const CHART_COLORS = [
-  '#3b82f6', // blue
-  '#ef4444', // red
-  '#10b981', // green
-  '#f59e0b', // amber
-  '#8b5cf6', // violet
-  '#ec4899', // pink
-  '#06b6d4', // cyan
-  '#f97316', // orange
-  '#6366f1', // indigo
-  '#14b8a6', // teal
+  '#2563EB', // deep blue (primary)
+  '#0891B2', // teal-cyan
+  '#059669', // emerald
+  '#D97706', // warm amber
+  '#7C3AED', // violet
+  '#DC2626', // clear red
+  '#0284C7', // sky blue
+  '#EA580C', // burnt orange
+  '#4F46E5', // indigo
+  '#0D9488', // teal
 ];
+
+export const CHART_TICK_STYLE = {
+  fontSize: 11,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fill: '#374151',
+} as const;
+
+export const CHART_LABEL_STYLE = {
+  fontWeight: 600,
+  fontSize: 12,
+  fill: '#111827',
+} as const;
+
+export const CHART_TOOLTIP_STYLE = {
+  backgroundColor: '#fff',
+  border: '1px solid #e2e8f0',
+  borderRadius: '8px',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  fontSize: 12,
+  fontFamily: 'Inter, system-ui, sans-serif',
+} as const;
 
 export const YEARS = [2011, 2016, 2021] as const;
 

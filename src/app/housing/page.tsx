@@ -70,6 +70,8 @@ export default function HousingPage() {
           <ChartWrapper
             title="Dwelling Types"
             subtitle="Distribution of dwelling structures"
+            data={data.dwellingTypes}
+            dataKeys={['value']}
           >
             <NeedsPieChart
               data={data.dwellingTypes}
@@ -83,6 +85,8 @@ export default function HousingPage() {
           <ChartWrapper
             title="Tenure"
             subtitle="Housing tenure distribution"
+            data={data.tenure}
+            dataKeys={['value']}
           >
             <NeedsPieChart
               data={data.tenure}
@@ -97,6 +101,11 @@ export default function HousingPage() {
             <ChartWrapper
               title="Housing Stress"
               subtitle="Households spending 30%+ of income on housing costs (ABS Census 2021)"
+              data={[
+                ...(data.mortgageStressRate !== undefined ? [{ name: 'Mortgage Stress', value: data.mortgageStressRate }] : []),
+                ...(data.rentStressRate !== undefined ? [{ name: 'Rental Stress', value: data.rentStressRate }] : []),
+              ]}
+              dataKeys={['value']}
             >
               <NeedsBarChart
                 data={[
@@ -118,6 +127,9 @@ export default function HousingPage() {
             title="Housing Stock Trend"
             subtitle="Change in housing stock over census years"
             className="lg:col-span-2"
+            data={data.housingTrend}
+            dataKeys={['houses', 'apartments', 'townhouses']}
+            xAxisKey="year"
           >
             <NeedsLineChart
               data={data.housingTrend}

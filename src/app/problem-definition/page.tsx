@@ -361,6 +361,8 @@ export default function ProblemDefinitionPage() {
         <ChartWrapper
           title="Journey to Work — Mode Share Snapshot (2021)"
           subtitle={`${area.name} — ABS Census 2021`}
+          data={jtw2021}
+          dataKeys={['value']}
         >
           <p className="text-sm text-gray-500 mb-4">
             This chart establishes the 2021 base year mode share — the starting point for all demand
@@ -382,6 +384,9 @@ export default function ProblemDefinitionPage() {
           <ChartWrapper
             title="Mode Share Trend (2011–2021)"
             subtitle="ABS Census journey-to-work by mode"
+            data={modeShareTrendData}
+            dataKeys={['Car (driver)', 'Train', 'Bus', 'Active transport', 'Work from home']}
+            xAxisKey="year"
           >
             <p className="text-sm text-gray-500 mb-4">
               Tracking mode share across three census years reveals whether the transport network is
@@ -401,6 +406,8 @@ export default function ProblemDefinitionPage() {
           <ChartWrapper
             title="Stacked Mode Composition by Census Year"
             subtitle="100% composition view — shift in transport mix over time"
+            data={stackedModeData}
+            dataKeys={['Car (driver)', 'Train', 'Bus', 'Active', 'WFH']}
           >
             <p className="text-sm text-gray-500 mb-4">
               The stacked view shows the relative composition of all modes together, making it easier
@@ -423,6 +430,8 @@ export default function ProblemDefinitionPage() {
           <ChartWrapper
             title="Vehicle Ownership Distribution"
             subtitle="Share of households by number of registered vehicles — ABS Census 2021"
+            data={transportData.vehicleOwnership}
+            dataKeys={['value']}
           >
             <p className="text-sm text-gray-500 mb-4">
               Vehicle ownership is a structural indicator of car dependence and a leading predictor of
@@ -442,6 +451,8 @@ export default function ProblemDefinitionPage() {
           <ChartWrapper
             title="Current vs Target — Level of Service"
             subtitle={`${area.name} vs. Connecting NSW / TfNSW standards for ${urbanType} area type`}
+            data={losGapChartData}
+            dataKeys={['Current', 'Target']}
           >
             <p className="text-sm text-gray-500 mb-4">
               Comparing current performance against mode-appropriate service level benchmarks quantifies
@@ -463,6 +474,9 @@ export default function ProblemDefinitionPage() {
         <ChartWrapper
           title="Implied PT Demand — Projection Scenarios (2011–2041)"
           subtitle="Estimated daily PT trips under three mode share assumptions (NSW DPE population base)"
+          data={demandScenarioData}
+          dataKeys={['Constant mode share', '+5pp PT mode shift', '+10pp PT mode shift']}
+          xAxisKey="year"
         >
           <p className="text-sm text-gray-500 mb-4">
             This chart models future PT trip demand by applying different mode share assumptions to

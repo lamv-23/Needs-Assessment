@@ -8,7 +8,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { CHART_COLORS } from '@/lib/utils';
+import { CHART_COLORS, CHART_TOOLTIP_STYLE } from '@/lib/utils';
 
 interface PieChartDataItem {
   name: string;
@@ -54,8 +54,9 @@ function renderCustomLabel({
       fill="#fff"
       textAnchor="middle"
       dominantBaseline="central"
-      fontSize={12}
+      fontSize={13}
       fontWeight={600}
+      fontFamily="Inter, system-ui, sans-serif"
     >
       {`${(percent * 100).toFixed(1)}%`}
     </text>
@@ -92,13 +93,9 @@ export default function PieChart({
         </Pie>
         <Tooltip
           formatter={(value: number) => value.toLocaleString()}
-          contentStyle={{
-            backgroundColor: '#fff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-          }}
+          contentStyle={CHART_TOOLTIP_STYLE}
         />
-        <Legend />
+        <Legend wrapperStyle={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12 }} />
       </RechartsPieChart>
     </ResponsiveContainer>
   );

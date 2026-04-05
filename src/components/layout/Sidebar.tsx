@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Layers,
   ClipboardList,
+  Wand2,
 } from 'lucide-react';
 import { useAppStore } from '@/store';
 
@@ -51,6 +52,7 @@ const navSections: { label: string | null; items: NavItem[] }[] = [
     items: [
       { href: '/compare', label: 'Compare Areas', icon: GitCompare },
       { href: '/report', label: 'Report Builder', icon: FileText },
+      { href: '/business-case', label: 'Business Case', icon: Wand2 },
       { href: '/upload', label: 'Upload Data', icon: Upload },
     ],
   },
