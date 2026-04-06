@@ -196,13 +196,56 @@ Major section rewrites. All sections follow this scannable pattern:
 
 ---
 
+## Missing Metrics — Gaps Identified (Transport Planner Review)
+
+### Already in data, not yet used:
+
+**1. Work-from-home rate** (`modeShareTrend.wfh`)
+Post-COVID WFH at 15%+ deflates car mode share without reducing car dependency. Must caveat every 2021 mode share figure. Add WFH as its own trend line in the mode share chart, and add a note: "2021 figures reflect elevated WFH — effective car dependency during commute days may be higher."
+
+**2. Dwelling type — % separate house** (`housing.data.dwellingTypes` from ABS G33)
+Second strongest predictor of PT viability after density. 85% separate houses = structurally car-dependent. Add to Scene section alongside population density. Add to Gap table as a structural constraint metric.
+
+**3. Zero-car household rate** (`vehicleOwnershipRaw.noCar / totalDwellings`)
+Primary transport equity metric — these residents are 100% dependent on PT/active. Promote to a standalone stat tile in Scene section and flag explicitly in the Gap table as a demand driver for alternatives.
+
+**4. Carbon/emissions estimate** (formula-derived)
+Required for Net Zero strategic alignment in every post-2020 NSW business case.  
+Formula: `workforce × carShare/100 × (avgCommute_min/60 × AVG_URBAN_SPEED_KMH) × EMISSION_FACTOR_KG_CO2_PER_KM × WORKING_DAYS`  
+Add `EMISSION_FACTOR_KG_CO2_PER_KM = 0.17` to `benchmarks.ts` (AUS fleet average, DESA 2023).  
+Surface in policy alignment table in Gap section as "estimated annual transport CO₂ burden."
+
+**5. `getGreaterSydneyBenchmark(year)` already exists** (`src/lib/data/sample-data.ts:514`)
+Use this for comparison bar chart data. Hardcoded ABS 2021 constants in `benchmarks.ts` remain correct for the KPI tiles (they reflect actual census aggregates, not seeded estimates). Use the function for comparison charts; use constants for the benchmark KPI labels.
+
+### Add to `benchmarks.ts`:
+```ts
+export const EMISSION_FACTOR_KG_CO2_PER_KM = 0.17;  // AUS fleet avg, DESA 2023
+export const SEPARATE_HOUSE_PT_THRESHOLD = 70;        // % above = structurally low PT potential
+```
+
+### Not available — flag explicitly in Evidence Summary table:
+
+| Metric | Why it matters | Evidence table status |
+|---|---|---|
+| PT service frequency / headways | #1 determinant of PT attractiveness | Not seeded — needs GTFS or TfNSW Open Data API |
+| Road network V/C ratio | Core congestion evidence for road BCs | Not available — needs traffic count data |
+| Crash/safety statistics (KSI) | Required for active transport BCs | Not available — needs ROADS/TfNSW crash DB |
+| Job accessibility isochrones (30-min reach) | 30-min city policy test | Not available — needs routing engine |
+
+---
+
 ## New Dataset Approach
 
 | Dataset | Method | Location |
 |---|---|---|
-| ABS Census 2021 aggregates (mode share benchmarks, SEIFA medians) | Bundled constants | `src/lib/data/benchmarks.ts` |
+| ABS Census 2021 aggregates (mode share, SEIFA, commute benchmarks) | Bundled constants | `src/lib/data/benchmarks.ts` |
 | ABS commute time by mode (national medians) | Bundled constants | `src/lib/data/benchmarks.ts` |
+| ABS G33 dwelling types | Already fetched — surface in business case | `housing.data.dwellingTypes` |
+| Work-from-home rate | Already in `modeShareTrend.wfh` — surface it | `transport.data.modeShareTrend` |
+| Zero-car household rate | Already in `vehicleOwnershipRaw.noCar` | `transport.data.vehicleOwnershipRaw` |
 | BITRE congestion cost ($/vkt) | Formula using bundled unit cost | `src/lib/analysis/insights.ts` |
+| Carbon/emissions estimate | Formula using `EMISSION_FACTOR` constant | `src/lib/analysis/insights.ts` |
 | TfNSW Opal patronage / service frequency | Flag as "not seeded" in evidence table | `src/app/business-case/page.tsx` |
 | TfNSW LOS targets by spatial band | Bundled constants | `src/lib/data/benchmarks.ts` |
 
