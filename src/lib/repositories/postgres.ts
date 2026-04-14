@@ -97,8 +97,8 @@ const postgresLiveDataRepository: LiveDataRepository = {
       [lgaCode]
     );
     return result.rows.map((r) => ({
-      lgaCode: r.lga_code, destination: r.destination, mode: r.mode,
-      durationMinutes: r.duration_minutes, distanceKm: r.distance_km, fetchedDate: r.fetched_date,
+      lga_code: r.lga_code, destination: r.destination, mode: r.mode,
+      duration_minutes: r.duration_minutes, distance_km: r.distance_km, fetched_date: r.fetched_date,
     } satisfies CommuteTimeRecord));
   },
   async getLatestReliabilityWeek(lgaCode) {
@@ -122,8 +122,8 @@ const postgresLiveDataRepository: LiveDataRepository = {
       [lgaCode, weekStart]
     );
     return result.rows.map((r) => ({
-      lgaCode: r.lga_code, mode: r.mode, hourOfDay: r.hour_of_day, weekStart: r.week_start,
-      pctOnTime: r.pct_on_time, tripCount: r.trip_count,
+      lga_code: r.lga_code, mode: r.mode, hour_of_day: r.hour_of_day, week_start: r.week_start,
+      pct_on_time: r.pct_on_time, trip_count: r.trip_count,
     } satisfies GtfsReliabilityRecord));
   },
   async getNSWInfrastructureForLGA(lgaCode) {
@@ -136,8 +136,8 @@ const postgresLiveDataRepository: LiveDataRepository = {
       [lgaCode]
     );
     return result.rows.map((r) => ({
-      lgaCode: r.lga_code, featureType: r.feature_type,
-      totalLengthKm: r.total_length_km, fetchedAt: toIsoString(r.fetched_at),
+      lga_code: r.lga_code, feature_type: r.feature_type,
+      total_length_km: r.total_length_km, fetched_at: toIsoString(r.fetched_at),
     } satisfies NSWInfrastructureRecord));
   },
 };
