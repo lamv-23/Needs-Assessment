@@ -12,11 +12,30 @@ interface AdminStatus {
     id: number;
     source: string;
     status: string;
-    lgas_updated: number;
-    error_message: string | null;
-    started_at: string;
-    completed_at: string | null;
+    lgasUpdated: number;
+    errorMessage: string | null;
+    startedAt: string;
+    completedAt: string | null;
   }>;
+  recentJobs: Array<{
+    id: number;
+    jobType: 'static' | 'abs' | 'all';
+    status: 'queued' | 'running' | 'success' | 'error';
+    requestedBy: string;
+    lgaId: string | null;
+    attemptCount: number;
+    maxAttempts: number;
+    startedAt: string | null;
+    completedAt: string | null;
+    errorMessage: string | null;
+    createdAt: string;
+  }>;
+  jobSummary: {
+    queued: number;
+    running: number;
+    success: number;
+    error: number;
+  };
 }
 
 function StatusIcon({ status }: { status: string }) {
@@ -75,6 +94,18 @@ export default function AdminPage() {
       fetchStatus(hash);
     }
   }, [fetchStatus]);
+
+  useEffect(() => {
+    if (!isAuth) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      void fetchStatus(adminKey);
+    }, 5000);
+
+    return () => window.clearInterval(interval);
+  }, [adminKey, fetchStatus, isAuth]);
 
   const handleLogin = () => {
     fetchStatus(adminKey);
@@ -190,6 +221,25 @@ export default function AdminPage() {
           </div>
         </div>
 
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="text-sm text-gray-500 mb-1">Queued Jobs</div>
+            <div className="text-2xl font-semibold text-gray-900">{status?.jobSummary.queued ?? 0}</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="text-sm text-gray-500 mb-1">Running Jobs</div>
+            <div className="text-2xl font-semibold text-blue-600">{status?.jobSummary.running ?? 0}</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="text-sm text-gray-500 mb-1">Successful Jobs</div>
+            <div className="text-2xl font-semibold text-emerald-600">{status?.jobSummary.success ?? 0}</div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="text-sm text-gray-500 mb-1">Failed Jobs</div>
+            <div className="text-2xl font-semibold text-red-600">{status?.jobSummary.error ?? 0}</div>
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Data Actions</h2>
@@ -255,6 +305,55 @@ export default function AdminPage() {
 
         {/* Refresh Log */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Queued Refresh Jobs</h2>
+          {status?.recentJobs.length === 0 ? (
+            <p className="text-sm text-gray-400">No background jobs yet. Queue a refresh to monitor job state here.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left py-2 pr-4 text-gray-500 font-medium">Job</th>
+                    <th className="text-left py-2 pr-4 text-gray-500 font-medium">Status</th>
+                    <th className="text-left py-2 pr-4 text-gray-500 font-medium">Scope</th>
+                    <th className="text-left py-2 pr-4 text-gray-500 font-medium">Queued</th>
+                    <th className="text-left py-2 pr-4 text-gray-500 font-medium">Started</th>
+                    <th className="text-left py-2 text-gray-500 font-medium">Completed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {status?.recentJobs.map(job => (
+                    <tr key={job.id} className="border-b border-gray-50 hover:bg-gray-50 align-top">
+                      <td className="py-2 pr-4">
+                        <div className="font-medium text-gray-700 capitalize">{job.jobType}</div>
+                        <div className="text-xs text-gray-400">
+                          Requested by {job.requestedBy} - attempt {job.attemptCount} of {job.maxAttempts}
+                        </div>
+                        {job.errorMessage && (
+                          <div className="text-xs text-red-600 mt-1">{job.errorMessage}</div>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <div className="flex items-center gap-1.5">
+                          <StatusIcon status={job.status} />
+                          <span className="capitalize text-gray-600">{job.status}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 pr-4 text-gray-600">
+                        {job.lgaId ? job.lgaId : 'All LGAs'}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-500 text-xs">{formatDate(job.createdAt)}</td>
+                      <td className="py-2 pr-4 text-gray-500 text-xs">{formatDate(job.startedAt)}</td>
+                      <td className="py-2 text-gray-500 text-xs">{formatDate(job.completedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Recent Refresh Log</h2>
           {status?.recentLogs.length === 0 ? (
             <p className="text-sm text-gray-400">No refresh history yet. Run &quot;Seed Static Data&quot; to get started.</p>
@@ -280,9 +379,9 @@ export default function AdminPage() {
                           <span className="capitalize text-gray-600">{log.status}</span>
                         </div>
                       </td>
-                      <td className="py-2 pr-4 text-gray-600">{log.lgas_updated}</td>
-                      <td className="py-2 pr-4 text-gray-500 text-xs">{formatDate(log.started_at)}</td>
-                      <td className="py-2 text-gray-500 text-xs">{formatDate(log.completed_at)}</td>
+                      <td className="py-2 pr-4 text-gray-600">{log.lgasUpdated}</td>
+                      <td className="py-2 pr-4 text-gray-500 text-xs">{formatDate(log.startedAt)}</td>
+                      <td className="py-2 text-gray-500 text-xs">{formatDate(log.completedAt)}</td>
                     </tr>
                   ))}
                 </tbody>

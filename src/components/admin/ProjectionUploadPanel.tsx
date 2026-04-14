@@ -153,7 +153,7 @@ export default function ProjectionUploadPanel() {
               NSW Planning
             </a>
           </li>
-          <li>Select the "Local government areas" Excel file (4.3 MB)</li>
+          <li>Select the &quot;Local government areas&quot; Excel file (4.3 MB)</li>
           <li>Upload it using this panel</li>
           <li>Projections will be automatically integrated into all pages</li>
         </ol>

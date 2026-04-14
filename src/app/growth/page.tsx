@@ -18,7 +18,7 @@ export default function GrowthPage() {
   const areaId = area.id;
 
   // Use current year (irrelevant for growth — projections are 2021–2041)
-  const { growth: { data, meta } } = useLiveData(areaId, 2021);
+  const { growth: { data, meta }, isLoading } = useLiveData(areaId, 2021);
 
   // Population timeline: historical before 2021 + projections 2021–2041
   const historicalBefore2021 = data.populationHistory.filter((d: { year: number; population: number }) => d.year < 2021);
@@ -48,7 +48,7 @@ export default function GrowthPage() {
 
       <div className="p-6 space-y-6">
         {/* Data source attribution — always visible */}
-        <DataSourceBadge meta={meta} />
+        <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -205,4 +205,3 @@ export default function GrowthPage() {
     </div>
   );
 }
-

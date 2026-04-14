@@ -190,14 +190,18 @@ async function seedABSData(lgaFilter?: string): Promise<void> {
         upsertABSCache(lgaCode, 'G46', data.g46, 2021);
         process.stdout.write('G46 ✓ ');
       }
-      if (data.g49) {
-        upsertABSCache(lgaCode, 'G49', data.g49, 2021);
-        process.stdout.write('G49 ✓ ');
-      }
-      if (data.seifa) {
-        upsertABSCache(lgaCode, 'SEIFA', data.seifa, 2021);
-        process.stdout.write('SEIFA ✓ ');
-      }
+       if (data.g49) {
+         upsertABSCache(lgaCode, 'G49', data.g49, 2021);
+         process.stdout.write('G49 ✓ ');
+       }
+       if (data.g49_2016) {
+         upsertABSCache(lgaCode, 'G49_2016', data.g49_2016, 2016);
+         process.stdout.write('G49_2016 ✓ ');
+       }
+       if (data.seifa) {
+         upsertABSCache(lgaCode, 'SEIFA', data.seifa, 2021);
+         process.stdout.write('SEIFA ✓ ');
+       }
       if (data.labour) {
         upsertABSCache(lgaCode, 'LABOUR', data.labour, data.labour.dataYear);
         process.stdout.write('LABOUR ✓ ');
@@ -234,18 +238,34 @@ async function seedABSData(lgaFilter?: string): Promise<void> {
         upsertABSCache(lgaCode, 'G25', data.g25, 2021);
         process.stdout.write('G25 ✓ ');
       }
-      if (data.g60) {
-        upsertABSCache(lgaCode, 'G60', data.g60, 2021);
-        process.stdout.write('G60 ✓ ');
-      }
-      if (data.housingStress) {
-        upsertABSCache(lgaCode, 'HOUSING_STRESS', data.housingStress, 2021);
-        process.stdout.write('HOUSING_STRESS ✓ ');
-      }
+       if (data.g60) {
+         upsertABSCache(lgaCode, 'G60', data.g60, 2021);
+         process.stdout.write('G60 ✓ ');
+       }
+       if (data.g15) {
+         upsertABSCache(lgaCode, 'G15', data.g15, 2021);
+         process.stdout.write('G15 ✓ ');
+       }
+       if (data.housingStress) {
+         upsertABSCache(lgaCode, 'HOUSING_STRESS', data.housingStress, 2021);
+         process.stdout.write('HOUSING_STRESS ✓ ');
+       }
       if (data.buildingApprovals) {
         upsertABSCache(lgaCode, 'BUILDING_APPROVALS', data.buildingApprovals, 2024);
         process.stdout.write('BUILDING_APPROVALS ✓ ');
       }
+      if (data.g59) {
+        upsertABSCache(lgaCode, 'G59', data.g59, 2016);
+        process.stdout.write('G59 ✓ ');
+      }
+       if (data.b46) {
+         upsertABSCache(lgaCode, 'B46', data.b46, 2011);
+         process.stdout.write('B46 ✓ ');
+       }
+       if (data.b31_2011) {
+         upsertABSCache(lgaCode, 'B31_2011', data.b31_2011, 2011);
+         process.stdout.write('B31_2011 ✓ ');
+       }
 
       console.log('');
       successCount++;

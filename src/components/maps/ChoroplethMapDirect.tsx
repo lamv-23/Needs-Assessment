@@ -133,7 +133,7 @@ export default function ChoroplethMapDirect({
       // Don't destroy the map on unmount, just clean up layers
       console.log('Unmounting map component');
     };
-  }, []); // Empty dependency - only run once
+  }, [center, zoom]);
 
   // Update GeoJSON layer when data or style changes
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function ChoroplethMapDirect({
     } catch (error) {
       console.error('Error updating GeoJSON:', error);
     }
-  }, [geoJsonData, valueField, style]);
+  }, [geoJsonData, valueField, style, onAreaClick]);
 
   return (
     <div className="relative">

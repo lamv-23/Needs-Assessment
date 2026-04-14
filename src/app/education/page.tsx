@@ -16,12 +16,12 @@ export default function EducationPage() {
   const areaId = selectedArea?.id ?? 'lga_sydney';
   const year = selectedYear;
 
-  const { education: { data, meta } } = useLiveData(areaId, year);
+  const { education: { data, meta }, isLoading } = useLiveData(areaId, year);
 
   // Find the top attainment level
   const topAttainment = data.attainment.reduce((max, item) =>
     item.value > max.value ? item : max
-  , data.attainment[0]);
+  , data.attainment[0] ?? { name: 'N/A', value: 0 });
 
   // Total school enrolment
   const totalEnrolment = data.schoolEnrolment.reduce(
@@ -35,7 +35,7 @@ export default function EducationPage() {
 
       <main className="p-6 space-y-6">
         {/* Data source attribution — always visible */}
-        <DataSourceBadge meta={meta} />
+        <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -45,9 +45,9 @@ export default function EducationPage() {
             subtitle={meta.liveFields.includes('attainment') ? 'ABS Census 2021' : 'Highest share of population'}
           />
           <StatCard
-            label="Total School Enrolment"
-            value={formatNumber(totalEnrolment)}
-            subtitle="Across all education levels"
+            label="Total Education Attendance"
+            value={data.schoolEnrolment.length > 0 ? formatNumber(totalEnrolment) : 'N/A'}
+            subtitle={data.schoolEnrolment.length > 0 ? 'ABS Census 2021 education attendance' : 'No official school enrolment source integrated'}
           />
         </div>
 
@@ -70,41 +70,45 @@ export default function EducationPage() {
             />
           </ChartWrapper>
 
-          <ChartWrapper
-            title="School Enrolment"
-            subtitle="Number of students by education level"
-            data={data.schoolEnrolment}
-            dataKeys={['value']}
-          >
-            <NeedsBarChart
+          {data.schoolEnrolment.length > 0 && (
+            <ChartWrapper
+              title="Education Attendance"
+              subtitle="ABS Census 2021 attendance by institution type"
               data={data.schoolEnrolment}
               dataKeys={['value']}
-              colors={[CHART_COLORS[0]]}
-              xAxisLabel="Level"
-              yAxisLabel="Students"
-              height={350}
-            />
-          </ChartWrapper>
+            >
+              <NeedsBarChart
+                data={data.schoolEnrolment}
+                dataKeys={['value']}
+                colors={[CHART_COLORS[0]]}
+                xAxisLabel="Level"
+                yAxisLabel="Students"
+                height={350}
+              />
+            </ChartWrapper>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          <ChartWrapper
-            title="Qualification Trends"
-            subtitle="Percentage of population with qualifications over time"
-            data={data.qualificationTrend}
-            dataKeys={['bachelor', 'diploma', 'certificate']}
-            xAxisKey="year"
-          >
-            <NeedsLineChart
+          {data.qualificationTrend.length > 0 && (
+            <ChartWrapper
+              title="Qualification Trends"
+              subtitle="Percentage of population with qualifications over time"
               data={data.qualificationTrend}
               dataKeys={['bachelor', 'diploma', 'certificate']}
-              colors={[CHART_COLORS[0], CHART_COLORS[3], CHART_COLORS[2]]}
               xAxisKey="year"
-              xAxisLabel="Year"
-              yAxisLabel="Percentage (%)"
-              height={400}
-            />
-          </ChartWrapper>
+            >
+              <NeedsLineChart
+                data={data.qualificationTrend}
+                dataKeys={['bachelor', 'diploma', 'certificate']}
+                colors={[CHART_COLORS[0], CHART_COLORS[3], CHART_COLORS[2]]}
+                xAxisKey="year"
+                xAxisLabel="Year"
+                yAxisLabel="Percentage (%)"
+                height={400}
+              />
+            </ChartWrapper>
+          )}
         </div>
       </main>
     </div>

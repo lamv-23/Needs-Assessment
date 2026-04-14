@@ -6,6 +6,11 @@ import Header from '@/components/layout/Header';
 import ChartWrapper from '@/components/charts/ChartWrapper';
 import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsLineChart from '@/components/charts/LineChart';
+import { StrategicAlignmentSection } from '@/components/business-case/StrategicAlignmentSection';
+import { ProjectSyncPanel } from '@/components/business-case/ProjectSyncPanel';
+import { useProjectSessionStore } from '@/store/projectSessionStore';
+import { useProjectionStore } from '@/store/projectionStore';
+import { useStrategicAlignmentStore } from '@/store/strategicAlignmentStore';
 import WizardModal from '@/components/business-case/WizardModal';
 import { CALLOUTS } from '@/components/business-case/callouts';
 import {
@@ -19,6 +24,7 @@ import { useAppStore } from '@/store';
 import { useLiveData } from '@/hooks/useLiveData';
 import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
+import { getCarModeShare, getPTModeShare } from '@/lib/data/transport-helpers';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
 import { Wand2, Download, RotateCcw } from 'lucide-react';
 
@@ -39,6 +45,7 @@ const SECTION_HEADINGS: Record<SectionId, string> = {
   'car-dependency': 'Car Dependency',
   congestion: 'Congestion & Commute',
   economy: 'Economic Activity',
+  'strategic-alignment': 'Strategic Alignment',
   gap: 'Infrastructure Gap',
   evidence: 'Evidence Summary',
 };
@@ -55,6 +62,9 @@ export default function BusinessCasePage() {
     toggleSection,
     clearProject,
   } = useBusinessCaseStore();
+  const clearStrategicAlignment = useStrategicAlignmentStore((state) => state.clearAll);
+  const clearProjections = useProjectionStore((state) => state.clearProjections);
+  const clearProjectSession = useProjectSessionStore((state) => state.clearProjectSession);
 
   const [wizardOpen, setWizardOpen] = useState(!projectName);
   const reportRef = useRef<HTMLDivElement>(null);
@@ -89,6 +99,9 @@ export default function BusinessCasePage() {
 
   const handleNewProject = () => {
     clearProject();
+    clearStrategicAlignment();
+    clearProjections();
+    clearProjectSession();
     setWizardOpen(true);
   };
 
@@ -128,11 +141,8 @@ export default function BusinessCasePage() {
   const g = growth.data;
 
   // Derive mode share values from journeyToWork array
-  const findMode = (name: string) =>
-    t.journeyToWork.find(j => j.name.toLowerCase().includes(name.toLowerCase()))?.value ?? 0;
-  const carModeShare = findMode('car (driver)');
-  const ptModeShare =
-    findMode('train') + findMode('bus') + findMode('ferry') + findMode('light rail') + findMode('tram');
+  const carModeShare = getCarModeShare(t.journeyToWork);
+  const ptModeShare = getPTModeShare(t.journeyToWork);
 
   const modeShareData = t.journeyToWork.filter(item => item.value > 0);
 
@@ -261,9 +271,9 @@ export default function BusinessCasePage() {
 
         {id === 'congestion' && (
           <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
-            <p>Average commute time: <span className="font-semibold text-gray-900">{t.avgCommute} minutes</span></p>
+            <p>Average commute time: <span className="font-semibold text-gray-900">{t.avgCommute !== null ? `${t.avgCommute} minutes` : 'N/A'}</span></p>
             <p className="mt-1">PT mode share: <span className="font-semibold text-gray-900">{formatPercent(ptModeShare)}</span></p>
-            <p className="mt-2 text-gray-400 italic">Commute time trend data is not available at LGA level from this data source. Run <code>npm run seed:abs</code> to fetch live TfNSW data.</p>
+            <p className="mt-2 text-gray-400 italic">Official commute-time data is not currently integrated at LGA level in this app.</p>
           </div>
         )}
 
@@ -282,6 +292,14 @@ export default function BusinessCasePage() {
               height={300}
             />
           </ChartWrapper>
+        )}
+
+        {id === 'strategic-alignment' && (
+          <StrategicAlignmentSection
+            areaId={primaryAreaId}
+            areaName={primaryArea?.name ?? primaryAreaId}
+            year={selectedYear}
+          />
         )}
 
         {id === 'gap' && (
@@ -353,6 +371,8 @@ export default function BusinessCasePage() {
               <p className="text-sm font-semibold text-gray-900">{projectName}</p>
               <p className="text-xs text-gray-500">{SAMPLE_AREAS.find(a => a.id === primaryAreaId)?.name ?? primaryAreaId}{areaIds.length > 1 ? ` +${areaIds.length - 1} more` : ''}</p>
             </div>
+
+            <ProjectSyncPanel onProjectLoaded={() => setWizardOpen(false)} />
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Sections</label>

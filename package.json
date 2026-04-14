@@ -16,9 +16,16 @@
     "parse:population": "node scripts/parse-projections.js",
     "parse:employment": "node scripts/parse-employment.js",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "seed:gtfs": "tsx scripts/seed-gtfs.ts",
+    "seed:osm-stops": "tsx scripts/seed-osm-stops.ts",
+    "migrate:postgres": "tsx scripts/migrate-to-postgres.ts",
+    "worker:refresh": "tsx scripts/run-refresh-worker.ts",
+    "preflight:production": "tsx scripts/production-preflight.ts"
   },
   "dependencies": {
+    "@turf/boolean-point-in-polygon": "^7.3.4",
+    "@turf/helpers": "^7.3.4",
     "better-sqlite3": "^11.10.0",
     "clsx": "^2.1.1",
     "html2canvas": "^1.4.1",
@@ -27,6 +34,7 @@
     "lucide-react": "^0.468.0",
     "next": "^14.1.4",
     "papaparse": "^5.4.1",
+    "pg": "^8.20.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-leaflet": "^4.2.1",
@@ -38,13 +46,16 @@
   },
   "devDependencies": {
     "@tanstack/react-table": "^8.21.0",
+    "@types/adm-zip": "^0.5.8",
     "@types/better-sqlite3": "^7.6.12",
     "@types/jest": "^30.0.0",
     "@types/leaflet": "^1.9.14",
     "@types/node": "^22.0.0",
     "@types/papaparse": "^5.3.15",
+    "@types/pg": "^8.20.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "adm-zip": "^0.5.17",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.0",
@@ -53,6 +64,7 @@
     "tailwindcss": "^3.4.17",
     "ts-jest": "^29.4.6",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "webpack": "^5.106.0"
   }
 }

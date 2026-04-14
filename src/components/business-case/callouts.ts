@@ -11,6 +11,8 @@ export const CALLOUTS: Record<'road', Record<SectionId, string>> = {
       'Quantifies the travel time burden on existing users. Commute time trends establish a deteriorating baseline against which project benefits are measured.',
     economy:
       'Links transport access to employment and economic activity. Relevant to the Strategic Economic Infrastructure test in NSW infrastructure guidelines.',
+    'strategic-alignment':
+      'Summarises how the project aligns with selected strategies and Connecting NSW priorities, ready for inclusion in the strategic case and report export.',
     gap: 'Benchmarks current performance against TfNSW level of service standards, providing an evidence-based statement of the infrastructure gap.',
     evidence:
       'Summary of available data quality. Informs the Evidence Assessment section of the business case and flags where supplementary data collection may be needed.',

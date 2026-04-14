@@ -92,7 +92,9 @@ export async function parseNSWProjectionsExcel(
   
   try {
     // Parse the Excel file
-    const workbook = XLSX.read(excelBuffer, { type: 'array' });
+    const workbook = XLSX.read(excelBuffer, {
+      type: typeof excelBuffer === 'string' ? 'base64' : 'array',
+    });
     
     // Get the first sheet (typically named "LGA" or similar)
     const sheetName = workbook.SheetNames[0];
@@ -214,11 +216,24 @@ export async function parseNSWProjectionsExcel(
  * e.g., "2020-21" → 2021, "2024-25" → 2025
  */
 export function financialYearToCalendarYear(financialYear: string): number {
-  const parts = financialYear.split('-');
-  if (parts.length !== 2) {
+  if (/^\d{4}$/.test(financialYear)) {
+    return parseInt(financialYear, 10);
+  }
+
+  const match = financialYear.match(/^(\d{4})-(\d{2})$/);
+  if (!match) {
     throw new Error(`Invalid financial year format: ${financialYear}`);
   }
-  return parseInt(parts[1], 10) + 2000;
+
+  const startYear = parseInt(match[1], 10);
+  const endYearSuffix = parseInt(match[2], 10);
+  let endYear = Math.floor(startYear / 100) * 100 + endYearSuffix;
+
+  if (endYear < startYear) {
+    endYear += 100;
+  }
+
+  return endYear;
 }
 
 /**

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Header from '@/components/layout/Header';
-import StatCard from '@/components/ui/StatCard';
 import FAQOverlay from '@/components/ui/FAQOverlay';
 import { useAppStore } from '@/store';
 import { getProjectionsForArea, PROJECTION_LGAS } from '@/lib/data/nsw-projections-data';
@@ -25,6 +24,11 @@ import {
   Database,
   MousePointerClick,
   Download,
+  CheckCircle2,
+  Briefcase,
+  Building2,
+  Map,
+  Sparkles,
 } from 'lucide-react';
 
 const modules = [
@@ -37,6 +41,7 @@ const modules = [
     color: 'bg-blue-500',
     lightColor: 'bg-blue-50',
     textColor: 'text-blue-600',
+    borderColor: 'border-blue-200',
     stats: '35 LGAs',
   },
   {
@@ -48,6 +53,7 @@ const modules = [
     color: 'bg-rose-500',
     lightColor: 'bg-rose-50',
     textColor: 'text-rose-600',
+    borderColor: 'border-rose-200',
     stats: 'Dwelling data',
   },
   {
@@ -59,6 +65,7 @@ const modules = [
     color: 'bg-amber-500',
     lightColor: 'bg-amber-50',
     textColor: 'text-amber-600',
+    borderColor: 'border-amber-200',
     stats: 'ANZSIC sectors',
   },
   {
@@ -70,6 +77,7 @@ const modules = [
     color: 'bg-emerald-500',
     lightColor: 'bg-emerald-50',
     textColor: 'text-emerald-600',
+    borderColor: 'border-emerald-200',
     stats: 'Mode share data',
   },
   {
@@ -81,6 +89,7 @@ const modules = [
     color: 'bg-purple-500',
     lightColor: 'bg-purple-50',
     textColor: 'text-purple-600',
+    borderColor: 'border-purple-200',
     stats: 'Qualification levels',
   },
   {
@@ -92,6 +101,7 @@ const modules = [
     color: 'bg-cyan-500',
     lightColor: 'bg-cyan-50',
     textColor: 'text-cyan-600',
+    borderColor: 'border-cyan-200',
     stats: '2011–2041',
   },
   {
@@ -103,6 +113,7 @@ const modules = [
     color: 'bg-orange-500',
     lightColor: 'bg-orange-50',
     textColor: 'text-orange-600',
+    borderColor: 'border-orange-200',
     stats: 'Business case',
   },
   {
@@ -114,6 +125,7 @@ const modules = [
     color: 'bg-violet-500',
     lightColor: 'bg-violet-50',
     textColor: 'text-violet-600',
+    borderColor: 'border-violet-200',
     stats: 'FTS + ATAP',
   },
 ];
@@ -123,25 +135,65 @@ const workflowSteps = [
     number: '01',
     icon: MousePointerClick,
     title: 'Select your area',
-    description: 'Pick any NSW LGA using the area selector in the top bar',
+    description: 'Pick any NSW LGA from the area selector in the top bar. The entire tool updates to show data for that location.',
+    color: 'bg-primary-500',
   },
   {
     number: '02',
     icon: Database,
     title: 'Explore the data',
-    description: 'Browse demographics, transport, housing, economy and growth modules',
+    description: 'Browse eight themed modules — demographics, transport, housing, economy, education, growth, problem definition, and strategic alignment.',
+    color: 'bg-emerald-500',
   },
   {
     number: '03',
     icon: Download,
     title: 'Export your report',
-    description: 'Generate a professional PDF summary for your business case',
+    description: 'Use the Report Builder to generate a professional PDF summary ready for a business case, briefing note, or stakeholder presentation.',
+    color: 'bg-violet-500',
   },
+];
+
+const audiences = [
+  {
+    icon: Briefcase,
+    title: 'Transport Consultants',
+    description: 'Build robust evidence for NSW business cases with structured, citation-ready data across all ATAP requirements.',
+    color: 'bg-blue-50',
+    iconColor: 'text-blue-600',
+    accentColor: 'bg-blue-500',
+  },
+  {
+    icon: Building2,
+    title: 'Government Planners',
+    description: "Understand how your LGA's transport needs compare across the region, and align investment with FTS 2056 outcomes.",
+    color: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
+    accentColor: 'bg-emerald-500',
+  },
+  {
+    icon: Map,
+    title: 'Local Councils',
+    description: 'Access census, growth, and mode share data for your area to support grant applications and local transport strategies.',
+    color: 'bg-violet-50',
+    iconColor: 'text-violet-600',
+    accentColor: 'bg-violet-500',
+  },
+];
+
+const capabilities = [
+  'ABS Census data for 2011, 2016 & 2021',
+  'Population projections to 2041 (NSW DPE)',
+  'Mode share & commute data from TfNSW',
+  'Side-by-side area comparison',
+  'FTS 2056 & ATAP alignment mapping',
+  'One-click PDF report export',
 ];
 
 export default function DashboardPage() {
   const { selectedArea } = useAppStore();
   const [faqOpen, setFaqOpen] = useState(false);
+  const selectedAreaName = selectedArea?.name ?? 'Selected area';
 
   const areaProjections = selectedArea
     ? (getProjectionsForArea(selectedArea.id).length > 0
@@ -159,114 +211,146 @@ export default function DashboardPage() {
         subtitle="Greater Sydney, Newcastle & Wollongong — Data-driven transport planning support"
       />
 
-      <div className="p-6 space-y-7">
+      <div className="p-6 space-y-8">
 
-        {/* Hero Section */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-primary-700 via-primary-600 to-blue-500 rounded-2xl p-8 text-white shadow-lg">
-          {/* Dot grid pattern */}
+        {/* ── Hero ── */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-primary-800 via-primary-700 to-blue-600 rounded-2xl text-white shadow-xl">
+          {/* Background texture */}
           <div
-            className="absolute inset-0 opacity-20"
+            className="absolute inset-0 opacity-[0.12]"
             style={{
-              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)',
-              backgroundSize: '28px 28px',
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
             }}
           />
-          {/* Decorative rings */}
-          <div className="absolute -top-16 -right-16 w-64 h-64 border border-white/10 rounded-full" />
-          <div className="absolute -top-8 -right-8 w-40 h-40 border border-white/10 rounded-full" />
-          <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-white/5 rounded-full" />
+          {/* Decorative blobs */}
+          <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/5 rounded-full blur-2xl" />
+          <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-blue-400/10 rounded-full blur-xl" />
 
-          <div className="relative">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-full mb-5 tracking-wide">
+          <div className="relative px-8 py-10 md:py-12">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 bg-white/15 border border-white/20 text-white/90 text-xs font-semibold px-3 py-1.5 rounded-full mb-6 tracking-wide">
               <MapPin className="w-3 h-3" />
               NSW Transport Planning Tool
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-3 leading-tight tracking-tight">
-              Understand transport needs<br className="hidden md:block" /> across NSW
-            </h1>
-            <p className="text-blue-100/90 text-sm md:text-[15px] max-w-lg leading-relaxed mb-6">
-              Explore population, employment, transport and housing data for any NSW local government area — purpose-built for transport planning and business cases.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setFaqOpen(true)}
-                className="flex items-center gap-2 bg-white text-primary-700 hover:bg-blue-50 font-semibold text-sm px-5 py-2.5 rounded-xl shadow-md transition-all hover:shadow-lg hover:-translate-y-px"
-              >
-                <HelpCircle className="w-4 h-4" />
-                Getting Started
-              </button>
-              <Link
-                href="#modules"
-                className="flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/20 text-white font-medium text-sm px-5 py-2.5 rounded-xl transition-all"
-              >
-                Explore modules
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-            <div className="flex items-center gap-4 mt-5 pt-5 border-t border-white/15">
-              {['ABS Census', 'TfNSW', 'NSW DPE'].map(src => (
-                <span key={src} className="text-[11px] font-medium text-blue-200 flex items-center gap-1.5">
-                  <span className="w-1 h-1 rounded-full bg-blue-300 inline-block" />
-                  {src}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        {/* Key Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={MapPin}
-            label="Coverage Areas"
-            value={PROJECTION_LGAS.length.toString()}
-            subtitle="NSW LGAs with DPE projections"
-          />
-          <StatCard
-            icon={Users}
-            label={areaHasProjections && areaPop2021 ? `${selectedArea!.name} (2021)` : 'Population (2021)'}
-            value={areaHasProjections && areaPop2021 ? areaPop2021.toLocaleString() : '5.3M'}
-            subtitle={areaHasProjections ? 'NSW DPE Projection base year' : 'Greater Sydney estimated population'}
-          />
-          <StatCard
-            icon={Train}
-            label="Census Years"
-            value="3"
-            subtitle="2011, 2016, 2021 data available"
-          />
-          <StatCard
-            icon={BarChart3}
-            label={areaHasProjections && areaPop2041 ? `${selectedArea!.name} (2041)` : 'Projections'}
-            value={areaHasProjections && areaPop2041 ? areaPop2041.toLocaleString() : '2041'}
-            subtitle={areaHasProjections ? 'NSW DPE projected population' : 'DPE population projections'}
-          />
-        </div>
+            <div className="max-w-2xl">
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight tracking-tight">
+                Build the evidence for<br className="hidden md:block" /> transport investment
+              </h1>
+              <p className="text-blue-100/90 text-sm md:text-base max-w-xl leading-relaxed mb-3">
+                The Transport Needs Assessment Tool brings together ABS Census data, NSW population projections, and TfNSW transport statistics for every NSW local government area — giving planners and consultants a single place to understand and articulate transport needs.
+              </p>
+              <p className="text-blue-200/70 text-xs md:text-sm max-w-lg leading-relaxed mb-8">
+                Designed to support the strategic case in NSW and ATAP business cases.
+              </p>
 
-        {/* Context strip: workflow guide (no area) OR selected area (has area) */}
-        {!selectedArea ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-sm font-semibold text-gray-700">How it works</h2>
-              <div className="flex-1 h-px bg-gray-100" />
+              {/* Capability pills */}
+              <div className="flex flex-wrap gap-2 mb-8">
+                {capabilities.map(cap => (
+                  <span
+                    key={cap}
+                    className="inline-flex items-center gap-1.5 bg-white/10 border border-white/15 text-white/80 text-xs px-3 py-1 rounded-full"
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-300 flex-shrink-0" />
+                    {cap}
+                  </span>
+                ))}
+              </div>
+
+              {/* CTAs */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => setFaqOpen(true)}
+                  className="flex items-center gap-2 bg-white text-primary-700 hover:bg-blue-50 font-semibold text-sm px-5 py-2.5 rounded-xl shadow-md transition-all hover:shadow-lg hover:-translate-y-px"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Getting Started
+                </button>
+                <Link
+                  href="#modules"
+                  className="flex items-center gap-2 bg-white/15 hover:bg-white/25 border border-white/20 text-white font-medium text-sm px-5 py-2.5 rounded-xl transition-all"
+                >
+                  Browse modules
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {workflowSteps.map((step, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center">
-                    <step.icon className="w-4 h-4 text-primary-600" />
-                  </div>
-                  <div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] font-bold text-primary-400 tracking-wider">{step.number}</span>
-                      <p className="text-sm font-semibold text-gray-800">{step.title}</p>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{step.description}</p>
-                  </div>
+
+            {/* Stats strip */}
+            <div className="mt-8 pt-6 border-t border-white/15 grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'NSW LGAs covered', value: PROJECTION_LGAS.length.toString() },
+                {
+                  label: areaHasProjections && areaPop2021 ? `${selectedAreaName} pop. (2021)` : 'Greater Sydney (2021)',
+                  value: areaHasProjections && areaPop2021 ? areaPop2021.toLocaleString() : '5.3M',
+                },
+                { label: 'Census years', value: '3' },
+                {
+                  label: areaHasProjections && areaPop2041 ? `${selectedAreaName} pop. (2041)` : 'Projections to',
+                  value: areaHasProjections && areaPop2041 ? areaPop2041.toLocaleString() : '2041',
+                },
+              ].map(stat => (
+                <div key={stat.label}>
+                  <p className="text-xl font-bold text-white">{stat.value}</p>
+                  <p className="text-xs text-blue-200/80 mt-0.5">{stat.label}</p>
                 </div>
               ))}
             </div>
           </div>
-        ) : (
+        </div>
+
+        {/* ── Who it's for ── */}
+        <div>
+          <div className="mb-5">
+            <h2 className="text-base font-bold text-gray-900 tracking-tight">Who uses this tool?</h2>
+            <p className="text-xs text-gray-500 mt-1">Built for professionals who need to understand transport needs across NSW</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {audiences.map((audience) => (
+              <div
+                key={audience.title}
+                className={`${audience.color} rounded-xl p-5 border border-white`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0`}>
+                    <audience.icon className={`w-4.5 h-4.5 ${audience.iconColor}`} />
+                  </div>
+                  <h3 className="text-sm font-semibold text-gray-800">{audience.title}</h3>
+                </div>
+                <p className="text-xs text-gray-600 leading-relaxed">{audience.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── How it works ── */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary-500" />
+            <h2 className="text-sm font-bold text-gray-800">How it works</h2>
+            <p className="text-xs text-gray-400 ml-1">— three steps to a complete needs assessment</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+            {workflowSteps.map((step, i) => (
+              <div key={i} className="p-6 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`${step.color} w-9 h-9 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0`}>
+                    <step.icon className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-3xl font-black text-gray-100 leading-none select-none">{step.number}</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 mb-1">{step.title}</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed">{step.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Selected area banner (when area is chosen) ── */}
+        {selectedArea && (
           <div className="flex items-center gap-3 bg-primary-50 border border-primary-100 rounded-xl px-5 py-3.5">
             <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
               <MapPin className="w-4 h-4 text-primary-600" />
@@ -283,14 +367,18 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Data Modules Grid */}
+        {/* ── Data Modules ── */}
         <div id="modules">
-          <div className="flex items-baseline justify-between mb-4">
+          <div className="flex items-baseline justify-between mb-5">
             <div>
               <h2 className="text-base font-bold text-gray-900 tracking-tight">Data Modules</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Choose a topic to explore data for your selected area</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Eight themed modules covering the full evidence base for a transport needs assessment
+              </p>
             </div>
-            <span className="text-xs text-gray-400 font-medium">{modules.length} modules</span>
+            <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2.5 py-1 rounded-full">
+              {modules.length} modules
+            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {modules.map((module) => (
@@ -299,7 +387,6 @@ export default function DashboardPage() {
                 href={module.href}
                 className="group relative bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200"
               >
-                {/* Subtle top accent line */}
                 <div className={`absolute top-0 left-4 right-4 h-[2px] ${module.color} rounded-b-full opacity-0 group-hover:opacity-100 transition-opacity duration-200`} />
 
                 <div className="flex items-start gap-3">
@@ -325,71 +412,93 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Analysis Tools */}
+        {/* ── Analysis Tools ── */}
         <div>
-          <div className="flex items-baseline justify-between mb-4">
-            <div>
-              <h2 className="text-base font-bold text-gray-900 tracking-tight">Analysis Tools</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Compare areas or build a business case report</p>
-            </div>
+          <div className="mb-5">
+            <h2 className="text-base font-bold text-gray-900 tracking-tight">Analysis Tools</h2>
+            <p className="text-xs text-gray-500 mt-1">Compare multiple areas or package your findings into a report</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link
               href="/compare"
-              className="group flex items-center gap-4 bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200"
+              className="group flex gap-5 bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200"
             >
-              <div className="bg-indigo-500 p-3 rounded-xl flex-shrink-0 shadow-sm group-hover:shadow transition-shadow">
+              <div className="bg-indigo-500 p-3.5 rounded-xl flex-shrink-0 shadow-sm self-start group-hover:shadow transition-shadow">
                 <GitCompare className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-[13px] font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">Compare Areas</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Benchmark this area against others side by side</p>
+                <h3 className="text-sm font-semibold text-gray-900 group-hover:text-primary-700 transition-colors mb-1">Compare Areas</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Place two or more LGAs side by side to identify differences in demographics, transport, or economic conditions. Useful for project corridor analysis or benchmarking.
+                </p>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all flex-shrink-0 self-center" />
             </Link>
             <Link
               href="/report"
-              className="group flex items-center gap-4 bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200"
+              className="group flex gap-5 bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 hover:-translate-y-0.5 transition-all duration-200"
             >
-              <div className="bg-teal-500 p-3 rounded-xl flex-shrink-0 shadow-sm group-hover:shadow transition-shadow">
+              <div className="bg-teal-500 p-3.5 rounded-xl flex-shrink-0 shadow-sm self-start group-hover:shadow transition-shadow">
                 <FileText className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-[13px] font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">Report Builder</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Export a professional PDF for presentations or business cases</p>
+                <h3 className="text-sm font-semibold text-gray-900 group-hover:text-primary-700 transition-colors mb-1">Report Builder</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Export a structured PDF that covers demographics, transport, housing, economy and growth for your selected area. Ready to include in a business case or planning submission.
+                </p>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+              <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-0.5 transition-all flex-shrink-0 self-center" />
             </Link>
           </div>
         </div>
 
-        {/* Data Sources */}
+        {/* ── Data Sources ── */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-5 py-3.5 border-b border-gray-100">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Data Sources</h3>
+            <p className="text-xs text-gray-400 mt-0.5">All data is sourced from authoritative government agencies</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-100">
             {[
               {
                 name: 'ABS Census',
                 color: 'bg-blue-500',
-                description: 'Population, demographics, journey to work, employment, education, housing (2011, 2016, 2021)',
+                lightColor: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+                icon: Database,
+                description: 'Population, demographics, journey to work, employment, education, housing',
+                detail: '2011, 2016, 2021',
               },
               {
                 name: 'TfNSW Open Data',
                 color: 'bg-emerald-500',
-                description: 'Public transport patronage, traffic volumes, crash data, mode share and commute patterns',
+                lightColor: 'bg-emerald-50',
+                iconColor: 'text-emerald-600',
+                icon: Train,
+                description: 'Mode share, commute times, public transport patronage and traffic data',
+                detail: 'TZP24 dataset',
               },
               {
                 name: 'NSW DPE',
                 color: 'bg-violet-500',
+                lightColor: 'bg-violet-50',
+                iconColor: 'text-violet-600',
+                icon: BarChart3,
                 description: 'Population and employment projections by LGA through to 2041',
+                detail: 'Projections 2021–2041',
               },
             ].map((src) => (
               <div key={src.name} className="px-5 py-4 flex items-start gap-3">
-                <div className={`w-2 h-2 rounded-full ${src.color} flex-shrink-0 mt-1.5`} />
+                <div className={`${src.lightColor} p-2 rounded-lg flex-shrink-0`}>
+                  <src.icon className={`w-4 h-4 ${src.iconColor}`} />
+                </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-700">{src.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold text-gray-700">{src.name}</p>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${src.lightColor} ${src.iconColor}`}>
+                      {src.detail}
+                    </span>
+                  </div>
                   <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{src.description}</p>
                 </div>
               </div>
