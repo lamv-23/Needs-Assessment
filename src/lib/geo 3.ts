@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 
 /**
  * Haversine distance between two lat/lng points — returns metres.
@@ -59,54 +58,6 @@ function getCentroidFromGeometry(geom: GeoJSON.Geometry): [number, number] | nul
   return null;
 }
 
-function normaliseAreaName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^city_of_/, '')
-    .replace(/^the_/, '')
-    .replace(/_council$/, '')
-    .replace(/_shire$/, '')
-    .replace(/_regional$/, '')
-    .replace(/_region$/, '')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
-function matchesAreaId(feature: GeoJSON.Feature, areaId: string): boolean {
-  const props = feature.properties ?? {};
-  const area = SAMPLE_AREAS.find((candidate) => candidate.id === areaId);
-  const needles = new Set([
-    normaliseAreaName(areaId.replace(/^lga_/, '')),
-    ...(area ? [normaliseAreaName(area.name)] : []),
-  ]);
-  const candidateKeys = ['LGA_NAME', 'lga_name', 'ABB_NAME', 'name', 'LGA_NAME22', 'LGA_NAME21'];
-
-  for (const key of candidateKeys) {
-    const value = props[key];
-    if (typeof value === 'string' && needles.has(normaliseAreaName(value))) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-export function getLGAGeometry(areaId: string): GeoJSON.Geometry | null {
-  const geo = loadLGAGeo();
-  if (!geo) return null;
-
-  for (const feature of geo.features) {
-    if (!feature.geometry) continue;
-    if (matchesAreaId(feature, areaId)) {
-      return feature.geometry;
-    }
-  }
-
-  return null;
-}
-
 /**
  * Returns [lat, lng] centroid for the given area id (e.g. 'lga_sydney').
  * Falls back to Sydney CBD if the LGA is not found in the GeoJSON.
@@ -115,11 +66,20 @@ export function getLGACentroid(areaId: string): [number, number] {
   const geo = loadLGAGeo();
   if (!geo) return SYDNEY_CBD;
 
+  // Normalise areaId → match against feature properties
+  // The GeoJSON may use 'LGA_NAME', 'lga_name', 'ABB_NAME', or 'LGA_CODE' etc.
+  const needle = areaId.replace(/^lga_/, '').toLowerCase();
+
   for (const feature of geo.features) {
     if (!feature.geometry) continue;
-    if (matchesAreaId(feature, areaId)) {
-      const centroid = getCentroidFromGeometry(feature.geometry);
-      if (centroid) return centroid;
+    const props = feature.properties ?? {};
+    const candidateKeys = ['LGA_NAME', 'lga_name', 'ABB_NAME', 'name', 'LGA_NAME22', 'LGA_NAME21'];
+    for (const k of candidateKeys) {
+      const val = props[k];
+      if (typeof val === 'string' && val.toLowerCase().replace(/\s+/g, '_').includes(needle)) {
+        const centroid = getCentroidFromGeometry(feature.geometry);
+        if (centroid) return centroid;
+      }
     }
   }
   return SYDNEY_CBD;

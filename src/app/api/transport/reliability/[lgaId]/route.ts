@@ -16,7 +16,7 @@ export async function GET(
   if (!latestWeek) {
     return NextResponse.json({
       data: [],
-      note: 'No reliability data available. Run npm run seed:reliability to populate.',
+      note: 'No reliability data available yet. GTFS-RT reliability seeding is not wired in this environment.',
     });
   }
 

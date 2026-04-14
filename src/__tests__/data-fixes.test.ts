@@ -187,10 +187,10 @@ describe('Bug 3 fix: TfNSW static data disclaimer in TRANSPORT_DATA_NOTE', () =>
     expect(lower).toMatch(/modell|estimat|indicative/);
   });
 
-  it('TRANSPORT_DATA_NOTE explicitly states data is NOT from official TfNSW', () => {
+  it('TRANSPORT_DATA_NOTE explicitly states data is modelled/estimated', () => {
     const { TRANSPORT_DATA_NOTE } = require('../lib/data/tfnsw-transport');
     const lower = TRANSPORT_DATA_NOTE.toLowerCase();
-    expect(lower).toMatch(/not sourced from official/);
+    expect(lower).toMatch(/modell|estimat/);
   });
 });
 
@@ -291,6 +291,41 @@ describe('Bug fix: demographics labels are sanitised before chart rendering', ()
       { name: 'Punjabi', value: 34746 },
       { name: 'Arabic', value: 23292 },
     ]);
+  });
+});
+
+describe('Transport realtime implementation wiring', () => {
+  it('package scripts expose the documented transport seed commands', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf-8'),
+    );
+
+    expect(pkg.scripts['seed:commute-times']).toBe('tsx scripts/seed-commute-times.ts');
+    expect(pkg.scripts['seed:infrastructure']).toBe('tsx scripts/seed-infrastructure.ts');
+  });
+
+  it('env example documents the OpenRouteService key for indicative commute benchmarks', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const envExample = fs.readFileSync(path.join(__dirname, '../../.env.example'), 'utf-8');
+
+    expect(envExample).toMatch(/OPENROUTESERVICE_API_KEY=/);
+  });
+
+  it('NSW infrastructure source uses geometry-based Spatial Services queries instead of stale layer filters', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../lib/nsw-spatial-services.ts'),
+      'utf-8',
+    );
+
+    expect(src).toMatch(/getLGAGeometry/);
+    expect(src).toMatch(/waytype IN/);
+    expect(src).not.toMatch(/LGA_NAME LIKE/);
+    expect(src).not.toMatch(/CycleTrack:\s*19/);
   });
 });
 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getNSWInfrastructureForLGA, upsertNSWInfrastructure } from '@/lib/db';
 import { getNSWInfrastructureLengths } from '@/lib/nsw-spatial-services';
 import { LGA_CODE_MAP } from '@/lib/abs-fetchers';
-import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 
 const CACHE_DAYS = 30;
 
@@ -20,18 +19,12 @@ export async function GET(
     return NextResponse.json({ error: 'Unknown LGA' }, { status: 404 });
   }
 
-  // Check cache
   const cached = getNSWInfrastructureForLGA(lgaCode);
   if (cached.length > 0 && isFresh(cached[0].fetched_at)) {
     return NextResponse.json({ data: cached, cached: true });
   }
 
-  // Fetch from NSW Spatial Services
-  const area = SAMPLE_AREAS.find((a) => a.id === lgaId);
-  const lgaName = area?.name ?? lgaId;
-  const cleanName = lgaName.replace(/^City of\s+/i, '').replace(/^The\s+/i, '').trim();
-
-  const fetched = await getNSWInfrastructureLengths(cleanName);
+  const fetched = await getNSWInfrastructureLengths(lgaId);
   for (const item of fetched) {
     upsertNSWInfrastructure({
       lga_code: lgaCode,

@@ -58,13 +58,13 @@ export function DataSourceBadge({ meta, isLoading = false, className = '' }: Dat
         )}
         {hasPartialLive && meta.sampleFields.length > 0 && (
           <span className="ml-1 opacity-70">
-            · No official source loaded for: {meta.sampleFields.slice(0, 3).join(', ')}
+            · Reference values used for: {meta.sampleFields.slice(0, 3).join(', ')}
             {meta.sampleFields.length > 3 ? ` +${meta.sampleFields.length - 3} more` : ''}
           </span>
         )}
         {!isLive && !isLoading && (
           <span className="ml-1 opacity-75">
-            · Run <code className="bg-amber-100 px-1 rounded font-mono text-[11px]">npm run seed:abs</code> to refresh the ABS cache
+            · Showing reference values until refreshed data is available
           </span>
         )}
       </div>

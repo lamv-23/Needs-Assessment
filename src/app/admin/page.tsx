@@ -390,16 +390,6 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* How to run manually */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm">
-          <h3 className="font-semibold text-amber-800 mb-2">💡 Running from terminal (recommended for first-time setup)</h3>
-          <div className="space-y-1 text-amber-700 font-mono text-xs">
-            <p>npm run seed              # Seed all static data + fetch ABS (~15 min)</p>
-            <p>npm run seed -- --static  # Seed static data only (~5 sec)</p>
-            <p>npm run seed -- --abs     # Fetch all ABS data (~15 min)</p>
-            <p>npm run seed -- --lga lga_sydney  # Fetch one LGA only</p>
-          </div>
-        </div>
 
       </div>
     </div>

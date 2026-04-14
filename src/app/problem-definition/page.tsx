@@ -581,7 +581,7 @@ export default function ProblemDefinitionPage() {
           {carTrendChange === null && (
             <FindingCallout severity="info" heading="Trend data covers one census year only">
               Mode share trend analysis requires at least two census years of data. Only 2021 data is
-              available for {area.name}. Run <code>npm run seed:abs</code> to fetch 2011 and 2016 census data.
+              available for {area.name}. Historical census data for 2011 and 2016 may not yet be loaded for this area.
             </FindingCallout>
           )}
           {carTrendChange !== null && carTrendChange > 2 && (

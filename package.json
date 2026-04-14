@@ -18,6 +18,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "seed:gtfs": "tsx scripts/seed-gtfs.ts",
+    "seed:commute-times": "tsx scripts/seed-commute-times.ts",
+    "seed:infrastructure": "tsx scripts/seed-infrastructure.ts",
     "seed:osm-stops": "tsx scripts/seed-osm-stops.ts",
     "migrate:postgres": "tsx scripts/migrate-to-postgres.ts",
     "worker:refresh": "tsx scripts/run-refresh-worker.ts",

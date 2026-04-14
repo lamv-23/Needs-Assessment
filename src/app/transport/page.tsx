@@ -10,7 +10,7 @@ import NeedsLineChart from '@/components/charts/LineChart';
 import StackedBar from '@/components/charts/StackedBar';
 import NeedsRadarChart, { type RadarDataPoint } from '@/components/charts/RadarChart';
 import { useAppStore } from '@/store';
-import { getTransportMetricsForArea, getLatestTransportMetrics, TRANSPORT_DATA_NOTE } from '@/lib/data/tfnsw-transport';
+import { getTransportMetricsForArea, getLatestTransportMetrics } from '@/lib/data/tfnsw-transport';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
 import { Clock, Train, Car, Bus, TrendingDown } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
@@ -47,7 +47,6 @@ export default function TransportPage() {
   const liveCrashTrend = data.crashTrend ?? [];
   const hasLiveTraffic = liveTrafficTrend.length > 0;
   const hasLiveCrash = liveCrashTrend.length > 0;
-  const hasPatronageSource = Boolean(data.patronageSource);
   const latestTrafficPoint = hasLiveTraffic ? liveTrafficTrend[liveTrafficTrend.length - 1] : null;
 
   // ── Realtime transport intelligence ───────────────────────────────────────
@@ -139,13 +138,13 @@ export default function TransportPage() {
             icon={Clock}
             label="Average Commute Time"
             value={data.avgCommute !== null ? `${data.avgCommute} min` : 'N/A'}
-            subtitle={data.avgCommute !== null ? 'Official source loaded' : 'No official commute-time source integrated'}
+            subtitle={data.avgCommute !== null ? 'Latest available value' : 'Not available for this area yet'}
           />
           <StatCard
             icon={Train}
             label="PT Patronage"
             value={data.ptPatronage !== null ? formatNumber(data.ptPatronage) : 'N/A'}
-            subtitle={data.ptPatronage !== null ? 'Official source loaded' : 'No official patronage API integrated'}
+            subtitle={data.ptPatronage !== null ? 'Latest available value' : 'Shown when published for this area'}
           />
           <StatCard
             icon={Car}
@@ -192,17 +191,9 @@ export default function TransportPage() {
           {hasTfnswData && (
             <div className="lg:col-span-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <span className="mt-0.5 shrink-0">⚠</span>
-              <span>{TRANSPORT_DATA_NOTE}</span>
-            </div>
-          )}
-
-          {hasPatronageSource && (
-            <div className="lg:col-span-2 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-              <span className="mt-0.5 shrink-0">i</span>
               <span>
-                Official TfNSW patronage visualisation detected for this area context. The app now links to the
-                published TfNSW feed, but numeric patronage tables are still exposed by TfNSW as a Tableau view
-                rather than a structured API response.
+                Some trend charts below use published estimates to show direction over time. Use them as a guide
+                alongside the official source badges above.
               </span>
             </div>
           )}
@@ -210,7 +201,7 @@ export default function TransportPage() {
           {hasLiveTraffic && (
             <ChartWrapper
               title="Official Road Traffic Counts"
-              subtitle={`TfNSW traffic volume API · ${latestTrafficPoint?.stationCount ?? 0} stations matched in ${area.name}`}
+              subtitle={`${latestTrafficPoint?.stationCount ?? 0} nearby count sites matched in ${area.name}`}
               className="lg:col-span-2"
               data={liveTrafficTrend.map((point) => ({
                 year: point.year,
@@ -235,7 +226,7 @@ export default function TransportPage() {
           {hasLiveCrash && (
             <ChartWrapper
               title="Crash Trend by Year"
-              subtitle="Official NSW Crash Data workbook aggregated by LGA"
+              subtitle="Annual crash totals for this area"
               className="lg:col-span-2"
               data={liveCrashTrend.map((point) => ({
                 year: point.year,
@@ -265,7 +256,7 @@ export default function TransportPage() {
           {hasTfnswData && (
             <ChartWrapper
               title="Mode Share Trends (2019-2026)"
-              subtitle="TfNSW Transport Metrics — Modelled trend estimates"
+              subtitle="Estimated travel mode mix over time"
               className="lg:col-span-2"
               data={tfnswMetrics.map(m => ({
                 year: m.year,
@@ -321,7 +312,7 @@ export default function TransportPage() {
           {hasTfnswData && (
             <ChartWrapper
               title="Average Commute Time (2019-2026)"
-              subtitle="TfNSW data — minutes one way"
+              subtitle="Estimated one-way travel time"
               className="lg:col-span-2"
               data={tfnswMetrics.map(m => ({
                 year: m.year,
@@ -390,7 +381,7 @@ export default function TransportPage() {
           <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-slate-800">Live &amp; Recent Transport Intelligence</h2>
-              <p className="text-xs text-slate-500 mt-0.5">TfNSW Open Data · ABS · NSW Spatial Services · NSW Centre for Road Safety</p>
+              <p className="text-xs text-slate-500 mt-0.5">Recent travel patterns, infrastructure and safety indicators for this area</p>
             </div>
             {realtimeLoading && <span className="text-xs text-slate-400 animate-pulse">Loading…</span>}
           </div>
@@ -403,8 +394,8 @@ export default function TransportPage() {
                 title="PT vs Car Commute Time"
                 subtitle={
                   commuteTimes.length > 0
-                    ? `To ${commuteTimes[0]?.destination?.replace(/_/g, ' ')} — TfNSW timetable (PT) · OpenStreetMap routing (others, indicative)`
-                    : 'Fetch in progress — call /api/transport/commute-times/' + areaId + ' to seed'
+                    ? `Typical travel time to ${commuteTimes[0]?.destination?.replace(/_/g, ' ')}`
+                    : 'Travel time information will appear here when available'
                 }
                 data={commuteTimes.map((c) => ({ name: c.mode, value: c.duration_minutes ?? 0 }))}
                 dataKeys={['value']}
@@ -413,7 +404,7 @@ export default function TransportPage() {
                   <div className="flex items-center justify-center h-48 text-sm text-slate-400">
                     {realtimeLoading
                       ? 'Loading commute times…'
-                      : `No commute time data cached. Call /api/transport/commute-times/${areaId} to seed.`}
+                      : 'Commute time information is not available for this area yet.'}
                   </div>
                 ) : (
                   <NeedsBarChart
@@ -430,15 +421,13 @@ export default function TransportPage() {
               {/* Visual 2: PT On-Time Performance by Hour */}
               <ChartWrapper
                 title="PT On-Time Performance by Hour"
-                subtitle="% of scheduled services running ≤5 min late · TfNSW GTFS-RT"
+                subtitle="Share of services arriving within 5 minutes of schedule"
                 data={reliabilityData.map((r) => ({ name: `${r.hour_of_day}:00`, 'On Time': r.pct_on_time ?? 0 }))}
                 dataKeys={['On Time']}
               >
                 {reliabilityData.length === 0 ? (
                   <div className="flex items-center justify-center h-48 text-sm text-slate-400">
-                    No reliability data yet. Run{' '}
-                    <code className="mx-1 px-1 bg-slate-100 rounded font-mono text-xs">npm run seed:reliability</code>{' '}
-                    to populate.
+                    Reliability information is not available for this area yet.
                   </div>
                 ) : (
                   <StackedBar
@@ -466,13 +455,13 @@ export default function TransportPage() {
               {/* Visual 3: Active Transport Infrastructure */}
               <ChartWrapper
                 title="Active Transport Infrastructure"
-                subtitle="NSW Spatial Services — authoritative government GIS data"
+                subtitle="Walking and cycling links mapped for this area"
                 data={infraData.map((i) => ({ name: i.feature_type, value: i.total_length_km ?? 0 }))}
                 dataKeys={['value']}
               >
                 {infraData.length === 0 ? (
                   <div className="flex items-center justify-center h-48 text-sm text-slate-400">
-                    {realtimeLoading ? 'Loading infrastructure data…' : 'No infrastructure data cached yet.'}
+                    {realtimeLoading ? 'Loading infrastructure data…' : 'Infrastructure information is not available yet.'}
                   </div>
                 ) : (
                   <NeedsBarChart
@@ -492,7 +481,7 @@ export default function TransportPage() {
               {/* Visual 4: PT Stop Density vs Mode Share */}
               <ChartWrapper
                 title="PT Stop Density vs Mode Share"
-                subtitle="Relationship between PT infrastructure supply and adoption · TfNSW GTFS + ABS Census 2021"
+                subtitle="How stop coverage compares with public transport use"
                 data={[{ name: area.name, stops: ptStopDensity, modeShare: ptModeShare }]}
                 dataKeys={['stops', 'modeShare']}
               >
@@ -522,7 +511,7 @@ export default function TransportPage() {
               {/* Visual 5: Traffic Volume vs Population Growth Index */}
               <ChartWrapper
                 title="Traffic Volume vs Population Growth"
-                subtitle={`Indexed to ${trafficPopData[0]?.year ?? 'baseline'} = 100 · TfNSW Traffic Counts + ABS ERP`}
+                subtitle={`Indexed to ${trafficPopData[0]?.year ?? 'baseline'} = 100`}
                 className="lg:col-span-2"
                 data={trafficPopData}
                 dataKeys={['Traffic Index']}
@@ -530,8 +519,7 @@ export default function TransportPage() {
               >
                 {trafficPopData.length === 0 ? (
                   <div className="flex items-center justify-center h-48 text-sm text-slate-400">
-                    No traffic trend data available for {area.name}. Run{' '}
-                    <code className="mx-1 px-1 bg-slate-100 rounded font-mono text-xs">npm run seed:abs</code>.
+                    Traffic trend data is not available for {area.name} yet.
                   </div>
                 ) : (
                   <NeedsLineChart
@@ -548,7 +536,7 @@ export default function TransportPage() {
               {/* Visual 6: Road Safety — Crash Trend by Severity */}
               <ChartWrapper
                 title="Road Safety — Crash Trend by Severity"
-                subtitle="NSW Centre for Road Safety · Annual crashes per LGA"
+                subtitle="Annual crashes by severity"
                 className="lg:col-span-2"
                 data={liveCrashTrend.map((p) => ({
                   name: String(p.year),
@@ -583,16 +571,14 @@ export default function TransportPage() {
               {/* Visual 7: Projected Transport Demand vs PT Capacity */}
               <ChartWrapper
                 title="Projected Transport Demand vs PT Capacity"
-                subtitle="NSW DPE population projections × current PT mode share · Capacity estimated from GTFS routes"
+                subtitle="Indicative comparison of projected demand and current network capacity"
                 className="lg:col-span-2"
                 data={[]}
                 dataKeys={[]}
               >
                 {(data.ptRoutes?.total ?? 0) === 0 ? (
                   <div className="flex items-center justify-center h-48 text-sm text-slate-400">
-                    Run{' '}
-                    <code className="mx-1 px-1 bg-slate-100 rounded font-mono text-xs">npm run seed:abs</code>{' '}
-                    and ensure GTFS is seeded to see demand projections.
+                    Demand projections will appear here when enough route and growth data is available.
                   </div>
                 ) : (() => {
                   const ptShareFrac = ptModeShare / 100;
@@ -606,11 +592,11 @@ export default function TransportPage() {
                     'Current Capacity Est. (000s trips/yr)': Math.round(ptCapEst * 365 / 1000),
                   }));
                   return (
-                    <>
-                      <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 mb-3">
-                        <span>⚠</span>
-                        <span>Capacity is a rough estimate based on GTFS route count × estimated frequency. Demand uses proxy population growth rates. For accurate projections, load NSW DPE data via the Growth page.</span>
-                      </div>
+                      <>
+                        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 mb-3">
+                          <span>⚠</span>
+                          <span>This is a high-level estimate designed to highlight whether demand may outpace current service levels.</span>
+                        </div>
                       <NeedsLineChart
                         data={demandGapData}
                         dataKeys={['Projected Demand (000s trips/yr)', 'Current Capacity Est. (000s trips/yr)']}

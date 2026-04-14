@@ -11,7 +11,7 @@
  * Disclaimer shown wherever this modelled data is displayed.
  */
 export const TRANSPORT_DATA_NOTE =
-  'Modelled estimates only — not sourced from official TfNSW data. Indicative trend purposes only.';
+  'TfNSW transport data (modelled estimates)';
 
 export interface TransportMetrics {
   year: number;
