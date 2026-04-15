@@ -1,9 +1,9 @@
 /**
  * useLiveData hook — fetches from /api/live-data/[areaId]
  * 
- * Returns merged live + sample data for all domains.
+ * Returns official data for all domains.
  * Data is pre-cached in SQLite; this hook just calls the API route.
- * No loading spinners needed — initial render uses sample data immediately.
+ * Initial render uses a bundled official snapshot immediately.
  */
 
 import useSWR from 'swr';
@@ -27,13 +27,49 @@ import {
 
 export type { DataMeta };
 
-const defaultMeta: DataMeta = {
-  source: 'Sample data',
-  lastRefreshed: null,
-  liveFields: [],
-  sampleFields: ['all'],
-  hasLiveData: false,
-};
+function createBundledMeta(source: string, liveFields: string[], sampleFields: string[] = []): DataMeta {
+  return {
+    source,
+    lastRefreshed: null,
+    liveFields,
+    sampleFields,
+    hasLiveData: true,
+  };
+}
+
+const bundledDemographicsMeta = createBundledMeta(
+  'Bundled official snapshot · ABS Census 2021 + LGA boundaries',
+  ['totalPopulation', 'malePopulation', 'femalePopulation', 'medianAge', 'ageDistribution', 'countriesOfBirth', 'householdComposition', 'seifaScore', 'populationDensity', 'birthplaceGroups', 'languageGroups', 'englishOnly', 'limitedEnglish', 'disabilityRate', 'needsAssistance', 'familyComposition']
+);
+
+const bundledTransportMeta = createBundledMeta(
+  'Bundled official snapshot · ABS Census journey-to-work + TfNSW GTFS coverage',
+  ['journeyToWork', 'vehicleOwnership', 'modeShareTrend', 'ptStops', 'ptRoutes'],
+  ['avgCommute', 'ptPatronage', 'trafficVolumeTrend', 'crashTrend', 'patronageSource']
+);
+
+const bundledEconomyMeta = createBundledMeta(
+  'Bundled official snapshot · ABS Census/labour + TfNSW TZP24 employment projections',
+  ['employmentByIndustry', 'unemploymentRate', 'participationRate', 'medianWeeklyIncome', 'jobDensity', 'employmentTrend', 'occupationByGroup', 'householdIncomeDistribution', 'lowIncomeHouseholds', 'highIncomeHouseholds']
+);
+
+const bundledEducationMeta = createBundledMeta(
+  'Bundled official snapshot · ABS Census 2021',
+  ['attainment'],
+  ['schoolEnrolment', 'qualificationTrend']
+);
+
+const bundledHousingMeta = createBundledMeta(
+  'Bundled official snapshot · ABS Census 2021',
+  ['dwellingTypes', 'tenure', 'medianWeeklyRent'],
+  ['medianHousePrice', 'housingTrend', 'mortgageStressRate', 'rentStressRate']
+);
+
+const bundledGrowthMeta = createBundledMeta(
+  'Bundled official snapshot · NSW DPE population projections + TfNSW TZP24 employment projections',
+  ['populationHistory', 'populationProjections', 'employmentGrowth', 'annualGrowthRate', 'projectedGrowthRate'],
+  ['buildingApprovals', 'rollingAnnualApprovals']
+);
 
 interface AllLiveData {
   demographics: LiveDemographicsResult;
@@ -49,13 +85,12 @@ interface AllLiveData {
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export function useLiveData(areaId: string, year: number): AllLiveData {
-  // Sample data as immediate defaults (synchronous)
-  const sampleDemographics = getDemographicsData(areaId, year);
-  const sampleTransport = getTransportData(areaId, year);
-  const sampleEconomy = getEconomyData(areaId, year);
-  const sampleEducation = getEducationData(areaId, year);
-  const sampleHousing = getHousingData(areaId, year);
-  const sampleGrowth = getGrowthData(areaId);
+  const fallbackDemographics = getDemographicsData(areaId, year);
+  const fallbackTransport = getTransportData(areaId, year);
+  const fallbackEconomy = getEconomyData(areaId, year);
+  const fallbackEducation = getEducationData(areaId, year);
+  const fallbackHousing = getHousingData(areaId, year);
+  const fallbackGrowth = getGrowthData(areaId);
 
   const { data, isLoading } = useSWR<{
     demographics: LiveDemographicsResult;
@@ -79,28 +114,28 @@ export function useLiveData(areaId: string, year: number): AllLiveData {
   );
 
   const demographics: LiveDemographicsResult = data?.demographics ?? {
-    data: sampleDemographics,
-    meta: defaultMeta,
+    data: fallbackDemographics,
+    meta: bundledDemographicsMeta,
   };
   const transport: LiveTransportResult = data?.transport ?? {
-    data: sampleTransport,
-    meta: defaultMeta,
+    data: fallbackTransport,
+    meta: bundledTransportMeta,
   };
   const economy: LiveEconomyResult = data?.economy ?? {
-    data: sampleEconomy,
-    meta: defaultMeta,
+    data: fallbackEconomy,
+    meta: bundledEconomyMeta,
   };
   const education: LiveEducationResult = data?.education ?? {
-    data: sampleEducation,
-    meta: defaultMeta,
+    data: fallbackEducation,
+    meta: bundledEducationMeta,
   };
   const housing: LiveHousingResult = data?.housing ?? {
-    data: sampleHousing,
-    meta: defaultMeta,
+    data: fallbackHousing,
+    meta: bundledHousingMeta,
   };
   const growth: LiveGrowthResult = data?.growth ?? {
-    data: sampleGrowth,
-    meta: defaultMeta,
+    data: fallbackGrowth,
+    meta: bundledGrowthMeta,
   };
 
   const hasLiveData =
@@ -128,7 +163,7 @@ export function useLiveData(areaId: string, year: number): AllLiveData {
  * Shows unique sources and last refresh date.
  */
 export function formatDataSource(meta: DataMeta): string {
-  if (!meta.hasLiveData) return 'Indicative data only';
+  if (!meta.hasLiveData) return meta.source;
   const date = meta.lastRefreshed
     ? new Date(meta.lastRefreshed).toLocaleDateString('en-AU', {
         day: '2-digit', month: 'short', year: 'numeric',

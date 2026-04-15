@@ -17,7 +17,7 @@ export default function EconomyPage() {
   const areaId = selectedArea?.id ?? 'lga_sydney';
   const year = selectedYear;
 
-  const { economy: { data, meta } } = useLiveData(areaId, year);
+  const { economy: { data, meta }, isLoading } = useLiveData(areaId, year);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -25,7 +25,7 @@ export default function EconomyPage() {
 
       <main className="p-6 space-y-6">
         {/* Data source attribution — always visible */}
-        <DataSourceBadge meta={meta} />
+        <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -45,9 +45,9 @@ export default function EconomyPage() {
             subtitle={meta.liveFields.includes('medianWeeklyIncome') ? 'ABS 2021 Census' : 'Indicative'}
           />
           <StatCard
-            label="Job Density"
-            value={data.jobDensity.toFixed(2)}
-            subtitle="Jobs per resident worker (indicative)"
+            label="Employment Density"
+            value={data.jobDensity !== null ? data.jobDensity.toFixed(2) : 'N/A'}
+            subtitle={data.jobDensity !== null ? 'Jobs per km² (TZP24 jobs + LGA boundaries)' : 'No official density available'}
           />
           {data.employmentTrend.length > 0 && (
             <StatCard

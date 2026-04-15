@@ -11,6 +11,7 @@ import MapRenderer from '@/components/maps/MapRenderer';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import { useAppStore } from '@/store';
 import { useLiveData } from '@/hooks/useLiveData';
+import { buildLanguageChartData } from '@/lib/data/demographics-helpers';
 import { METRICS, enrichGeoJSONWithMetric, getMetricColorScheme, type MetricKey } from '@/lib/data/demographic-indicators';
 import { formatNumber, CHART_COLORS } from '@/lib/utils';
 import { Users, Calendar, ShieldCheck, MapPin, Accessibility } from 'lucide-react';
@@ -28,7 +29,8 @@ export default function DemographicsPage() {
   const year = selectedYear;
 
   // Live data — reads from SQLite cache, falls back to sample data per field
-  const { demographics: { data, meta } } = useLiveData(areaId, year);
+  const { demographics: { data, meta }, isLoading } = useLiveData(areaId, year);
+  const languageChartData = buildLanguageChartData(data.languageGroups, data.englishOnly, 10);
 
   // Load and enrich GeoJSON on metric change
   useEffect(() => {
@@ -54,7 +56,7 @@ export default function DemographicsPage() {
 
       <div className="p-6 space-y-6">
         {/* Data source attribution — always visible */}
-        <DataSourceBadge meta={meta} />
+        <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -79,8 +81,8 @@ export default function DemographicsPage() {
           <StatCard
             icon={MapPin}
             label="Population Density"
-            value={formatNumber(data.populationDensity)}
-            subtitle="Persons per km² (indicative)"
+            value={data.populationDensity !== null ? formatNumber(data.populationDensity) : 'N/A'}
+            subtitle={data.populationDensity !== null ? 'Persons per km² (official boundary-derived)' : 'No official boundary-derived density available'}
           />
         </div>
 
@@ -140,11 +142,11 @@ export default function DemographicsPage() {
           <ChartWrapper
             title="Country of Birth"
             subtitle="Top countries of birth for residents"
-            data={data.countriesOfBirth}
+            data={data.countriesOfBirth.filter(country => country.name !== 'Other countries')}
             dataKeys={['value']}
           >
             <NeedsPieChart
-              data={data.countriesOfBirth}
+              data={data.countriesOfBirth.filter(country => country.name !== 'Other countries')}
               colors={CHART_COLORS}
               showLabels
               height={350}
@@ -168,23 +170,17 @@ export default function DemographicsPage() {
             />
           </ChartWrapper>
 
-          {/* Language Spoken at Home — only shown when ABS G20 data is available */}
-          {(data.languageGroups?.length ?? 0) > 0 && (
+          {/* Language Spoken at Home — only shown when ABS G13 data is available */}
+          {languageChartData.length > 0 && (
             <ChartWrapper
               title="Language Spoken at Home"
-              subtitle="Top 10 languages — number of residents (ABS Census 2021)"
+              subtitle="Top languages spoken at home — number of residents (ABS Census 2021)"
               className="lg:col-span-2"
-              data={[...data.languageGroups!]
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10)
-                .map(l => ({ name: l.name, value: l.count }))}
+              data={languageChartData}
               dataKeys={['value']}
             >
               <NeedsBarChart
-                data={[...data.languageGroups!]
-                  .sort((a, b) => b.count - a.count)
-                  .slice(0, 10)
-                  .map(l => ({ name: l.name, value: l.count }))}
+                data={languageChartData}
                 dataKeys={['value']}
                 colors={[CHART_COLORS[3]]}
                 layout="horizontal"

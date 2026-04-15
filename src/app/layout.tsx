@@ -3,6 +3,7 @@ import './globals.css';
 import { Outfit } from 'next/font/google';
 import Sidebar from '@/components/layout/Sidebar';
 import MainLayout from '@/components/layout/MainLayout';
+import MobileNav from '@/components/layout/MobileNav';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className="antialiased font-outfit">
         <Sidebar />
         <MainLayout>{children}</MainLayout>
+        <MobileNav />
       </body>
     </html>
   );

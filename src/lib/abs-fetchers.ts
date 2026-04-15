@@ -16,7 +16,9 @@
  *   G51  → C21_G53_LGA  : SEXP × INDP × QALLP (A-S ANZSIC division codes)
  *   G55  → null         : No ABS SDMX endpoint for Census journey-to-work at LGA
  *   G46  → C21_G16_LGA  : SEXP × HSCP × AGEP (1=Yr12, 2=Yr11, 3=Yr10, 4=Yr9, 5=Yr8-, 6=none)
+ *   G15  → C21_G15_LGA  : TYSTAP × SEXP (education institution attending by type)
  *   G49  → C21_G49_LGA  : SEXP × QALLP × AGEP (1=postgrad, 2=grad_dip, 3=bach, 51=adv_dip, 4=cert3/4)
+ *   G49_2016 → ABS_C16_G49_LGA : OCCP_C16 × SEX_ABS × QALLP_C16 (historical qualifications)
  *   SEIFA→ ABS_SEIFA2021_LGA: LGA_2021 × SEIFAINDEXTYPE × SEIFA_MEASURE=SCORE
  *   LABOUR→ C21_G46_LGA : SEXP × LFSP × AGEP (1=FT emp, 2=PT emp, 3=away, 4=unemp, 5+=NILF)
  *   ERP  → ABS_ANNUAL_ERP_LGA2021: LGA_2021 × SEX_ABS × AGE=TOT (multi-year)
@@ -479,6 +481,14 @@ export interface G33Data {
   totalDwellings: number;
 }
 
+export interface HistoricalDwellingStructureData {
+  separateHouse: number;
+  semiDetached: number;
+  flatOrApartment: number;
+  other: number;
+  totalDwellings: number;
+}
+
 export async function fetchG33(lgaCode: string): Promise<G33Data | null> {
   // C21_G36_LGA: Dwelling structure by LGA
   // DWTSTRD codes (confirmed from ABS API):
@@ -509,6 +519,41 @@ export async function fetchG33(lgaCode: string): Promise<G33Data | null> {
     flatOrApartment: Math.round(flatApt),
     other: Math.round(other),
     totalDwellings: Math.round(total),
+  };
+}
+
+export async function fetchB31_2011(lgaCode: string): Promise<HistoricalDwellingStructureData | null> {
+  // ABS_CENSUS2011_B31_LGA: Dwelling Structure (LGA)
+  // STRD codes from CL_C11_STRD:
+  //   1  = Separate house total
+  //   2  = Semi-detached / row / terrace / townhouse total
+  //   3  = Flat / unit / apartment total
+  //   9  = Other dwelling total
+  //   OPD = Total occupied private dwellings
+  // MEASURE=D filters to dwelling counts.
+  const url = `${ABS_BASE}/ABS_CENSUS2011_B31_LGA?startPeriod=2011&endPeriod=2011&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+
+  const data = parseSdmxXml(xml);
+
+  const get = (code: string) =>
+    lookupValue(data, { STRD: code, MEASURE: 'D', REGION: lgaCode }, '2011') ?? 0;
+
+  const separateHouse = get('1');
+  const semiDetached = get('2');
+  const flatOrApartment = get('3');
+  const other = get('9');
+  const totalDwellings = get('OPD') || (separateHouse + semiDetached + flatOrApartment + other);
+
+  if (totalDwellings === 0) return null;
+
+  return {
+    separateHouse: Math.round(separateHouse),
+    semiDetached: Math.round(semiDetached),
+    flatOrApartment: Math.round(flatOrApartment),
+    other: Math.round(other),
+    totalDwellings: Math.round(totalDwellings),
   };
 }
 
@@ -818,6 +863,58 @@ export async function fetchG46(lgaCode: string): Promise<EducationData | null> {
   };
 }
 
+// ─── G15: Education Institution Attending ─────────────────────────────────────
+
+export interface SchoolAttendanceData {
+  preschool: number;
+  primary: number;
+  secondary: number;
+  vocational: number;
+  university: number;
+  other: number;
+  total: number;
+}
+
+export async function fetchG15(lgaCode: string): Promise<SchoolAttendanceData | null> {
+  // C21_G15_LGA: Type of education institution attending × sex by LGA
+  // TYSTAP codes (confirmed from ABS metadata):
+  //   10 = Preschool
+  //   2  = Primary - Total
+  //   3  = Secondary - Total
+  //   4  = Vocational education (incl. TAFE/private providers) - Total
+  //   5  = University or other higher education - Total
+  //   7  = Other - Total
+  //   _T = Total
+  const url = `${ABS_BASE}/C21_G15_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+
+  const data = parseSdmxXml(xml);
+
+  const get = (code: string) =>
+    lookupValue(data, { TYSTAP: code, SEXP: '3', REGION: lgaCode }, '2021') ?? 0;
+
+  const preschool = get('10');
+  const primary = get('2');
+  const secondary = get('3');
+  const vocational = get('4');
+  const university = get('5');
+  const other = get('7');
+  const total = get('_T');
+
+  if (total === 0) return null;
+
+  return {
+    preschool: Math.round(preschool),
+    primary: Math.round(primary),
+    secondary: Math.round(secondary),
+    vocational: Math.round(vocational),
+    university: Math.round(university),
+    other: Math.round(other),
+    total: Math.round(total),
+  };
+}
+
 // ─── G49: Non-School Qualifications ──────────────────────────────────────────
 
 export interface QualificationData {
@@ -830,6 +927,32 @@ export interface QualificationData {
   no_qualification: number;
   not_stated: number;
   total: number;
+}
+
+function buildQualificationData(parts: {
+  postgrad: number;
+  grad_diploma: number;
+  bachelor: number;
+  adv_diploma: number;
+  cert3_4: number;
+  cert1_2: number;
+  no_qualification: number;
+  not_stated: number;
+  total: number;
+}): QualificationData | null {
+  if (parts.total === 0) return null;
+
+  return {
+    postgrad: Math.round(parts.postgrad),
+    grad_diploma: Math.round(parts.grad_diploma),
+    bachelor: Math.round(parts.bachelor),
+    adv_diploma: Math.round(parts.adv_diploma),
+    cert3_4: Math.round(parts.cert3_4),
+    cert1_2: Math.round(parts.cert1_2),
+    no_qualification: Math.round(parts.no_qualification),
+    not_stated: Math.round(parts.not_stated),
+    total: Math.round(parts.total),
+  };
 }
 
 export async function fetchG49(lgaCode: string): Promise<QualificationData | null> {
@@ -863,19 +986,42 @@ export async function fetchG49(lgaCode: string): Promise<QualificationData | nul
   const ns   = get('_N');
   const total = get('_T');
 
-  if (total === 0) return null;
+  return buildQualificationData({
+    postgrad: pg,
+    grad_diploma: gd,
+    bachelor: bach,
+    adv_diploma: adv,
+    cert3_4: c34,
+    cert1_2: c12,
+    no_qualification: nq,
+    not_stated: ns,
+    total,
+  });
+}
 
-  return {
-    postgrad:         Math.round(pg),
-    grad_diploma:     Math.round(gd),
-    bachelor:         Math.round(bach),
-    adv_diploma:      Math.round(adv),
-    cert3_4:          Math.round(c34),
-    cert1_2:          Math.round(c12),
-    no_qualification: Math.round(nq),
-    not_stated:       Math.round(ns),
-    total:            Math.round(total),
-  };
+export async function fetchG49_2016(lgaCode: string): Promise<QualificationData | null> {
+  // ABS_C16_G49_LGA: Non-school qualification by occupation by sex (2016)
+  // Use OCCP_C16=Z (all occupations) and SEX_ABS=3 (persons).
+  const url = `${ABS_BASE}/ABS_C16_G49_LGA?startPeriod=2016&endPeriod=2016&dimensionAtObservation=AllDimensions`;
+  const xml = await fetchWithRetry(url);
+  if (!xml) return null;
+
+  const data = parseSdmxXml(xml);
+
+  const get = (code: string) =>
+    lookupValue(data, { QALLP_C16: code, SEX_ABS: '3', OCCP_C16: 'Z', LGA_2016: lgaCode }, '2016') ?? 0;
+
+  return buildQualificationData({
+    postgrad: get('1'),
+    grad_diploma: get('2'),
+    bachelor: get('3'),
+    adv_diploma: get('51'),
+    cert3_4: get('4'),
+    cert1_2: get('52'),
+    no_qualification: get('0'),
+    not_stated: get('_N'),
+    total: get('TOT'),
+  });
 }
 
 // ─── G34: Number of Motor Vehicles ────────────────────────────────────────────
@@ -975,6 +1121,103 @@ export async function fetchG62(lgaCode: string): Promise<G55Data | null> {
     walked:        Math.round(walked),
     worked_home:   Math.round(worked_home),
     other:         Math.round(other_raw),
+    total:         Math.round(total),
+  };
+}
+
+// ─── G59: 2016 Census Method of Travel to Work (ABS_C16_G59_LGA) ─────────────
+//
+// Dataset: ABS_C16_G59_LGA — Census 2016 LGA G59 Method of Travel to Work by Sex
+// Dimension: MTWP_C16 (region dim: LGA_2016, sex dim: SEX_ABS)
+//
+// Confirmed MTWP_C16 codes (verified against Sydney LGA 17200):
+//   6   = car, as driver
+//   2   = car, as passenger
+//   233 = train (hierarchical: all trips using train)
+//   234 = bus (hierarchical: all trips using bus)
+//   232 = ferry/tram/light rail (hierarchical)
+//   5   = bicycle only
+//   10  = walked only
+//   14  = worked at home
+//   TOT = total workers (grand total)
+//
+// Module-level cache: parse the 21MB dataset once, reuse across all LGA calls.
+let _g59Data: Map<string, number> | null = null;
+
+export async function fetchG59_2016(lgaCode: string): Promise<G55Data | null> {
+  if (!_g59Data) {
+    const url = `${ABS_BASE}/ABS_C16_G59_LGA?startPeriod=2016&endPeriod=2016&dimensionAtObservation=AllDimensions`;
+    const xml = await fetchWithRetry(url);
+    if (!xml) return null;
+    _g59Data = parseSdmxXml(xml);
+  }
+
+  const get = (mtwp: string) =>
+    lookupValue(_g59Data!, { MTWP_C16: mtwp, SEX_ABS: '3', LGA_2016: lgaCode }, '2016')
+    ?? sumValues(_g59Data!, { MTWP_C16: mtwp, LGA_2016: lgaCode }, '2016');
+
+  const total = get('TOT');
+  if (!total || total === 0) return null;
+
+  return {
+    car_driver:    Math.round(get('6')   ?? 0),
+    car_passenger: Math.round(get('2')   ?? 0),
+    train:         Math.round(get('233') ?? 0),
+    bus:           Math.round(get('234') ?? 0),
+    ferry:         Math.round(get('232') ?? 0),
+    tram:          0,
+    bicycle:       Math.round(get('5')   ?? 0),
+    walked:        Math.round(get('10')  ?? 0),
+    worked_home:   Math.round(get('14')  ?? 0),
+    other:         0,
+    total:         Math.round(total),
+  };
+}
+
+// ─── B46: 2011 Census Method of Travel to Work (ABS_CENSUS2011_B46_LGA) ──────
+//
+// Dataset: ABS_CENSUS2011_B46_LGA — Census 2011 LGA B46 Method of Travel to Work by Sex
+// Dimension: MTWP (zero-padded), region dim: REGION (with REGIONTYPE=LGA2011), MEASURE=3 (persons total)
+//
+// Confirmed MTWP codes (verified against Sydney REGION 17200):
+//   006 = car, as driver
+//   002 = car, as passenger
+//   233 = train (hierarchical)
+//   234 = bus (hierarchical)
+//   232 = ferry/tram/light rail (hierarchical)
+//   005 = bicycle only
+//   010 = walked only
+//   TOT = total workers (grand total)
+//
+// Module-level cache: parse the 24MB dataset once, reuse across all LGA calls.
+let _b46Data: Map<string, number> | null = null;
+
+export async function fetchB46_2011(lgaCode: string): Promise<G55Data | null> {
+  if (!_b46Data) {
+    const url = `${ABS_BASE}/ABS_CENSUS2011_B46_LGA?startPeriod=2011&endPeriod=2011&dimensionAtObservation=AllDimensions`;
+    const xml = await fetchWithRetry(url);
+    if (!xml) return null;
+    _b46Data = parseSdmxXml(xml);
+  }
+
+  const get = (mtwp: string) =>
+    lookupValue(_b46Data!, { MTWP: mtwp, MEASURE: '3', REGION: lgaCode }, '2011')
+    ?? sumValues(_b46Data!, { MTWP: mtwp, REGION: lgaCode }, '2011');
+
+  const total = get('TOT');
+  if (!total || total === 0) return null;
+
+  return {
+    car_driver:    Math.round(get('006') ?? 0),
+    car_passenger: Math.round(get('002') ?? 0),
+    train:         Math.round(get('233') ?? 0),
+    bus:           Math.round(get('234') ?? 0),
+    ferry:         Math.round(get('232') ?? 0),
+    tram:          0,
+    bicycle:       Math.round(get('005') ?? 0),
+    walked:        Math.round(get('010') ?? 0),
+    worked_home:   0,
+    other:         0,
     total:         Math.round(total),
   };
 }
@@ -1091,9 +1334,17 @@ const LANP_LABELS: Record<string, string> = {
   '7101': 'Mandarin',
   '4202': 'Arabic',
   '7201': 'Cantonese',
+  '7104': 'Cantonese',
   '9201': 'Vietnamese',
   '5101': 'Hindi',
+  '5107': 'Urdu',
+  '5203': 'Punjabi',
+  '6301': 'Korean',
+  '6402': 'Thai',
+  '6504': 'Indonesian',
+  '6902': 'Tamil',
   '3101': 'Greek',
+  '3106': 'Spanish',
   '9101': 'Tagalog / Filipino',
   '9401': 'Korean',
   '4601': 'Italian',
@@ -1107,11 +1358,122 @@ const LANP_LABELS: Record<string, string> = {
   '8101': 'Portuguese',
 };
 
+function isDetailedAbsCode(code: string): boolean {
+  return /^\d{4}$/.test(code);
+}
+
+function sanitiseNamedGroups(
+  groups: Array<{ name: string; code: string; count: number }>,
+  labels: Record<string, string>,
+  otherLabel: string,
+): Array<{ name: string; code: string; count: number }> {
+  const known: Array<{ name: string; code: string; count: number }> = [];
+  let otherCount = 0;
+
+  for (const group of groups) {
+    if (group.count <= 0) continue;
+    const code = String(group.code);
+
+    if (!isDetailedAbsCode(code)) {
+      otherCount += group.count;
+      continue;
+    }
+
+    const label = labels[code];
+    if (!label) {
+      otherCount += group.count;
+      continue;
+    }
+
+    known.push({
+      name: label,
+      code,
+      count: Math.round(group.count),
+    });
+  }
+
+  known.sort((a, b) => b.count - a.count);
+
+  if (otherCount > 0) {
+    known.push({
+      name: otherLabel,
+      code: 'other',
+      count: Math.round(otherCount),
+    });
+  }
+
+  known.sort((a, b) => b.count - a.count);
+
+  return known;
+}
+
+function selectTopDetailedNamedGroups(
+  entries: Array<[string, number]>,
+  labels: Record<string, string>,
+  otherLabel: string,
+  limit: number,
+  excludedCodes: string[] = []
+): Array<{ name: string; code: string; count: number }> {
+  const excluded = new Set(excludedCodes);
+  const labelledDetailed = entries
+    .filter(([code, count]) => count > 0 && !excluded.has(code) && isDetailedAbsCode(code) && Boolean(labels[code]))
+    .sort((a, b) => b[1] - a[1]);
+
+  const topDetailed = labelledDetailed.slice(0, limit);
+  const selectedCodes = new Set(topDetailed.map(([code]) => code));
+
+  const groups = topDetailed.map(([code, count]) => ({
+    name: labels[code],
+    code,
+    count: Math.round(count),
+  }));
+
+  let otherCount = 0;
+  for (const [code, count] of entries) {
+    if (count <= 0 || excluded.has(code)) continue;
+    if (!isDetailedAbsCode(code) || !labels[code] || !selectedCodes.has(code)) {
+      otherCount += count;
+    }
+  }
+
+  if (otherCount > 0) {
+    groups.push({
+      name: otherLabel,
+      code: 'other',
+      count: Math.round(otherCount),
+    });
+  }
+
+  groups.sort((a, b) => b.count - a.count);
+  return groups;
+}
+
 export interface LanguageData {
   englishOnly: number;
   languageGroups: { name: string; code: string; count: number }[];
   limitedEnglish: number; // speaks a LOTE and English not well/not at all
   total: number;
+}
+
+export function sanitiseLanguageGroups(
+  groups: Array<{ name: string; code: string; count: number }>
+): Array<{ name: string; code: string; count: number }> {
+  return sanitiseNamedGroups(groups, LANP_LABELS, 'Other languages');
+}
+
+export function selectTopDetailedLanguageGroups(
+  languageEntries: Array<[string, number]>,
+  limit = 12
+): Array<{ name: string; code: string; count: number }> {
+  return selectTopDetailedNamedGroups(languageEntries, LANP_LABELS, 'Other languages', limit, ['1201']);
+}
+
+export function normaliseLanguageData(data: LanguageData): LanguageData {
+  const entries = data.languageGroups.map(group => [String(group.code), Number(group.count) || 0] as [string, number]);
+  return {
+    ...data,
+    languageGroups: selectTopDetailedLanguageGroups(entries, 12),
+  };
 }
 
 export async function fetchG13(lgaCode: string): Promise<LanguageData | null> {
@@ -1145,16 +1507,7 @@ export async function fetchG13(lgaCode: string): Promise<LanguageData | null> {
   const limitedEnglish = sumValues(data, { SEXP: '3', ENGLP: '4', REGION: lgaCode }, '2021')
     + sumValues(data, { SEXP: '3', ENGLP: '5', REGION: lgaCode }, '2021');
 
-  const sorted = Array.from(langCounts.entries())
-    .filter(([code]) => code !== '1201')
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12);
-
-  const languageGroups = sorted.map(([code, count]) => ({
-    name:  LANP_LABELS[code] ?? `Language ${code}`,
-    code,
-    count: Math.round(count),
-  }));
+  const languageGroups = selectTopDetailedLanguageGroups(Array.from(langCounts.entries()));
 
   return {
     englishOnly:     Math.round(englishOnly),
@@ -1201,6 +1554,27 @@ export interface BirthplaceData {
   total: number;
 }
 
+export function sanitiseBirthplaceGroups(
+  groups: Array<{ name: string; code: string; count: number }>
+): Array<{ name: string; code: string; count: number }> {
+  return sanitiseNamedGroups(groups, BPLP_LABELS, 'Other countries');
+}
+
+export function selectTopDetailedBirthplaceGroups(
+  birthplaceEntries: Array<[string, number]>,
+  limit = 15
+): Array<{ name: string; code: string; count: number }> {
+  return selectTopDetailedNamedGroups(birthplaceEntries, BPLP_LABELS, 'Other countries', limit, ['1101']);
+}
+
+export function normaliseBirthplaceData(data: BirthplaceData): BirthplaceData {
+  const entries = data.birthplaceGroups.map(group => [String(group.code), Number(group.count) || 0] as [string, number]);
+  return {
+    ...data,
+    birthplaceGroups: selectTopDetailedBirthplaceGroups(entries, 15),
+  };
+}
+
 export async function fetchG09(lgaCode: string): Promise<BirthplaceData | null> {
   const url = `${ABS_BASE}/C21_G09_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
@@ -1227,15 +1601,7 @@ export async function fetchG09(lgaCode: string): Promise<BirthplaceData | null> 
   const bornAustralia = bplpCounts.get('1101') ?? 0;
   const bornOverseas  = total - bornAustralia;
 
-  const sorted = Array.from(bplpCounts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15);
-
-  const birthplaceGroups = sorted.map(([code, count]) => ({
-    name:  BPLP_LABELS[code] ?? `Country ${code}`,
-    code,
-    count: Math.round(count),
-  }));
+  const birthplaceGroups = selectTopDetailedBirthplaceGroups(Array.from(bplpCounts.entries()));
 
   return {
     birthplaceGroups,
@@ -1395,40 +1761,64 @@ export async function fetchHousingStress(lgaCode: string): Promise<HousingStress
 }
 
 // ─── Building Approvals ───────────────────────────────────────────────────────
-// ABS Building Approvals — monthly data at LGA level (non-Census dataset).
-// Endpoint is speculative; returns null gracefully if unavailable.
+// ABS Building Approvals small-area datasets:
+//   BA_LGA2024 → monthly LGA approvals for 2024/25
+//   BA_LGA2025 → monthly LGA approvals for 2025/26 FYTD
+//
+// Datastructure confirmed from live ABS API:
+//   MEASURE=1      → Number of dwelling units
+//   SECTOR=9       → Total sectors
+//   WORK_TYPE=TOT  → Total work
+//   BUILDING_TYPE=100 → Total Residential
+//
+// We use keyed SDMX queries per LGA to avoid downloading the entire national
+// small-area cube, which is too large to decode safely in Node.
 
 export interface BuildingApprovalsData {
   periods: { year: number; month: number; residentialCount: number }[];
   rollingAnnualDwellings: number;
 }
 
-export async function fetchBuildingApprovals(lgaCode: string): Promise<BuildingApprovalsData | null> {
-  const url = `${ABS_BASE}/ABS_BA_LGA?startPeriod=2022-01&endPeriod=2024-12&dimensionAtObservation=AllDimensions`;
-  const xml = await fetchWithRetry(url);
-  if (!xml) return null;
-  const data = parseSdmxXml(xml);
-
+function parseTimeSeriesXml(xml: string): BuildingApprovalsData['periods'] {
   const periods: BuildingApprovalsData['periods'] = [];
-  for (const [key, value] of Array.from(data.entries())) {
-    const kd = parseKey(key);
-    const region = kd['LGA_2021'] ?? kd['REGION'];
-    if (region !== lgaCode) continue;
-    const measure = kd['MEASURE'] ?? kd['BA_ITEM'] ?? kd['SERIES'];
-    // Residential dwelling approvals (adjust measure code based on actual API)
-    if (measure && !['1', 'TOTAL_DWELLINGS', 'DWELL'].includes(measure)) continue;
-    const tp = kd['TIME_PERIOD'] ?? '';
-    const parts = tp.split('-');
-    if (parts.length < 2) continue;
-    const year = parseInt(parts[0]);
-    const month = parseInt(parts[1]);
-    if (isNaN(year) || isNaN(month)) continue;
-    periods.push({ year, month, residentialCount: Math.round(value) });
+  const obsRegex = /<(?:\w+:)?Obs>[\s\S]*?<(?:\w+:)?ObsDimension[^>]*value="(\d{4})-(\d{2})"[^>]*\/>[\s\S]*?<(?:\w+:)?ObsValue[^>]*value="(-?\d+(?:\.\d+)?)"[^>]*\/>[\s\S]*?<\/(?:\w+:)?Obs>/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = obsRegex.exec(xml)) !== null) {
+    periods.push({
+      year: Number(match[1]),
+      month: Number(match[2]),
+      residentialCount: Math.round(Number(match[3])),
+    });
   }
+
+  return periods;
+}
+
+async function fetchBuildingApprovalsSeries(
+  datasetId: 'BA_LGA2024' | 'BA_LGA2025',
+  regionType: 'LGA2024' | 'LGA2025',
+  lgaCode: string,
+  startPeriod: string,
+): Promise<BuildingApprovalsData['periods']> {
+  const key = `1.9.TOT.100.${regionType}.${lgaCode}.M`;
+  const xml = await fetchWithRetry(`${ABS_BASE}/${datasetId}/${key}?startPeriod=${startPeriod}`);
+  if (!xml) return [];
+  return parseTimeSeriesXml(xml);
+}
+
+export async function fetchBuildingApprovals(lgaCode: string): Promise<BuildingApprovalsData | null> {
+  const periods = (
+    await Promise.all([
+      fetchBuildingApprovalsSeries('BA_LGA2024', 'LGA2024', lgaCode, '2024-07'),
+      fetchBuildingApprovalsSeries('BA_LGA2025', 'LGA2025', lgaCode, '2025-07'),
+    ])
+  )
+    .flat()
+    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
 
   if (periods.length === 0) return null;
 
-  periods.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
   const rollingAnnualDwellings = periods.slice(-12).reduce((s, p) => s + p.residentialCount, 0);
 
   return { periods, rollingAnnualDwellings };
@@ -1441,11 +1831,14 @@ export interface AllABSData {
   g01: G01Data | null;
   g02: G02Data | null;
   g33: G33Data | null;
+  b31_2011: HistoricalDwellingStructureData | null;
   g36: G36Data | null;
   g51: G51Data | null;
   g55: G55Data | null;
   g46: EducationData | null;
+  g15: SchoolAttendanceData | null;
   g49: QualificationData | null;
+  g49_2016: QualificationData | null;
   seifa: SEIFAData | null;
   labour: LabourData | null;
   erp: ERPData | null;
@@ -1460,6 +1853,8 @@ export interface AllABSData {
   g60: OccupationData | null;
   housingStress: HousingStressData | null;
   buildingApprovals: BuildingApprovalsData | null;
+  g59: G55Data | null;  // 2016 JTW (ABS_C16_G59_LGA)
+  b46: G55Data | null;  // 2011 JTW (ABS_CENSUS2011_B46_LGA)
 }
 
 export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData> {
@@ -1475,8 +1870,9 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
   await sleep(300);
 
   // Batch 2: Housing & employment
-  const [g33, g36, g51] = await Promise.all([
+  const [g33, b31_2011, g36, g51] = await Promise.all([
     fetchG33(lgaCode).catch(() => null),
+    fetchB31_2011(lgaCode).catch(() => null),
     fetchG36(lgaCode).catch(() => null),
     fetchG51(lgaCode).catch(() => null),
   ]);
@@ -1484,9 +1880,10 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
   await sleep(300);
 
   // Batch 3: Transport, education, labour
-  const [g55, g46, g49, labour, erp] = await Promise.all([
+  const [g55, g46, g15, g49, labour, erp] = await Promise.all([
     fetchG55(lgaCode).catch(() => null),
     fetchG46(lgaCode).catch(() => null),
+    fetchG15(lgaCode).catch(() => null),
     fetchG49(lgaCode).catch(() => null),
     fetchLabour(lgaCode).catch(() => null),
     fetchERP(lgaCode).catch(() => null),
@@ -1514,8 +1911,19 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
     fetchBuildingApprovals(lgaCode).catch(() => null),
   ]);
 
+  await sleep(300);
+
+  // Batch 6: Historical JTW for mode share trend (2016 and 2011) plus
+  // historical qualification datasets for education trend charts.
+  const [g59, b46, g49_2016] = await Promise.all([
+    fetchG59_2016(lgaCode).catch(() => null),
+    fetchB46_2011(lgaCode).catch(() => null),
+    fetchG49_2016(lgaCode).catch(() => null),
+  ]);
+
   return {
-    lgaCode, g01, g02, g33, g36, g51, g55, g46, g49, seifa, labour, erp,
+    lgaCode, g01, g02, g33, b31_2011, g36, g51, g55, g46, g15, g49, g49_2016, seifa, labour, erp,
     g34, g62, g18, g33Income, g13, g09, g25, g60, housingStress, buildingApprovals,
+    g59, b46,
   };
 }

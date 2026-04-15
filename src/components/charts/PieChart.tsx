@@ -21,6 +21,8 @@ interface PieChartProps {
   showLabels?: boolean;
   innerRadius?: number;
   height?: number;
+  labelMode?: 'percent' | 'value';
+  valueSuffix?: string;
 }
 
 interface LabelProps {
@@ -30,6 +32,7 @@ interface LabelProps {
   innerRadius: number;
   outerRadius: number;
   percent: number;
+  value: number;
 }
 
 const RADIAN = Math.PI / 180;
@@ -41,7 +44,8 @@ function renderCustomLabel({
   innerRadius,
   outerRadius,
   percent,
-}: LabelProps) {
+  value,
+}: LabelProps, labelMode: 'percent' | 'value', valueSuffix: string) {
   if (percent < 0.03) return null;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -58,7 +62,7 @@ function renderCustomLabel({
       fontWeight={600}
       fontFamily="Inter, system-ui, sans-serif"
     >
-      {`${(percent * 100).toFixed(1)}%`}
+      {labelMode === 'value' ? `${value.toFixed(1)}${valueSuffix}` : `${(percent * 100).toFixed(1)}%`}
     </text>
   );
 }
@@ -69,7 +73,11 @@ export default function PieChart({
   showLabels = true,
   innerRadius = 0,
   height = 400,
+  labelMode = 'percent',
+  valueSuffix = '',
 }: PieChartProps) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RechartsPieChart>
@@ -81,7 +89,7 @@ export default function PieChart({
           outerRadius="80%"
           dataKey="value"
           nameKey="name"
-          label={showLabels ? renderCustomLabel : false}
+          label={showLabels ? (props: LabelProps) => renderCustomLabel(props, labelMode, valueSuffix) : false}
           labelLine={false}
         >
           {data.map((_, index) => (
@@ -92,7 +100,13 @@ export default function PieChart({
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number) => value.toLocaleString()}
+          formatter={(value: number) => {
+            if (labelMode === 'percent') {
+              const percent = total > 0 ? (value / total) * 100 : 0;
+              return `${percent.toFixed(1)}%`;
+            }
+            return `${value.toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: valueSuffix ? 1 : 0 })}${valueSuffix}`;
+          }}
           contentStyle={CHART_TOOLTIP_STYLE}
         />
         <Legend wrapperStyle={{ fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12 }} />

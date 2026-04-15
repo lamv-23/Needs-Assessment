@@ -2,9 +2,11 @@
 
 import Header from '@/components/layout/Header';
 import ProjectionUploadPanel from '@/components/admin/ProjectionUploadPanel';
+import { useProjectSync } from '@/hooks/useProjectSync';
 import { useProjectionStore } from '@/store/projectionStore';
 
 export default function UploadPage() {
+  const { syncStatus, currentProjectId } = useProjectSync();
   const { projectionMetadata } = useProjectionStore();
 
   return (
@@ -15,6 +17,11 @@ export default function UploadPage() {
       />
 
       <div className="p-6 max-w-2xl">
+        {currentProjectId && (
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+            Projection uploads are syncing to the active server project. Status: <span className="font-medium capitalize">{syncStatus}</span>
+          </div>
+        )}
         <div className="bg-white rounded-lg shadow p-6">
           <ProjectionUploadPanel />
         </div>

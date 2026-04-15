@@ -4,16 +4,19 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  createDefaultProjectionUploadDraft,
+  type ProjectionUploadDraft,
+} from '@/lib/persistence/project-state';
 import type { PopulationProjection, ProjectionDataSet } from '@/lib/excel-parser';
 
-interface ProjectionStore {
+interface ProjectionStore extends ProjectionUploadDraft {
   // State
-  populationProjections: PopulationProjection[];
-  projectionMetadata: ProjectionDataSet | null;
   isImporting: boolean;
   importError: string | null;
 
   // Actions
+  replaceDraft: (draft: ProjectionUploadDraft) => void;
   setProjections: (projections: PopulationProjection[], metadata: ProjectionDataSet) => void;
   clearProjections: () => void;
   setImporting: (isImporting: boolean) => void;
@@ -26,13 +29,23 @@ interface ProjectionStore {
   getAvailableYears: () => number[];
 }
 
+function getInitialState(): ProjectionUploadDraft {
+  return createDefaultProjectionUploadDraft();
+}
+
 export const useProjectionStore = create<ProjectionStore>()(
   persist(
     (set, get) => ({
-      populationProjections: [],
-      projectionMetadata: null,
+      ...getInitialState(),
       isImporting: false,
       importError: null,
+
+      replaceDraft: (draft) => {
+        set({
+          ...draft,
+          importError: null,
+        });
+      },
 
       setProjections: (projections, metadata) => {
         set({
@@ -44,8 +57,7 @@ export const useProjectionStore = create<ProjectionStore>()(
 
       clearProjections: () => {
         set({
-          populationProjections: [],
-          projectionMetadata: null,
+          ...getInitialState(),
           importError: null,
         });
       },

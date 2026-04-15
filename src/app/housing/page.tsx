@@ -8,7 +8,7 @@ import NeedsPieChart from '@/components/charts/PieChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useAppStore } from '@/store';
 import { formatCurrency, CHART_COLORS } from '@/lib/utils';
-import { Home, DollarSign, Building2, Key } from 'lucide-react';
+import { DollarSign, Building2, Key } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 
@@ -19,7 +19,7 @@ export default function HousingPage() {
   const areaId = area.id;
   const year = selectedYear;
 
-  const { housing: { data, meta } } = useLiveData(areaId, year);
+  const { housing: { data, meta }, isLoading } = useLiveData(areaId, year);
 
   // Find the top dwelling type and top tenure type by value
   const topDwelling = data.dwellingTypes.reduce((max, d) => (d.value > max.value ? d : max), data.dwellingTypes[0]);
@@ -34,21 +34,15 @@ export default function HousingPage() {
 
       <div className="p-6 space-y-6">
         {/* Data source attribution — always visible */}
-        <DataSourceBadge meta={meta} />
+        <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <StatCard
             icon={DollarSign}
             label="Median Weekly Rent"
             value={formatCurrency(data.medianWeeklyRent)}
             subtitle={meta.liveFields.includes('medianWeeklyRent') ? 'ABS 2021 Census' : 'Per week (indicative)'}
-          />
-          <StatCard
-            icon={Home}
-            label="Median House Price"
-            value={formatCurrency(data.medianHousePrice)}
-            subtitle="Indicative"
           />
           <StatCard
             icon={Building2}
@@ -78,6 +72,8 @@ export default function HousingPage() {
               colors={CHART_COLORS}
               showLabels
               height={350}
+              labelMode="value"
+              valueSuffix="%"
             />
           </ChartWrapper>
 
@@ -93,6 +89,8 @@ export default function HousingPage() {
               colors={CHART_COLORS.slice(4)}
               showLabels
               height={350}
+              labelMode="value"
+              valueSuffix="%"
             />
           </ChartWrapper>
 
@@ -123,22 +121,24 @@ export default function HousingPage() {
           )}
 
           {/* Housing Stock Trend - full width */}
-          <ChartWrapper
-            title="Housing Stock Trend"
-            subtitle="Change in housing stock over census years"
-            className="lg:col-span-2"
-            data={data.housingTrend}
-            dataKeys={['houses', 'apartments', 'townhouses']}
-            xAxisKey="year"
-          >
-            <NeedsLineChart
+          {data.housingTrend.length > 0 && (
+            <ChartWrapper
+              title="Housing Stock Trend"
+              subtitle="Change in housing stock over census years"
+              className="lg:col-span-2"
               data={data.housingTrend}
               dataKeys={['houses', 'apartments', 'townhouses']}
-              colors={[CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2]]}
               xAxisKey="year"
-              height={350}
-            />
-          </ChartWrapper>
+            >
+              <NeedsLineChart
+                data={data.housingTrend}
+                dataKeys={['houses', 'apartments', 'townhouses']}
+                colors={[CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[2]]}
+                xAxisKey="year"
+                height={350}
+              />
+            </ChartWrapper>
+          )}
         </div>
       </div>
     </div>

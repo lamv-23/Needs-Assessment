@@ -1,19 +1,14 @@
 /**
  * Live data merge layer.
  * 
- * Reads from SQLite cache (seeded by `npm run seed`), falls back to sample data
- * on a field-by-field basis. Returns the same types as sample-data.ts so all
- * page components remain type-safe with zero changes.
+ * Reads from SQLite cache (seeded by `npm run seed`) and falls back to a
+ * bundled official snapshot where available.
  * 
  * Each function also returns a `meta` object describing which fields are live
  * vs. sample, and the data source + collection date for attribution.
  */
 
-import {
-  getABSCacheEntry,
-  getNSWProjection,
-  getTransportStaticForLGA,
-} from '../db';
+import { getLiveDataRepository, getSeedWriteRepository } from '@/lib/repositories';
 import {
   getDemographicsData,
   getTransportData,
@@ -29,6 +24,7 @@ import {
   type GrowthData,
 } from './sample-data';
 import { getProjectionsForArea } from './nsw-projections-data';
+import { getLiveTfNSWTransportData } from '../tfnsw-api';
 import {
   getEmploymentProjections,
   type EmploymentProjection,
@@ -36,9 +32,15 @@ import {
 import { LGA_CODE_MAP } from '../abs-fetchers';
 import type {
   G01Data, G02Data, G33Data, G36Data, G51Data, G55Data, SEIFAData, LabourData, ERPData,
-  EducationData as G46Data, QualificationData,
+  EducationData as G46Data, SchoolAttendanceData, QualificationData, HistoricalDwellingStructureData,
   VehicleData, DisabilityData, HouseholdIncomeData, LanguageData, BirthplaceData,
   FamilyData, OccupationData, HousingStressData, BuildingApprovalsData,
+} from '../abs-fetchers';
+import {
+  normaliseBirthplaceData,
+  normaliseLanguageData,
+  sanitiseBirthplaceGroups,
+  sanitiseLanguageGroups,
 } from '../abs-fetchers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,9 +52,9 @@ export interface DataMeta {
   lastRefreshed: string | null;
   /** Fields populated from live data */
   liveFields: string[];
-  /** Fields populated from sample/estimated data */
+  /** Fields not currently backed by the loaded official payload */
   sampleFields: string[];
-  /** Whether any live data was found */
+  /** Whether any official data was found */
   hasLiveData: boolean;
 }
 
@@ -87,20 +89,37 @@ function getLGACode(areaId: string): string | null {
   return LGA_CODE_MAP[areaId] ?? null;
 }
 
-function getABS<T>(lgaCode: string, dataset: string): T | null {
-  const row = getABSCacheEntry(lgaCode, dataset);
-  if (!row) return null;
+function parseCachedJson<T>(json: string, context: string): T | null {
   try {
-    return JSON.parse(row.data_json) as T;
-  } catch {
+    return JSON.parse(json) as T;
+  } catch (error) {
+    console.error(`Failed to parse cached JSON for ${context}:`, error);
     return null;
   }
 }
 
-function getABSMeta(lgaCode: string, dataset: string): { fetchedAt: string; censusYear: number } | null {
-  const row = getABSCacheEntry(lgaCode, dataset);
+async function getABS<T>(
+  lgaCode: string,
+  dataset: string,
+  normalise?: (data: T) => T
+): Promise<T | null> {
+  const row = await getLiveDataRepository().getABSCacheEntry(lgaCode, dataset);
   if (!row) return null;
-  return { fetchedAt: row.fetched_at, censusYear: row.census_year };
+  const parsed = parseCachedJson<T>(row.dataJson, `ABS dataset ${dataset} (${lgaCode})`);
+  if (!parsed || !normalise) return parsed;
+
+  const normalised = normalise(parsed);
+  if (JSON.stringify(normalised) !== JSON.stringify(parsed)) {
+    await getSeedWriteRepository().upsertABSCache(lgaCode, dataset, normalised, row.year);
+  }
+
+  return normalised;
+}
+
+async function getABSMeta(lgaCode: string, dataset: string): Promise<{ fetchedAt: string; censusYear: number } | null> {
+  const row = await getLiveDataRepository().getABSCacheEntry(lgaCode, dataset);
+  if (!row) return null;
+  return { fetchedAt: row.fetchedAt, censusYear: row.year };
 }
 
 function buildMeta(
@@ -110,7 +129,7 @@ function buildMeta(
   sampleFields: string[]
 ): DataMeta {
   return {
-    source: sources.filter(Boolean).join('; ') || 'Sample data',
+    source: sources.filter(Boolean).join('; ') || 'Bundled official snapshot',
     lastRefreshed: fetchedAt,
     liveFields,
     sampleFields,
@@ -120,7 +139,7 @@ function buildMeta(
 
 // ─── Demographics ─────────────────────────────────────────────────────────────
 
-export function getLiveDemographicsData(areaId: string, year: number): LiveDemographicsResult {
+export async function getLiveDemographicsData(areaId: string, year: number): Promise<LiveDemographicsResult> {
   const sample = getDemographicsData(areaId, year);
   const lgaCode = getLGACode(areaId);
 
@@ -131,10 +150,10 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
     };
   }
 
-  const g01 = getABS<G01Data>(lgaCode, 'G01');
-  const g02 = getABS<G02Data>(lgaCode, 'G02');
-  const seifa = getABS<SEIFAData>(lgaCode, 'SEIFA');
-  const g01Meta = getABSMeta(lgaCode, 'G01');
+  const g01 = await getABS<G01Data>(lgaCode, 'G01');
+  const g02 = await getABS<G02Data>(lgaCode, 'G02');
+  const seifa = await getABS<SEIFAData>(lgaCode, 'SEIFA');
+  const g01Meta = await getABSMeta(lgaCode, 'G01');
 
   const liveFields: string[] = [];
   const sampleFields: string[] = [];
@@ -232,11 +251,15 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
   // Birthplace detail from G09 (replaces G01 binary born-overseas when available)
   let birthplaceGroups = sample.birthplaceGroups;
   if (lgaCode) {
-    const g09 = getABS<BirthplaceData>(lgaCode, 'G09');
-    if (g09 && g09.birthplaceGroups.length > 0) {
-      birthplaceGroups = g09.birthplaceGroups;
+    const g09 = await getABS<BirthplaceData>(lgaCode, 'G09', normaliseBirthplaceData);
+    const cleanedBirthplaceGroups = g09 ? sanitiseBirthplaceGroups(g09.birthplaceGroups) : [];
+    if (g09 && cleanedBirthplaceGroups.length > 0) {
+      birthplaceGroups = cleanedBirthplaceGroups;
       // Also update countriesOfBirth to use real counts from G09
-      countriesOfBirth = g09.birthplaceGroups.slice(0, 9).map(b => ({ name: b.name, value: b.count }));
+      countriesOfBirth = cleanedBirthplaceGroups
+        .filter(group => group.code !== 'other')
+        .slice(0, 9)
+        .map(b => ({ name: b.name, value: b.count }));
       liveFields.push('birthplaceGroups', 'countriesOfBirth');
       if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
     }
@@ -247,10 +270,11 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
   let englishOnly = sample.englishOnly;
   let limitedEnglish = sample.limitedEnglish;
   if (lgaCode) {
-    const g13 = getABS<LanguageData>(lgaCode, 'G13');
-    if (g13 && g13.languageGroups.length > 0) {
-      languageGroups = g13.languageGroups;
-      englishOnly = g13.englishOnly;
+    const g13 = await getABS<LanguageData>(lgaCode, 'G13', normaliseLanguageData);
+    const cleanedLanguageGroups = g13 ? sanitiseLanguageGroups(g13.languageGroups) : [];
+    if (g13 && cleanedLanguageGroups.length > 0) {
+      languageGroups = cleanedLanguageGroups;
+      englishOnly = g13.englishOnly > 0 ? g13.englishOnly : (g01?.speaksEnglishOnly ?? sample.englishOnly);
       limitedEnglish = g13.limitedEnglish;
       liveFields.push('languageGroups', 'englishOnly', 'limitedEnglish');
       if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
@@ -261,7 +285,7 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
   let disabilityRate = sample.disabilityRate;
   let needsAssistance = sample.needsAssistance;
   if (lgaCode) {
-    const g18 = getABS<DisabilityData>(lgaCode, 'G18');
+    const g18 = await getABS<DisabilityData>(lgaCode, 'G18');
     if (g18 && g18.total > 0) {
       disabilityRate = g18.rate;
       needsAssistance = g18.needsAssistance;
@@ -274,7 +298,7 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
   let familyComposition = sample.familyComposition;
   let householdComposition = sample.householdComposition;
   if (lgaCode) {
-    const g25 = getABS<FamilyData>(lgaCode, 'G25');
+    const g25 = await getABS<FamilyData>(lgaCode, 'G25');
     if (g25 && g25.totalHouseholds > 0) {
       familyComposition = [
         { name: 'Couple with children', value: g25.coupleWithChildren },
@@ -294,7 +318,6 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
     sampleFields.push('familyComposition');
   }
 
-  sampleFields.push(...(['populationDensity'].filter(f => !liveFields.includes(f))));
   if (!liveFields.includes('householdComposition')) sampleFields.push('householdComposition');
 
   return {
@@ -322,7 +345,7 @@ export function getLiveDemographicsData(areaId: string, year: number): LiveDemog
 
 // ─── Transport ────────────────────────────────────────────────────────────────
 
-export function getLiveTransportData(areaId: string, year: number): LiveTransportResult {
+export async function getLiveTransportData(areaId: string, year: number): Promise<LiveTransportResult> {
   const sample = getTransportData(areaId, year);
   const lgaCode = getLGACode(areaId);
 
@@ -334,10 +357,10 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
   // Try G62 first (correct MTWP table), then G55 as fallback
   let journeyToWork = sample.journeyToWork;
   if (lgaCode) {
-    const g62 = getABS<G55Data>(lgaCode, 'G62');
-    const g55 = g62 ?? getABS<G55Data>(lgaCode, 'G55');
+    const g62 = await getABS<G55Data>(lgaCode, 'G62');
+    const g55 = g62 ?? await getABS<G55Data>(lgaCode, 'G55');
     const jtw = g55;
-    const jtwMeta = getABSMeta(lgaCode, g62 ? 'G62' : 'G55');
+    const jtwMeta = await getABSMeta(lgaCode, g62 ? 'G62' : 'G55');
     if (jtw && jtw.total > 0) {
       const t = jtw.total;
       journeyToWork = [
@@ -361,58 +384,89 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
     sampleFields.push('journeyToWork');
   }
 
-  // Try bundled TfNSW transport data for mode share trend + avg commute
+  // Build mode share trend from real ABS Census JTW data (2011, 2016, 2021)
   let modeShareTrend = sample.modeShareTrend;
   let avgCommute = sample.avgCommute;
   let ptPatronage = sample.ptPatronage;
+  let trafficVolumeTrend = sample.trafficVolumeTrend;
+  let crashTrend = sample.crashTrend;
+  let patronageSource = sample.patronageSource;
 
-  // Map area ID to TfNSW LGA name
-  const AREA_TO_TFNSW: Record<string, string> = {
-    lga_sydney: 'Sydney',
-    lga_parramatta: 'Parramatta',
-    lga_newcastle: 'Newcastle',
-    lga_wollongong: 'Wollongong',
-    lga_albury: 'Albury',
-  };
-  const tfnswLGAName = AREA_TO_TFNSW[areaId];
+  if (lgaCode) {
+    const g62 = await getABS<G55Data>(lgaCode, 'G62');  // 2021 JTW
+    const g59 = await getABS<G55Data>(lgaCode, 'G59');  // 2016 JTW
+    const b46 = await getABS<G55Data>(lgaCode, 'B46');  // 2011 JTW
 
-  if (tfnswLGAName) {
-    const transportRows = getTransportStaticForLGA(tfnswLGAName);
-    if (transportRows.length > 0) {
-      // Build mode share trend from static TfNSW data
-      const trendRows = transportRows
-        .filter(r => [2019, 2021, 2023, 2024].includes(r.year))
-        .map(r => ({
-          year: r.year as number,
-          car: r.modeShareCar as number,
-          train: Math.max(0, ((r.modeSharePT as number) - 5) * 0.6),
-          bus: Math.max(0, ((r.modeSharePT as number) - 5) * 0.4 + 5),
-          active: r.modeShareActive as number,
-          wfh: r.year === 2021 ? 8 : 4,
-        }));
-      if (trendRows.length > 0) {
-        modeShareTrend = trendRows;
-        liveFields.push('modeShareTrend');
-      }
+    const toPoint = (jtw: G55Data, yr: number) => {
+      const t = jtw.total;
+      if (!t) return null;
+      return {
+        year: yr,
+        car:    Math.round(((jtw.car_driver + jtw.car_passenger) / t) * 1000) / 10,
+        train:  Math.round((jtw.train   / t) * 1000) / 10,
+        bus:    Math.round((jtw.bus     / t) * 1000) / 10,
+        active: Math.round(((jtw.bicycle + jtw.walked) / t) * 1000) / 10,
+        wfh:    Math.round((jtw.worked_home / t) * 1000) / 10,
+      };
+    };
 
-      // Get commute time for requested year or latest available
-      const yearRow = transportRows.find(r => r.year === year)
-        ?? transportRows[transportRows.length - 1];
-      if (yearRow) {
-        avgCommute = yearRow.averageCommuteTime as number;
-        ptPatronage = Math.round((yearRow.ptPatronagePerCapita as number) * 1000);
-        liveFields.push('avgCommute', 'ptPatronage');
-        if (!sources.includes('TfNSW Open Data')) sources.push('TfNSW Open Data');
-        if (!fetchedAt) fetchedAt = new Date().toISOString(); // static data, use now
-      }
+    const trendPoints = [
+      b46 ? toPoint(b46, 2011) : null,
+      g59 ? toPoint(g59, 2016) : null,
+      g62 ? toPoint(g62, 2021) : null,
+    ].filter(Boolean) as typeof modeShareTrend;
+
+    if (trendPoints.length > 0) {
+      modeShareTrend = trendPoints;
+      liveFields.push('modeShareTrend');
+      if (!sources.includes('ABS Census')) sources.push('ABS Census');
     }
+  }
+
+  if (lgaCode) {
+    const tfnswLive = await getLiveTfNSWTransportData(areaId);
+
+    if (tfnswLive.trafficTrend && tfnswLive.trafficTrend.length > 0) {
+      trafficVolumeTrend = tfnswLive.trafficTrend;
+      liveFields.push('trafficVolumeTrend');
+      if (!sources.includes('TfNSW Traffic Volume Counts API')) {
+        sources.push('TfNSW Traffic Volume Counts API');
+      }
+      if (!fetchedAt) fetchedAt = new Date().toISOString();
+    } else {
+      sampleFields.push('trafficVolumeTrend');
+    }
+
+    if (tfnswLive.crashTrend && tfnswLive.crashTrend.length > 0) {
+      crashTrend = tfnswLive.crashTrend;
+      liveFields.push('crashTrend');
+      if (!sources.includes('NSW Crash Data (TfNSW / Centre for Road Safety)')) {
+        sources.push('NSW Crash Data (TfNSW / Centre for Road Safety)');
+      }
+      if (!fetchedAt) fetchedAt = new Date().toISOString();
+    } else {
+      sampleFields.push('crashTrend');
+    }
+
+    if (tfnswLive.patronageSource) {
+      patronageSource = tfnswLive.patronageSource;
+      liveFields.push('patronageSource');
+      if (!sources.includes('TfNSW Patronage Visualisation')) {
+        sources.push('TfNSW Patronage Visualisation');
+      }
+      if (!fetchedAt) fetchedAt = tfnswLive.patronageSource.lastCheckedAt;
+    } else {
+      sampleFields.push('patronageSource');
+    }
+  } else {
+    sampleFields.push('trafficVolumeTrend', 'crashTrend', 'patronageSource');
   }
 
   // Vehicle ownership from G34
   let vehicleOwnership = sample.vehicleOwnership;
   let vehicleOwnershipRaw = sample.vehicleOwnershipRaw;
   if (lgaCode) {
-    const g34 = getABS<VehicleData>(lgaCode, 'G34');
+    const g34 = await getABS<VehicleData>(lgaCode, 'G34');
     if (g34 && g34.totalDwellings > 0) {
       const t = g34.totalDwellings;
       vehicleOwnership = [
@@ -434,6 +488,39 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
   if (!liveFields.includes('modeShareTrend')) sampleFields.push('modeShareTrend');
   if (!liveFields.includes('avgCommute')) sampleFields.push('avgCommute', 'ptPatronage');
 
+  // GTFS PT coverage from tfnsw_cache
+  let ptStops: TransportData['ptStops'];
+  let ptRoutes: TransportData['ptRoutes'];
+  if (lgaCode) {
+    const gtfs = await getLiveDataRepository().getTfNSWCacheEntry(lgaCode, 'GTFS_COVERAGE');
+    if (gtfs) {
+      const g = parseCachedJson<{
+        trainStops: number; busStops: number; ferryStops: number;
+        lightRailStops: number; metroStops: number; totalStops: number;
+        trainRoutes: number; busRoutes: number; ferryRoutes: number;
+        lightRailRoutes: number; metroRoutes: number; totalRoutes: number;
+      }>(gtfs.dataJson, `TfNSW dataset GTFS_COVERAGE (${lgaCode})`);
+      if (g) {
+        ptStops = {
+          train: g.trainStops, bus: g.busStops, ferry: g.ferryStops,
+          lightRail: g.lightRailStops, metro: g.metroStops, total: g.totalStops,
+        };
+        ptRoutes = {
+          train: g.trainRoutes, bus: g.busRoutes, ferry: g.ferryRoutes,
+          lightRail: g.lightRailRoutes, metro: g.metroRoutes, total: g.totalRoutes,
+        };
+        liveFields.push('ptStops', 'ptRoutes');
+        if (!sources.includes('TfNSW GTFS')) sources.push('TfNSW GTFS');
+      } else {
+        sampleFields.push('ptStops', 'ptRoutes');
+      }
+    } else {
+      sampleFields.push('ptStops', 'ptRoutes');
+    }
+  } else {
+    sampleFields.push('ptStops', 'ptRoutes');
+  }
+
   return {
     data: {
       ...sample,
@@ -443,6 +530,11 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
       modeShareTrend,
       avgCommute,
       ptPatronage,
+      trafficVolumeTrend,
+      crashTrend,
+      patronageSource,
+      ptStops,
+      ptRoutes,
     },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };
@@ -450,7 +542,7 @@ export function getLiveTransportData(areaId: string, year: number): LiveTranspor
 
 // ─── Economy ──────────────────────────────────────────────────────────────────
 
-export function getLiveEconomyData(areaId: string, year: number): LiveEconomyResult {
+export async function getLiveEconomyData(areaId: string, year: number): Promise<LiveEconomyResult> {
   const sample = getEconomyData(areaId, year);
   const lgaCode = getLGACode(areaId);
 
@@ -466,8 +558,8 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
 
   if (lgaCode) {
     // Labour market data
-    const labour = getABS<LabourData>(lgaCode, 'LABOUR');
-    const labourMeta = getABSMeta(lgaCode, 'LABOUR');
+    const labour = await getABS<LabourData>(lgaCode, 'LABOUR');
+    const labourMeta = await getABSMeta(lgaCode, 'LABOUR');
     if (labour) {
       unemploymentRate = labour.unemploymentRate;
       participationRate = labour.participationRate;
@@ -479,7 +571,7 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
     }
 
     // Median income from G02
-    const g02 = getABS<G02Data>(lgaCode, 'G02');
+    const g02 = await getABS<G02Data>(lgaCode, 'G02');
     if (g02?.medianWeeklyHouseholdIncome && g02.medianWeeklyHouseholdIncome > 0) {
       medianWeeklyIncome = g02.medianWeeklyHouseholdIncome;
       liveFields.push('medianWeeklyIncome');
@@ -489,8 +581,8 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
     }
 
     // Industry employment from G51
-    const g51 = getABS<G51Data>(lgaCode, 'G51');
-    const g51Meta = getABSMeta(lgaCode, 'G51');
+    const g51 = await getABS<G51Data>(lgaCode, 'G51');
+    const g51Meta = await getABSMeta(lgaCode, 'G51');
     if (g51 && g51.industries.length > 0) {
       const total = g51.totalEmployed;
       employmentByIndustry = g51.industries.slice(0, 10).map(ind => ({
@@ -534,7 +626,7 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
   // Occupation from G60
   let occupationByGroup = sample.occupationByGroup;
   if (lgaCode) {
-    const g60 = getABS<OccupationData>(lgaCode, 'G60');
+    const g60 = await getABS<OccupationData>(lgaCode, 'G60');
     if (g60 && g60.occupations.length > 0) {
       occupationByGroup = g60.occupations;
       liveFields.push('occupationByGroup');
@@ -547,7 +639,7 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
   let lowIncomeHouseholds = sample.lowIncomeHouseholds;
   let highIncomeHouseholds = sample.highIncomeHouseholds;
   if (lgaCode) {
-    const g33Inc = getABS<HouseholdIncomeData>(lgaCode, 'G33_INCOME');
+    const g33Inc = await getABS<HouseholdIncomeData>(lgaCode, 'G33_INCOME');
     if (g33Inc && g33Inc.total > 0) {
       householdIncomeDistribution = g33Inc.incomeRanges;
       lowIncomeHouseholds = g33Inc.lowIncomeHouseholds;
@@ -556,8 +648,6 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
       if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
     }
   }
-
-  sampleFields.push('jobDensity');
 
   return {
     data: {
@@ -578,7 +668,7 @@ export function getLiveEconomyData(areaId: string, year: number): LiveEconomyRes
 
 // ─── Education ────────────────────────────────────────────────────────────────
 
-export function getLiveEducationData(areaId: string, year: number): LiveEducationResult {
+export async function getLiveEducationData(areaId: string, year: number): Promise<LiveEducationResult> {
   const sample = getEducationData(areaId, year);
   const lgaCode = getLGACode(areaId);
 
@@ -588,13 +678,18 @@ export function getLiveEducationData(areaId: string, year: number): LiveEducatio
   let fetchedAt: string | null = null;
 
   let attainment = sample.attainment;
+  let schoolEnrolment = sample.schoolEnrolment;
+  let qualificationTrend = sample.qualificationTrend;
 
   if (lgaCode) {
     // G46: Highest year of school
-    const g46 = getABS<G46Data>(lgaCode, 'G46');
+    const g46 = await getABS<G46Data>(lgaCode, 'G46');
+    const g15 = await getABS<SchoolAttendanceData>(lgaCode, 'G15');
     // G49: Non-school qualifications
-    const g49 = getABS<QualificationData>(lgaCode, 'G49');
-    const g49Meta = getABSMeta(lgaCode, 'G49');
+    const g49 = await getABS<QualificationData>(lgaCode, 'G49');
+    const g49_2016 = await getABS<QualificationData>(lgaCode, 'G49_2016');
+    const g49Meta = await getABSMeta(lgaCode, 'G49');
+    const g15Meta = await getABSMeta(lgaCode, 'G15');
 
     if (g49 && g49.total > 0) {
       const t = g49.total;
@@ -625,21 +720,57 @@ export function getLiveEducationData(areaId: string, year: number): LiveEducatio
     } else {
       sampleFields.push('attainment');
     }
+
+    if (g15 && g15.total > 0) {
+      schoolEnrolment = [
+        { name: 'Preschool', value: g15.preschool },
+        { name: 'Primary school', value: g15.primary },
+        { name: 'Secondary school', value: g15.secondary },
+        { name: 'Vocational education', value: g15.vocational },
+        { name: 'University / higher education', value: g15.university },
+        { name: 'Other education', value: g15.other },
+      ].filter((entry) => entry.value > 0);
+
+      liveFields.push('schoolEnrolment');
+      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
+      fetchedAt = fetchedAt ?? g15Meta?.fetchedAt ?? null;
+    } else {
+      sampleFields.push('schoolEnrolment');
+    }
+
+    const qualificationYears = [
+      { year: 2016, data: g49_2016 },
+      { year: 2021, data: g49 },
+    ].filter((entry): entry is { year: number; data: QualificationData } => Boolean(entry.data && entry.data.total > 0));
+
+    if (qualificationYears.length > 0) {
+      qualificationTrend = qualificationYears.map(({ year: trendYear, data: trend }) => ({
+        year: trendYear,
+        bachelor: Math.round((trend.bachelor / trend.total) * 1000) / 10,
+        diploma: Math.round(((trend.grad_diploma + trend.adv_diploma) / trend.total) * 1000) / 10,
+        certificate: Math.round(((trend.cert3_4 + trend.cert1_2) / trend.total) * 1000) / 10,
+      }));
+
+      liveFields.push('qualificationTrend');
+      if (!sources.includes('ABS Census 2016, 2021')) {
+        sources.push('ABS Census 2016, 2021');
+      }
+    } else {
+      sampleFields.push('qualificationTrend');
+    }
   } else {
-    sampleFields.push('attainment');
+    sampleFields.push('attainment', 'schoolEnrolment', 'qualificationTrend');
   }
 
-  sampleFields.push('schoolEnrolment', 'qualificationTrend');
-
   return {
-    data: { ...sample, attainment },
+    data: { ...sample, attainment, schoolEnrolment, qualificationTrend },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };
 }
 
 // ─── Housing ──────────────────────────────────────────────────────────────────
 
-export function getLiveHousingData(areaId: string, year: number): LiveHousingResult {
+export async function getLiveHousingData(areaId: string, year: number): Promise<LiveHousingResult> {
   const sample = getHousingData(areaId, year);
   const lgaCode = getLGACode(areaId);
 
@@ -651,11 +782,13 @@ export function getLiveHousingData(areaId: string, year: number): LiveHousingRes
   let dwellingTypes = sample.dwellingTypes;
   let tenure = sample.tenure;
   let medianWeeklyRent = sample.medianWeeklyRent;
+  let housingTrend = sample.housingTrend;
 
   if (lgaCode) {
     // G33: Dwelling structure
-    const g33 = getABS<G33Data>(lgaCode, 'G33');
-    const g33Meta = getABSMeta(lgaCode, 'G33');
+    const g33 = await getABS<G33Data>(lgaCode, 'G33');
+    const b31_2011 = await getABS<HistoricalDwellingStructureData>(lgaCode, 'B31_2011');
+    const g33Meta = await getABSMeta(lgaCode, 'G33');
     if (g33 && g33.totalDwellings > 0) {
       const t = g33.totalDwellings;
       dwellingTypes = [
@@ -671,8 +804,26 @@ export function getLiveHousingData(areaId: string, year: number): LiveHousingRes
       sampleFields.push('dwellingTypes');
     }
 
+    const dwellingHistory = [
+      { year: 2011, data: b31_2011 },
+      { year: 2021, data: g33 },
+    ].filter((entry): entry is { year: number; data: G33Data | HistoricalDwellingStructureData } => Boolean(entry.data && entry.data.totalDwellings > 0));
+
+    if (dwellingHistory.length > 0) {
+      housingTrend = dwellingHistory.map(({ year: trendYear, data: trend }) => ({
+        year: trendYear,
+        houses: trend.separateHouse,
+        apartments: trend.flatOrApartment,
+        townhouses: trend.semiDetached,
+      }));
+      liveFields.push('housingTrend');
+      if (!sources.includes('ABS Census 2011, 2021')) sources.push('ABS Census 2011, 2021');
+    } else {
+      sampleFields.push('housingTrend');
+    }
+
     // G36: Tenure type
-    const g36 = getABS<G36Data>(lgaCode, 'G36');
+    const g36 = await getABS<G36Data>(lgaCode, 'G36');
     if (g36) {
       const t = g36.owned + g36.mortgage + g36.rented + g36.other;
       if (t > 0) {
@@ -692,7 +843,7 @@ export function getLiveHousingData(areaId: string, year: number): LiveHousingRes
     }
 
     // G02: Median rent
-    const g02 = getABS<G02Data>(lgaCode, 'G02');
+    const g02 = await getABS<G02Data>(lgaCode, 'G02');
     if (g02?.medianWeeklyRent && g02.medianWeeklyRent > 0) {
       medianWeeklyRent = g02.medianWeeklyRent;
       liveFields.push('medianWeeklyRent');
@@ -708,7 +859,7 @@ export function getLiveHousingData(areaId: string, year: number): LiveHousingRes
   let mortgageStressRate = sample.mortgageStressRate;
   let rentStressRate = sample.rentStressRate;
   if (lgaCode) {
-    const hs = getABS<HousingStressData>(lgaCode, 'HOUSING_STRESS');
+    const hs = await getABS<HousingStressData>(lgaCode, 'HOUSING_STRESS');
     if (hs && (hs.rentTotal > 0 || hs.mortgageTotal > 0)) {
       mortgageStressRate = hs.mortgageStressRate;
       rentStressRate = hs.rentStressRate;
@@ -717,17 +868,17 @@ export function getLiveHousingData(areaId: string, year: number): LiveHousingRes
     }
   }
 
-  sampleFields.push('medianHousePrice', 'housingTrend');
+  sampleFields.push('medianHousePrice');
 
   return {
-    data: { ...sample, dwellingTypes, tenure, medianWeeklyRent, mortgageStressRate, rentStressRate },
+    data: { ...sample, dwellingTypes, tenure, medianWeeklyRent, housingTrend, mortgageStressRate, rentStressRate },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };
 }
 
 // ─── Growth ───────────────────────────────────────────────────────────────────
 
-export function getLiveGrowthData(areaId: string): LiveGrowthResult {
+export async function getLiveGrowthData(areaId: string): Promise<LiveGrowthResult> {
   const sample = getGrowthData(areaId);
 
   const liveFields: string[] = [];
@@ -810,8 +961,8 @@ export function getLiveGrowthData(areaId: string): LiveGrowthResult {
   // Also pull ERP historical data from ABS if available
   const lgaCode = getLGACode(areaId);
   if (lgaCode && !liveFields.includes('populationHistory')) {
-    const erp = getABS<ERPData>(lgaCode, 'ERP');
-    const erpMeta = getABSMeta(lgaCode, 'ERP');
+    const erp = await getABS<ERPData>(lgaCode, 'ERP');
+    const erpMeta = await getABSMeta(lgaCode, 'ERP');
     if (erp && Object.keys(erp.byYear).length > 0) {
       populationHistory = Object.entries(erp.byYear)
         .map(([yr, pop]) => ({ year: Number(yr), population: pop }))
@@ -827,7 +978,7 @@ export function getLiveGrowthData(areaId: string): LiveGrowthResult {
   let rollingAnnualApprovals = sample.rollingAnnualApprovals;
   const lgaCodeForBA = getLGACode(areaId);
   if (lgaCodeForBA) {
-    const ba = getABS<BuildingApprovalsData>(lgaCodeForBA, 'BUILDING_APPROVALS');
+    const ba = await getABS<BuildingApprovalsData>(lgaCodeForBA, 'BUILDING_APPROVALS');
     if (ba && ba.periods.length > 0) {
       buildingApprovals = ba.periods;
       rollingAnnualApprovals = ba.rollingAnnualDwellings;

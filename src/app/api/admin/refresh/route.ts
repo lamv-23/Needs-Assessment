@@ -1,96 +1,158 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getDb,
-  getABSCacheCount,
-  getNSWProjectionCount,
-  getAllConfig,
-  getRecentRefreshLogs,
-  setConfigValue,
-} from '@/lib/db';
+  parseAdminAction,
+  parseAdminConfigUpdates,
+  parseAdminLgaId,
+} from '@/lib/api/admin-api';
+import { getRequestUserIdentity } from '@/lib/auth/dev-session';
+import { enqueueRefreshJob } from '@/lib/refresh-jobs';
+import { getOperationsRepository } from '@/lib/repositories';
+import { logServerError, logServerInfo, logServerWarn } from '@/lib/server/logger';
 
-// ─── GET: Status ──────────────────────────────────────────────────────────────
+function badRequest(message: string) {
+  return NextResponse.json({ error: message }, { status: 400 });
+}
+
+async function resolveAdminRequestContext(req: NextRequest): Promise<{
+  authorized: boolean;
+  requestedBy: string | null;
+}> {
+  const key = req.nextUrl.searchParams.get('key') ?? req.headers.get('x-admin-key');
+  if (isAuthorizedByKey(key)) {
+    try {
+      const identity = await getRequestUserIdentity(req);
+      if (identity.role === 'admin') {
+        return { authorized: true, requestedBy: identity.userId };
+      }
+    } catch {}
+    return { authorized: true, requestedBy: 'admin-key' };
+  }
+
+  try {
+    const identity = await getRequestUserIdentity(req);
+    return {
+      authorized: identity.role === 'admin',
+      requestedBy: identity.role === 'admin' ? identity.userId : null,
+    };
+  } catch {
+    return { authorized: false, requestedBy: null };
+  }
+}
 
 export async function GET(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key') ?? req.headers.get('x-admin-key');
-  if (!isAuthorized(key)) {
+  const operationsRepository = getOperationsRepository();
+  const auth = await resolveAdminRequestContext(req);
+  if (!auth.authorized) {
+    logServerWarn('admin_refresh_unauthorized', {
+      method: 'GET',
+      path: '/api/admin/refresh',
+    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const db = getDb();
-  void db;
-
-  const [config, logs] = await Promise.all([
-    Promise.resolve(getAllConfig()),
-    Promise.resolve(getRecentRefreshLogs(20)),
+  const [config, logs, recentJobs, absCacheCount, nswProjectionCount, jobSummary] = await Promise.all([
+    operationsRepository.getAllConfig(),
+    operationsRepository.getRecentRefreshLogs(20),
+    operationsRepository.getRecentRefreshJobs(20),
+    operationsRepository.getABSCacheCount(),
+    operationsRepository.getNSWProjectionCount(),
+    operationsRepository.getRefreshJobSummary(),
   ]);
 
   return NextResponse.json({
-    absCacheCount: getABSCacheCount(),
-    nswProjectionCount: getNSWProjectionCount(),
+    absCacheCount,
+    nswProjectionCount,
     config,
     recentLogs: logs,
+    recentJobs,
+    jobSummary,
   });
 }
 
 // ─── POST: Trigger refresh or update config ───────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key') ?? req.headers.get('x-admin-key');
-  if (!isAuthorized(key)) {
+  const operationsRepository = getOperationsRepository();
+  const auth = await resolveAdminRequestContext(req);
+  if (!auth.authorized) {
+    logServerWarn('admin_refresh_unauthorized', {
+      method: 'POST',
+      path: '/api/admin/refresh',
+    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
-  const action = body.action as string;
+  const action = parseAdminAction(body.action);
+
+  if (!action) {
+    return badRequest('A valid admin action is required.');
+  }
 
   if (action === 'update_config') {
-    const updates = body.updates as Record<string, string>;
-    for (const [k, v] of Object.entries(updates)) {
-      setConfigValue(k, v);
+    const updates = parseAdminConfigUpdates(body.updates);
+    if (!updates || Object.keys(updates).length === 0) {
+      return badRequest('Config updates must be a non-empty string map.');
     }
+    for (const [k, v] of Object.entries(updates)) {
+      await operationsRepository.setConfigValue(k, v);
+    }
+    logServerInfo('admin_config_updated', {
+      requestedBy: auth.requestedBy,
+      keys: Object.keys(updates),
+    });
     return NextResponse.json({ success: true, message: 'Config updated' });
   }
 
   if (action === 'seed_static') {
-    // Run static seed in background (non-blocking for the response)
-    void runStaticSeedBackground();
-    return NextResponse.json({ success: true, message: 'Static seed started in background' });
+    const job = await enqueueRefreshJob({
+      jobType: 'static',
+      requestedBy: auth.requestedBy ?? 'admin',
+    });
+    logServerInfo('refresh_job_enqueued', {
+      requestedBy: auth.requestedBy,
+      jobType: job.jobType,
+      jobId: job.id,
+    });
+    return NextResponse.json({
+      success: true,
+      message: 'Static seed queued',
+      job,
+    });
   }
 
   if (action === 'seed_abs') {
-    const lgaId = body.lgaId as string | undefined;
-    void runABSSeedBackground(lgaId);
-    return NextResponse.json({ success: true, message: lgaId ? `ABS seed started for ${lgaId}` : 'ABS seed started for all LGAs' });
+    const lgaId = parseAdminLgaId(body.lgaId);
+    if (lgaId === null) {
+      return badRequest('A valid LGA ID is required when filtering ABS refresh jobs.');
+    }
+    const job = await enqueueRefreshJob({
+      jobType: 'abs',
+      requestedBy: auth.requestedBy ?? 'admin',
+      lgaId,
+    });
+    logServerInfo('refresh_job_enqueued', {
+      requestedBy: auth.requestedBy,
+      jobType: job.jobType,
+      jobId: job.id,
+      lgaId: job.lgaId,
+    });
+    return NextResponse.json({
+      success: true,
+      message: lgaId ? `ABS seed queued for ${lgaId}` : 'ABS seed queued for all LGAs',
+      job,
+    });
   }
 
+  logServerError('admin_refresh_unknown_action', {
+    requestedBy: auth.requestedBy,
+    action,
+  });
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-
-function isAuthorized(key: string | null): boolean {
+function isAuthorizedByKey(key: string | null): boolean {
   const adminKey = process.env.ADMIN_KEY;
-  if (!adminKey) return false; // must set ADMIN_KEY to use admin features
+  if (!adminKey) return false;
   return key === adminKey;
-}
-
-// ─── Background runners ───────────────────────────────────────────────────────
-
-async function runStaticSeedBackground(): Promise<void> {
-  try {
-    // Import inline to avoid bundling large data at startup
-    const { default: runSeed } = await import('../../../../lib/seed-runner');
-    await runSeed('static');
-  } catch (err) {
-    console.error('[Admin] Static seed failed:', err);
-  }
-}
-
-async function runABSSeedBackground(lgaId?: string): Promise<void> {
-  try {
-    const { default: runSeed } = await import('../../../../lib/seed-runner');
-    await runSeed('abs', lgaId);
-  } catch (err) {
-    console.error('[Admin] ABS seed failed:', err);
-  }
 }

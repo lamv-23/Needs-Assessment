@@ -187,9 +187,217 @@ describe('Bug 3 fix: TfNSW static data disclaimer in TRANSPORT_DATA_NOTE', () =>
     expect(lower).toMatch(/modell|estimat|indicative/);
   });
 
-  it('TRANSPORT_DATA_NOTE explicitly states data is NOT from official TfNSW', () => {
+  it('TRANSPORT_DATA_NOTE explicitly states data is modelled/estimated', () => {
     const { TRANSPORT_DATA_NOTE } = require('../lib/data/tfnsw-transport');
     const lower = TRANSPORT_DATA_NOTE.toLowerCase();
-    expect(lower).toMatch(/not sourced from official/);
+    expect(lower).toMatch(/modell|estimat/);
+  });
+});
+
+describe('Bug fix: demographics labels are sanitised before chart rendering', () => {
+  it('collapses unmapped birthplace codes into an Other countries bucket', () => {
+    const { sanitiseBirthplaceGroups } = require('../lib/abs-fetchers');
+    const groups = sanitiseBirthplaceGroups([
+      { name: 'Country 11', code: '11', count: 188954 },
+      { name: 'China (excl. SARs)', code: '6101', count: 33153 },
+      { name: 'Country 2102', code: '2102', count: 20197 },
+      { name: 'Country _N', code: '_N', count: 28450 },
+    ]);
+
+    expect(groups).toEqual([
+      { name: 'Other countries', code: 'other', count: 237601 },
+      { name: 'China (excl. SARs)', code: '6101', count: 33153 },
+    ]);
+  });
+
+  it('collapses roll-up and unmapped language codes into an Other languages bucket', () => {
+    const { sanitiseLanguageGroups } = require('../lib/abs-fetchers');
+    const groups = sanitiseLanguageGroups([
+      { name: 'Language 71', code: '71', count: 98139 },
+      { name: 'Mandarin', code: '7101', count: 32711 },
+      { name: 'Language 6902', code: '6902', count: 28290 },
+      { name: 'Arabic', code: '4202', count: 16588 },
+      { name: 'Language _O', code: '_O', count: 24221 },
+    ]);
+
+    expect(groups).toEqual([
+      { name: 'Other languages', code: 'other', count: 122360 },
+      { name: 'Mandarin', code: '7101', count: 32711 },
+      { name: 'Tamil', code: '6902', count: 28290 },
+      { name: 'Arabic', code: '4202', count: 16588 },
+    ]);
+  });
+
+  it('selects detailed language codes before slicing so roll-up totals do not crowd out named languages', () => {
+    const { selectTopDetailedLanguageGroups } = require('../lib/abs-fetchers');
+
+    const groups = selectTopDetailedLanguageGroups([
+      ['1', 122723],
+      ['71', 50068],
+      ['7104', 36324],
+      ['65', 13150],
+      ['7101', 11960],
+      ['6402', 11802],
+      ['3106', 10077],
+      ['6504', 8734],
+      ['52', 7229],
+    ]);
+
+    expect(groups).toEqual([
+      { name: 'Other languages', code: 'other', count: 193170 },
+      { name: 'Cantonese', code: '7104', count: 36324 },
+      { name: 'Mandarin', code: '7101', count: 11960 },
+      { name: 'Thai', code: '6402', count: 11802 },
+      { name: 'Spanish', code: '3106', count: 10077 },
+      { name: 'Indonesian', code: '6504', count: 8734 },
+    ]);
+  });
+
+  it('selects detailed birthplace codes before slicing so aggregate buckets do not crowd out named countries', () => {
+    const { selectTopDetailedBirthplaceGroups } = require('../lib/abs-fetchers');
+
+    const groups = selectTopDetailedBirthplaceGroups([
+      ['11', 188954],
+      ['6101', 33153],
+      ['2102', 20197],
+      ['1201', 11436],
+      ['2201', 4695],
+      ['_N', 28450],
+    ]);
+
+    expect(groups).toEqual([
+      { name: 'Other countries', code: 'other', count: 237601 },
+      { name: 'China (excl. SARs)', code: '6101', count: 33153 },
+      { name: 'England', code: '1201', count: 11436 },
+      { name: 'New Zealand', code: '2201', count: 4695 },
+    ]);
+  });
+
+  it('builds language chart data with English only included and other bucket excluded', () => {
+    const { buildLanguageChartData } = require('../lib/data/demographics-helpers');
+
+    const rows = buildLanguageChartData(
+      [
+        { name: 'Other languages', code: 'other', count: 936398 },
+        { name: 'Punjabi', code: '5203', count: 34746 },
+        { name: 'Arabic', code: '4202', count: 23292 },
+      ],
+      104522,
+      10,
+    );
+
+    expect(rows).toEqual([
+      { name: 'English only', value: 104522 },
+      { name: 'Punjabi', value: 34746 },
+      { name: 'Arabic', value: 23292 },
+    ]);
+  });
+});
+
+describe('Transport realtime implementation wiring', () => {
+  it('package scripts expose the documented transport seed commands', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../package.json'), 'utf-8'),
+    );
+
+    expect(pkg.scripts['seed:commute-times']).toBe('tsx scripts/seed-commute-times.ts');
+    expect(pkg.scripts['seed:infrastructure']).toBe('tsx scripts/seed-infrastructure.ts');
+  });
+
+  it('env example documents the OpenRouteService key for indicative commute benchmarks', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const envExample = fs.readFileSync(path.join(__dirname, '../../.env.example'), 'utf-8');
+
+    expect(envExample).toMatch(/OPENROUTESERVICE_API_KEY=/);
+  });
+
+  it('NSW infrastructure source uses geometry-based Spatial Services queries instead of stale layer filters', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../lib/nsw-spatial-services.ts'),
+      'utf-8',
+    );
+
+    expect(src).toMatch(/getLGAGeometry/);
+    expect(src).toMatch(/waytype IN/);
+    expect(src).not.toMatch(/LGA_NAME LIKE/);
+    expect(src).not.toMatch(/CycleTrack:\s*19/);
+  });
+});
+
+describe('Education official-source wiring', () => {
+  it('exports official ABS fetchers for enrolment and historical qualification series', () => {
+    const mod = require('../lib/abs-fetchers');
+    expect(typeof mod.fetchG15).toBe('function');
+    expect(typeof mod.fetchG49_2016).toBe('function');
+  });
+
+  it('live education merge reads official enrolment and historical qualification cache entries', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../lib/data/live-data.ts'),
+      'utf-8',
+    );
+
+    expect(src).toMatch(/getABS<SchoolAttendanceData>\(lgaCode, 'G15'\)/);
+    expect(src).toMatch(/getABS<QualificationData>\(lgaCode, 'G49_2016'\)/);
+    expect(src).toMatch(/liveFields\.push\('schoolEnrolment'\)/);
+    expect(src).toMatch(/liveFields\.push\('qualificationTrend'\)/);
+  });
+});
+
+describe('Housing official-source wiring', () => {
+  it('exports official ABS fetcher for historical dwelling structure', () => {
+    const mod = require('../lib/abs-fetchers');
+    expect(typeof mod.fetchB31_2011).toBe('function');
+  });
+
+  it('live housing merge reads official historical dwelling structure cache entry', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../lib/data/live-data.ts'),
+      'utf-8',
+    );
+
+    expect(src).toMatch(/getABS<HistoricalDwellingStructureData>\(lgaCode, 'B31_2011'\)/);
+    expect(src).toMatch(/liveFields\.push\('housingTrend'\)/);
+  });
+});
+
+describe('Growth official-source wiring', () => {
+  it('exports official ABS fetcher for building approvals', () => {
+    const mod = require('../lib/abs-fetchers');
+    expect(typeof mod.fetchBuildingApprovals).toBe('function');
+  });
+
+  it('building approvals fetcher targets the ABS BA_LGA2024 and BA_LGA2025 datasets', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../lib/abs-fetchers.ts'),
+      'utf-8',
+    );
+
+    expect(src).toMatch(/BA_LGA2024/);
+    expect(src).toMatch(/BA_LGA2025/);
+    expect(src).toMatch(/1\.9\.TOT\.100\./);
+  });
+
+  it('live growth merge reads the BUILDING_APPROVALS cache entry', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../lib/data/live-data.ts'),
+      'utf-8',
+    );
+
+    expect(src).toMatch(/getABS<BuildingApprovalsData>\(lgaCodeForBA, 'BUILDING_APPROVALS'\)/);
+    expect(src).toMatch(/liveFields\.push\('buildingApprovals', 'rollingAnnualApprovals'\)/);
   });
 });

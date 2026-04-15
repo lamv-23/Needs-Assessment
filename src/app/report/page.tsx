@@ -9,15 +9,10 @@ import NeedsLineChart from '@/components/charts/LineChart';
 import PopulationPyramid from '@/components/charts/PopulationPyramid';
 import { useAppStore } from '@/store';
 import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
-import {
-  getDemographicsData,
-  getTransportData,
-  getEconomyData,
-  getEducationData,
-  getHousingData,
-  getGrowthData,
-} from '@/lib/data/sample-data';
+import { useLiveData } from '@/hooks/useLiveData';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
+import { getCarModeShare, getPTModeShare } from '@/lib/data/transport-helpers';
 import { formatNumber, formatPercent, formatCurrency, CHART_COLORS } from '@/lib/utils';
 import {
   FileText,
@@ -67,10 +62,25 @@ export default function ReportPage() {
 
   const area = selectedArea || SAMPLE_AREAS.find(a => a.id === 'lga_sydney')!;
 
-  // Fetch NSW projections
-  const nswProjections = getProjectionsForArea(area.id).length > 0
-    ? getProjectionsForArea(area.id)
-    : getProjectionsForArea(area.name);
+  // Live data with sample fallback
+  const liveData = useLiveData(area.id, selectedYear);
+  const demographics = liveData.demographics.data;
+  const transport = liveData.transport.data;
+  const economy = liveData.economy.data;
+  const education = liveData.education.data;
+  const housing = liveData.housing.data;
+  const growth = liveData.growth.data;
+
+  // NSW DPE projections (richer than sample projections)
+  const nswProjections = (() => {
+    const byId = getProjectionsForArea(area.id);
+    return byId.length > 0 ? byId : getProjectionsForArea(area.name);
+  })();
+
+  // Build unified growth chart data: ERP historical + NSW DPE projection
+  const growthChartData = nswProjections.length > 0
+    ? nswProjections.map(p => ({ year: p.year, population: p.totalPopulation }))
+    : [...growth.populationHistory, ...growth.populationProjections];
 
   const toggleSection = (id: string) => {
     setSections(sections.map(s => s.id === id ? { ...s, included: !s.included } : s));
@@ -141,13 +151,6 @@ export default function ReportPage() {
 
   const includedSections = sections.filter(s => s.included);
 
-  const demographics = getDemographicsData(area.id, selectedYear);
-  const transport = getTransportData(area.id, selectedYear);
-  const economy = getEconomyData(area.id, selectedYear);
-  const education = getEducationData(area.id, selectedYear);
-  const housing = getHousingData(area.id, selectedYear);
-  const growth = getGrowthData(area.id);
-
   const renderSection = (section: ReportSection) => {
     switch (section.type) {
       case 'demographics':
@@ -185,15 +188,15 @@ export default function ReportPage() {
             <div className="grid grid-cols-3 gap-3 text-sm">
               <div className="bg-gray-50 rounded p-3">
                 <div className="text-gray-500">Car Mode Share</div>
-                <div className="text-lg font-bold">{formatPercent(transport.journeyToWork[0].value)}</div>
+                <div className="text-lg font-bold">{formatPercent(getCarModeShare(transport.journeyToWork))}</div>
               </div>
               <div className="bg-gray-50 rounded p-3">
                 <div className="text-gray-500">PT Mode Share</div>
-                <div className="text-lg font-bold">{formatPercent(transport.journeyToWork[2].value + transport.journeyToWork[3].value)}</div>
+                <div className="text-lg font-bold">{formatPercent(getPTModeShare(transport.journeyToWork))}</div>
               </div>
               <div className="bg-gray-50 rounded p-3">
                 <div className="text-gray-500">Avg Commute</div>
-                <div className="text-lg font-bold">{transport.avgCommute} min</div>
+                <div className="text-lg font-bold">{transport.avgCommute !== null ? `${transport.avgCommute} min` : 'N/A'}</div>
               </div>
             </div>
             <NeedsBarChart data={transport.journeyToWork} dataKeys={['value']} layout="horizontal" height={280} colors={CHART_COLORS} />
@@ -212,8 +215,8 @@ export default function ReportPage() {
                 <div className="text-lg font-bold">{formatCurrency(economy.medianWeeklyIncome)}/wk</div>
               </div>
               <div className="bg-gray-50 rounded p-3">
-                <div className="text-gray-500">Job Density</div>
-                <div className="text-lg font-bold">{economy.jobDensity}</div>
+                <div className="text-gray-500">Employment Density</div>
+                <div className="text-lg font-bold">{economy.jobDensity !== null ? economy.jobDensity : 'N/A'}</div>
               </div>
             </div>
             <NeedsBarChart data={economy.employmentByIndustry} dataKeys={['value']} layout="horizontal" height={300} colors={CHART_COLORS} />
@@ -228,19 +231,15 @@ export default function ReportPage() {
       case 'housing':
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-1 gap-3 text-sm">
               <div className="bg-gray-50 rounded p-3">
                 <div className="text-gray-500">Median Rent</div>
                 <div className="text-lg font-bold">{formatCurrency(housing.medianWeeklyRent)}/wk</div>
               </div>
-              <div className="bg-gray-50 rounded p-3">
-                <div className="text-gray-500">Median House Price</div>
-                <div className="text-lg font-bold">{formatCurrency(housing.medianHousePrice)}</div>
-              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <NeedsPieChart data={housing.dwellingTypes} colors={CHART_COLORS} height={220} />
-              <NeedsPieChart data={housing.tenure} colors={CHART_COLORS.slice(4)} height={220} />
+              <NeedsPieChart data={housing.dwellingTypes} colors={CHART_COLORS} height={220} labelMode="value" valueSuffix="%" />
+              <NeedsPieChart data={housing.tenure} colors={CHART_COLORS.slice(4)} height={220} labelMode="value" valueSuffix="%" />
             </div>
           </div>
         );
@@ -249,16 +248,18 @@ export default function ReportPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-gray-50 rounded p-3">
-                <div className="text-gray-500">Annual Growth</div>
+                <div className="text-gray-500">Annual Growth Rate</div>
                 <div className="text-lg font-bold">{formatPercent(growth.annualGrowthRate)}</div>
               </div>
               <div className="bg-gray-50 rounded p-3">
                 <div className="text-gray-500">2041 Projection</div>
-                <div className="text-lg font-bold">{formatNumber(growth.populationProjections[3]?.population || 0)}</div>
+                <div className="text-lg font-bold">
+                  {formatNumber(nswProjections.find(p => p.year === 2041)?.totalPopulation ?? growth.populationProjections[3]?.population ?? 0)}
+                </div>
               </div>
             </div>
             <NeedsLineChart
-              data={[...growth.populationHistory, ...growth.populationProjections]}
+              data={growthChartData}
               dataKeys={['population']}
               xAxisKey="year"
               colors={[CHART_COLORS[0]]}
@@ -289,6 +290,10 @@ export default function ReportPage() {
       <Header title="Report Builder" subtitle={`Generate reports for ${area.name}`} />
 
       <div className="p-6">
+        {/* Data source */}
+        <div className="mb-4">
+          <DataSourceBadge meta={liveData.demographics.meta} isLoading={liveData.isLoading} />
+        </div>
         <div className="grid grid-cols-12 gap-6">
           {/* Left: Section controls */}
           <div className="col-span-4 space-y-4">
