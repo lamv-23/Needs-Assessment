@@ -26,6 +26,16 @@ export async function GET(
     return NextResponse.json({ data: fresh, cached: true });
   }
 
+  if (process.env.VERCEL === '1') {
+    return NextResponse.json({
+      data: cached,
+      cached: true,
+      note: cached.length > 0
+        ? 'Showing the bundled snapshot for this area.'
+        : 'A bundled commute-time snapshot is not available for this area in the shared deployment.',
+    });
+  }
+
   const centroid = getRealtimeCentroid(lgaId);
   if (!centroid) {
     return NextResponse.json({

@@ -168,6 +168,7 @@ async function readFreshCache<T>(lgaCode: string, dataset: string): Promise<T | 
 }
 
 async function writeCache(lgaCode: string, dataset: string, data: unknown, dataYear: number): Promise<void> {
+  if (process.env.VERCEL === '1') return;
   await getSeedWriteRepository().upsertTfNSWCache(lgaCode, dataset, data, dataYear);
 }
 
