@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { haversine } from '@/lib/geo';
 import { getTransitStopsRepository } from '@/lib/repositories';
+import bundledStops from '@/lib/data/gtfs-stops.json';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,15 @@ type GroupedStop = NearbyStop & {
   memberCount: number;
   rawNames: Set<string>;
   pointCount: number;
+};
+
+type BundledStop = {
+  stopId: string;
+  stopName: string;
+  lat: number;
+  lng: number;
+  mode: string;
+  feed: string;
 };
 
 function normalizeStopName(name: string, mode: string): string {
@@ -102,6 +112,20 @@ function groupNearbyStops(originLat: number, originLng: number, stops: NearbySto
     .sort((a, b) => a.distance - b.distance);
 }
 
+function queryBundledStopsInBounds(
+  minLat: number,
+  maxLat: number,
+  minLng: number,
+  maxLng: number
+): BundledStop[] {
+  return (bundledStops as BundledStop[]).filter((stop) => (
+    stop.lat >= minLat
+    && stop.lat <= maxLat
+    && stop.lng >= minLng
+    && stop.lng <= maxLng
+  ));
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const lat = parseFloat(searchParams.get('lat') ?? '');
@@ -124,12 +148,14 @@ export async function GET(request: NextRequest) {
   const latDelta = radius / 111000;
   const lngDelta = radius / (111000 * Math.cos((lat * Math.PI) / 180));
 
-  const candidates = await getTransitStopsRepository().queryStopsInBounds(
-    lat - latDelta,
-    lat + latDelta,
-    lng - lngDelta,
-    lng + lngDelta
-  );
+  const minLat = lat - latDelta;
+  const maxLat = lat + latDelta;
+  const minLng = lng - lngDelta;
+  const maxLng = lng + lngDelta;
+
+  const candidates = process.env.VERCEL === '1'
+    ? queryBundledStopsInBounds(minLat, maxLat, minLng, maxLng)
+    : await getTransitStopsRepository().queryStopsInBounds(minLat, maxLat, minLng, maxLng);
 
   // Precise haversine filter
   const rawStops: NearbyStop[] = candidates
