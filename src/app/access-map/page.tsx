@@ -25,7 +25,14 @@ const MODE_META: Record<string, { label: string; icon: React.ReactNode; color: s
 const MODE_KEYS = ['train', 'metro', 'bus', 'ferry', 'lightRail'] as const;
 type ModeKey = typeof MODE_KEYS[number];
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `Request failed with status ${response.status}`);
+  }
+  return response.json();
+};
 
 export default function AccessMapPage() {
   const { selectedArea } = useAppStore();
@@ -58,7 +65,7 @@ export default function AccessMapPage() {
       ? `/api/transport/stops-near?lat=${debouncedPoint[0]}&lng=${debouncedPoint[1]}&radius=${debouncedRadius}&grouped=${groupedStops}&modes=${encodeURIComponent(activeModes.join(','))}`
       : null;
 
-  const { data, isLoading } = useSWR<{
+  const { data, isLoading, error } = useSWR<{
     stops: NearbyStop[];
     counts: Record<string, number>;
   }>(apiUrl, fetcher);
@@ -227,6 +234,10 @@ export default function AccessMapPage() {
                 <p>3. Review nearby stops by mode and distance</p>
               </div>
             </div>
+          </div>
+        ) : error ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            We could not load nearby stops for this marker right now. Please try again in a moment.
           </div>
         ) : isLoading ? (
           <div className="flex items-center justify-center py-10 text-sm text-gray-400 gap-2">

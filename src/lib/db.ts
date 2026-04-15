@@ -19,10 +19,44 @@ function canWriteToPath(targetPath: string): boolean {
   }
 }
 
+function findExistingDbPath(): string | null {
+  const explicitPath = process.env.CACHE_DB_PATH?.trim();
+  if (explicitPath && fs.existsSync(explicitPath)) {
+    return explicitPath;
+  }
+
+  const roots = [
+    process.cwd(),
+    __dirname,
+    typeof require !== 'undefined' && require.main ? path.dirname(require.main.filename) : null,
+  ].filter(Boolean) as string[];
+
+  for (const root of roots) {
+    let current = path.resolve(root);
+    const { root: filesystemRoot } = path.parse(current);
+
+    while (true) {
+      const candidate = path.join(current, 'data', 'cache.db');
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+
+      if (current === filesystemRoot) break;
+      current = path.dirname(current);
+    }
+  }
+
+  return null;
+}
+
 function getDbPath(): string {
+  const existingPath = findExistingDbPath();
+  if (existingPath) {
+    return existingPath;
+  }
+
   const dataDir = path.join(process.cwd(), 'data');
   const dbPath = path.join(dataDir, 'cache.db');
-
   if (fs.existsSync(dbPath)) {
     return dbPath;
   }
