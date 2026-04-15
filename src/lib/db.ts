@@ -10,6 +10,15 @@ import fs from 'fs';
 
 let db: Database.Database | null = null;
 
+function canWriteToPath(targetPath: string): boolean {
+  try {
+    fs.accessSync(targetPath, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function getDbPath(): string {
   const dataDir = path.join(process.cwd(), 'data');
   const dbPath = path.join(dataDir, 'cache.db');
@@ -29,15 +38,23 @@ export function getDb(): Database.Database {
   if (db) return db;
 
   const dbPath = getDbPath();
-  db = new Database(dbPath);
+  const dataDir = path.dirname(dbPath);
+  const dbExists = fs.existsSync(dbPath);
+  const useReadonly = dbExists && (!canWriteToPath(dataDir) || process.env.VERCEL === '1');
 
-  // WAL mode: allows concurrent readers + one writer
-  db.pragma('journal_mode = WAL');
-  db.pragma('busy_timeout = 5000');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('foreign_keys = ON');
+  db = useReadonly
+    ? new Database(dbPath, { readonly: true, fileMustExist: true })
+    : new Database(dbPath);
 
-  initSchema(db);
+  if (!useReadonly) {
+    // WAL mode: allows concurrent readers + one writer
+    db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 5000');
+    db.pragma('synchronous = NORMAL');
+    db.pragma('foreign_keys = ON');
+
+    initSchema(db);
+  }
   return db;
 }
 
