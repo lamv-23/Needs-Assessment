@@ -24,6 +24,16 @@ export async function GET(
     return NextResponse.json({ data: cached, cached: true });
   }
 
+  if (process.env.VERCEL === '1') {
+    return NextResponse.json({
+      data: cached,
+      cached: true,
+      note: cached.length > 0
+        ? 'Showing the bundled snapshot for this area.'
+        : 'A bundled infrastructure snapshot is not available for this area in the shared deployment.',
+    });
+  }
+
   const fetched = await getNSWInfrastructureLengths(lgaId);
   for (const item of fetched) {
     upsertNSWInfrastructure({

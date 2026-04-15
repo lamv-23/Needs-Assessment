@@ -109,7 +109,7 @@ async function getABS<T>(
   if (!parsed || !normalise) return parsed;
 
   const normalised = normalise(parsed);
-  if (JSON.stringify(normalised) !== JSON.stringify(parsed)) {
+  if (process.env.VERCEL !== '1' && JSON.stringify(normalised) !== JSON.stringify(parsed)) {
     await getSeedWriteRepository().upsertABSCache(lgaCode, dataset, normalised, row.year);
   }
 
