@@ -27,7 +27,7 @@ Data is cached in a local SQLite database (`data/cache.db`). Run these from the 
 - **New NSW DPE projection file:** `npm run seed:static`
 - **New Census (2026+):** `npm run seed:abs`
 
-> `cache.db` is in `.gitignore` — each developer needs to seed their own local copy.
+> `data/cache.db` is committed so shared demo deployments can serve the seeded dataset without running seed jobs first.
 
 ## Admin Panel
 
@@ -51,6 +51,21 @@ RUN_INLINE_REFRESH_WORKER=false
 REFRESH_WORKER_POLL_MS=5000
 TFNSW_API_KEY=                   # optional; enables live TfNSW traffic volume fetches
 ```
+
+## Share via Vercel
+
+For a free shareable link, the easiest option is Vercel.
+
+1. Push the repository to GitHub.
+2. Import the repo into Vercel.
+3. Deploy with the default Next.js settings.
+
+Notes:
+
+- `data/cache.db` is committed and included in the production bundle, so seeded data is available immediately.
+- No environment variables are required for a read-only shared demo.
+- If you want to access `/admin`, set `ADMIN_KEY` in Vercel project settings.
+- Browser-triggered refresh and seed actions are not a good fit for Vercel's ephemeral filesystem. For wider production use with persistent writes, move to PostgreSQL and a worker process as described below.
 
 ## Production Cutover
 

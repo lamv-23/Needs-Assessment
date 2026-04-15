@@ -12,10 +12,17 @@ let db: Database.Database | null = null;
 
 function getDbPath(): string {
   const dataDir = path.join(process.cwd(), 'data');
+  const dbPath = path.join(dataDir, 'cache.db');
+
+  if (fs.existsSync(dbPath)) {
+    return dbPath;
+  }
+
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
-  return path.join(dataDir, 'cache.db');
+
+  return dbPath;
 }
 
 export function getDb(): Database.Database {
