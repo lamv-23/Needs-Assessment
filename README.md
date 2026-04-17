@@ -2,6 +2,28 @@
 
 A Next.js dashboard for exploring population, transport, economic, housing, education and growth data across NSW LGAs and benchmark areas.
 
+## What this app is
+
+This is a read-only planning and evidence tool for exploring transport needs across NSW local government areas.
+
+It brings together demographic, housing, economy, education, growth, and transport indicators into one interface so teams can review an area quickly and export summary material.
+
+## What data is included
+
+- ABS Census snapshots and related socio-economic indicators
+- NSW DPE population projections
+- TfNSW employment projections and bundled transport indicators
+- PT stop access data used by the PT Access Map
+- Simple tabular views under `/data-tables`
+
+## Shared demo / distribution mode
+
+The repository supports a read-only shared deployment, including Vercel, using data already committed in the repo.
+
+- best for demos, reviews, and general distribution
+- no database setup required
+- admin refreshes and saved project workflows are not intended for this mode
+
 ## Quick Start
 
 ```bash
@@ -91,6 +113,7 @@ The admin API now queues refresh jobs instead of running seeds inline, so produc
 | `/education` | Attainment, enrolment |
 | `/housing` | Dwelling types, tenure, rent |
 | `/growth` | Population & employment projections 2021–2041 |
+| `/data-tables` | Simple collapsible tables for all main data domains |
 | `/compare` | Side-by-side LGA comparison |
 | `/report` | Exportable PDF report |
 | `/admin` | Admin panel (admin protected) |
