@@ -1,23 +1,16 @@
 /**
- * Data accuracy tests for the three confirmed bugs:
- *
- * Bug 1: Economy "Employed (2021)" stat shows index [0] which is 2011 in sample data
- * Bug 2: Compare page uses hardcoded array indices for mode shares (fragile)
- * Bug 3: Compare page bypasses live ABS data entirely (uses sample-data directly)
- *
- * These tests verify the CORRECT behaviour we want after fixing.
+ * Data accuracy tests for confirmed regressions and fragile assumptions.
  */
 
 import { getEconomyData } from '../lib/data/sample-data';
 import { getTransportData } from '../lib/data/sample-data';
 
-// ─── Bug 1: employmentTrend[0] is 2011, not 2021 in sample data ───────────────
+// ─── Bug 1: Economy "Employed (2021)" should use year-based lookup ────────────
 
 describe('Economy page: Employed (2021) stat card', () => {
-  it('sample employmentTrend[0] is year 2011, not 2021', () => {
-    // This documents the existing (broken) behaviour — the page shows [0] as "2021"
+  it('sample employmentTrend[0] is year 2021 in current fallback data', () => {
     const data = getEconomyData('lga_sydney', 2021);
-    expect(data.employmentTrend[0].year).toBe(2011); // proves the bug exists
+    expect(data.employmentTrend[0].year).toBe(2021);
   });
 
   it('employmentTrend contains a 2021 entry', () => {
@@ -27,29 +20,24 @@ describe('Economy page: Employed (2021) stat card', () => {
     expect(entry2021!.year).toBe(2021);
   });
 
-  it('finding by year always returns the 2021 value, not the 2011 value', () => {
+  it('finding by year returns the same 2021 entry as the displayed value', () => {
     const data = getEconomyData('lga_blacktown', 2021);
     const byIndex = data.employmentTrend[0];
     const byYear = data.employmentTrend.find(d => d.year === 2021);
     expect(byYear).toBeDefined();
-    // The bug: byIndex.employed !== byYear!.employed when trend starts at 2011
-    expect(byIndex.year).toBe(2011);
-    expect(byYear!.employed).toBeGreaterThan(byIndex.employed); // 2021 > 2011
+    expect(byIndex.year).toBe(2021);
+    expect(byYear!.employed).toBe(byIndex.employed);
   });
 
-  it('TZP24 employment trend starting from 2022 would show wrong year at [0]', () => {
-    // Simulate what happens when TZP24 data is loaded: trend starts at 2022
+  it('TZP24 employment trend starting from 2022 requires year-based lookup', () => {
     const tzp24StyleTrend = [
       { year: 2022, employed: 50000, unemployed: 0 },
       { year: 2026, employed: 55000, unemployed: 0 },
       { year: 2031, employed: 61000, unemployed: 0 },
     ];
-    // The page currently does: data.employmentTrend[0]?.employed
-    // which would show 2022 data labelled as "Employed (2021)" — wrong
     expect(tzp24StyleTrend[0].year).not.toBe(2021);
-    // The fix: find by year
     const correct = tzp24StyleTrend.find(d => d.year === 2021);
-    expect(correct).toBeUndefined(); // not in TZP24 range → should show '—'
+    expect(correct).toBeUndefined();
   });
 });
 

@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
   ClipboardList,
+  Database,
   FileText,
   GitCompare,
   GraduationCap,
@@ -50,6 +51,7 @@ export const TASKS: TaskConfig[] = [
       { href: '/education', label: 'Education', icon: GraduationCap },
       { href: '/housing', label: 'Housing', icon: Home },
       { href: '/growth', label: 'Growth', icon: BarChart3 },
+      { href: '/data-tables', label: 'Data Tables', icon: Database },
     ],
   },
   {
