@@ -24,6 +24,7 @@ import {
   getHousingData,
   getGrowthData,
 } from '@/lib/data/sample-data';
+import { TRANSPORT_DATA_NOTE } from '@/lib/data/tfnsw-transport';
 
 export type { DataMeta };
 
@@ -33,7 +34,8 @@ function createBundledMeta(source: string, liveFields: string[], sampleFields: s
     lastRefreshed: null,
     liveFields,
     sampleFields,
-    hasLiveData: true,
+    hasLiveData: liveFields.length > 0,
+    hasPartialLive: liveFields.length > 0 && sampleFields.length > 0,
   };
 }
 
@@ -43,7 +45,7 @@ const bundledDemographicsMeta = createBundledMeta(
 );
 
 const bundledTransportMeta = createBundledMeta(
-  'Bundled official snapshot · ABS Census journey-to-work + TfNSW GTFS coverage',
+  `Bundled snapshot · ABS Census 2021 (journey-to-work) + ${TRANSPORT_DATA_NOTE}`,
   ['journeyToWork', 'vehicleOwnership', 'modeShareTrend', 'ptStops', 'ptRoutes'],
   ['avgCommute', 'ptPatronage', 'trafficVolumeTrend', 'crashTrend', 'patronageSource']
 );

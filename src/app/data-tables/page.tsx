@@ -163,11 +163,11 @@ export default function DataTablesPage() {
         <Section title="Transport" meta={liveData.transport.meta}>
           <SummaryTable
             rows={[
-              ['Average commute', transport.avgCommute !== null ? `${formatNumber(transport.avgCommute, 1)} min` : 'N/A'],
-              ['PT patronage', transport.ptPatronage !== null ? formatNumber(transport.ptPatronage) : 'N/A'],
+              transport.avgCommute !== null && ['Average commute', `${formatNumber(transport.avgCommute, 1)} min`],
+              transport.ptPatronage !== null && ['PT patronage', formatNumber(transport.ptPatronage)],
               ['PT stops total', transport.ptStops?.total ?? 'N/A'],
               ['PT routes total', transport.ptRoutes?.total ?? 'N/A'],
-            ]}
+            ].filter(Boolean) as [string, string | number][]}
           />
           <SimpleTable
             title="Journey to work"

@@ -31,7 +31,7 @@ import {
 } from './nsw-employment-projections';
 import { LGA_CODE_MAP } from '../abs-fetchers';
 import type {
-  G01Data, G02Data, G33Data, G36Data, G51Data, G55Data, SEIFAData, LabourData, ERPData,
+  G01Data, G02Data, G33Data, G36Data, G51Data, JourneyToWorkData, SEIFAData, LabourData, ERPData,
   EducationData as G46Data, SchoolAttendanceData, QualificationData, HistoricalDwellingStructureData,
   VehicleData, DisabilityData, HouseholdIncomeData, LanguageData, BirthplaceData,
   FamilyData, OccupationData, HousingStressData, BuildingApprovalsData,
@@ -54,8 +54,10 @@ export interface DataMeta {
   liveFields: string[];
   /** Fields not currently backed by the loaded official payload */
   sampleFields: string[];
-  /** Whether any official data was found */
+  /** Whether any live/refreshed data was found (as opposed to bundled reference values) */
   hasLiveData: boolean;
+  /** Whether the result is a mix of live fields and reference/sample values */
+  hasPartialLive: boolean;
 }
 
 export interface LiveDemographicsResult {
@@ -134,6 +136,7 @@ function buildMeta(
     liveFields,
     sampleFields,
     hasLiveData: liveFields.length > 0,
+    hasPartialLive: liveFields.length > 0 && sampleFields.length > 0,
   };
 }
 
@@ -354,13 +357,11 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
   const sources: string[] = [];
   let fetchedAt: string | null = null;
 
-  // Try G62 first (correct MTWP table), then G55 as fallback
+  // Try G62 (correct MTWP table for 2021 Census JTW)
   let journeyToWork = sample.journeyToWork;
   if (lgaCode) {
-    const g62 = await getABS<G55Data>(lgaCode, 'G62');
-    const g55 = g62 ?? await getABS<G55Data>(lgaCode, 'G55');
-    const jtw = g55;
-    const jtwMeta = await getABSMeta(lgaCode, g62 ? 'G62' : 'G55');
+    const jtw = await getABS<JourneyToWorkData>(lgaCode, 'G62');
+    const jtwMeta = await getABSMeta(lgaCode, 'G62');
     if (jtw && jtw.total > 0) {
       const t = jtw.total;
       journeyToWork = [
@@ -393,11 +394,11 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
   let patronageSource = sample.patronageSource;
 
   if (lgaCode) {
-    const g62 = await getABS<G55Data>(lgaCode, 'G62');  // 2021 JTW
-    const g59 = await getABS<G55Data>(lgaCode, 'G59');  // 2016 JTW
-    const b46 = await getABS<G55Data>(lgaCode, 'B46');  // 2011 JTW
+    const g62 = await getABS<JourneyToWorkData>(lgaCode, 'G62');  // 2021 JTW
+    const g59 = await getABS<JourneyToWorkData>(lgaCode, 'G59');  // 2016 JTW
+    const b46 = await getABS<JourneyToWorkData>(lgaCode, 'B46');  // 2011 JTW
 
-    const toPoint = (jtw: G55Data, yr: number) => {
+    const toPoint = (jtw: JourneyToWorkData, yr: number) => {
       const t = jtw.total;
       if (!t) return null;
       return {

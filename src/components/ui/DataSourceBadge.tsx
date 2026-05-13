@@ -14,7 +14,7 @@ interface DataSourceBadgeProps {
  */
 export function DataSourceBadge({ meta, isLoading = false, className = '' }: DataSourceBadgeProps) {
   const isLive = meta.hasLiveData;
-  const hasPartialLive = isLive && meta.sampleFields.length > 0;
+  const hasPartialLive = meta.hasPartialLive;
 
   const refreshDate = meta.lastRefreshed
     ? new Date(meta.lastRefreshed).toLocaleDateString('en-AU', {

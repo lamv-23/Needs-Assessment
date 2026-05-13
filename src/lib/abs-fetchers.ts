@@ -662,13 +662,15 @@ export async function fetchG51(lgaCode: string): Promise<G51Data | null> {
   };
 }
 
-// ─── G55: Method of Travel to Work ───────────────────────────────────────────
-// NOTE: C21_G55_LGA is industry × hours worked (wrong table).
-// The ABS SDMX API does not expose a Census journey-to-work table at LGA level
-// via the REST endpoint. This fetcher returns null and the app falls back to
-// sample data for transport mode split.
+// ─── G55 / G62 / G59 / B46: Method of Travel to Work ──────────────────────────
+// NOTE: C21_G55_LGA is industry × hours worked — the wrong table for JTW.
+// The correct 2021 table is C21_G62_LGA (fetched via fetchG62 below).
+// Historical JTW data is fetched via fetchG59_2016 (ABS_C16_G59_LGA) and
+// fetchB46_2011 (ABS_CENSUS2011_B46_LGA) for trend charts.
+//
+// There is no usable G55 SDMX endpoint at LGA level; fetchG55 is not implemented.
 
-export interface G55Data {
+export interface JourneyToWorkData {
   car_driver: number;
   car_passenger: number;
   train: number;
@@ -682,11 +684,8 @@ export interface G55Data {
   total: number;
 }
 
-export async function fetchG55(_lgaCode: string): Promise<G55Data | null> {
-  // No ABS SDMX endpoint available for Census journey-to-work at LGA level.
-  // The app will use sample/static data for transport mode splits.
-  return null;
-}
+/** @deprecated Use JourneyToWorkData */
+export type G55Data = JourneyToWorkData;
 
 // ─── SEIFA ───────────────────────────────────────────────────────────────────
 
@@ -1066,7 +1065,7 @@ export async function fetchG34(lgaCode: string): Promise<VehicleData | null> {
 
 // ─── G62: Method of Travel to Work (corrected table) ─────────────────────────
 // Attempts C21_G62_LGA — the Census table for MTWP × sex.
-// Returns the same G55Data type (already defined above).
+// Returns the same JourneyToWorkData type.
 //
 // Confirmed MTWP codes (verified against live API for Sydney LGA 17200, 2026-04-01):
 //   Hierarchical totals (include all trips using that mode, incl. combinations):
@@ -1083,7 +1082,7 @@ export async function fetchG34(lgaCode: string): Promise<VehicleData | null> {
 //     11  = taxi, 12 = ride-share, 13 = other
 //     _T  = total workers (all modes, grand total)
 
-export async function fetchG62(lgaCode: string): Promise<G55Data | null> {
+export async function fetchG62(lgaCode: string): Promise<JourneyToWorkData | null> {
   const url = `${ABS_BASE}/C21_G62_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
@@ -1144,7 +1143,7 @@ export async function fetchG62(lgaCode: string): Promise<G55Data | null> {
 // Module-level cache: parse the 21MB dataset once, reuse across all LGA calls.
 let _g59Data: Map<string, number> | null = null;
 
-export async function fetchG59_2016(lgaCode: string): Promise<G55Data | null> {
+export async function fetchG59_2016(lgaCode: string): Promise<JourneyToWorkData | null> {
   if (!_g59Data) {
     const url = `${ABS_BASE}/ABS_C16_G59_LGA?startPeriod=2016&endPeriod=2016&dimensionAtObservation=AllDimensions`;
     const xml = await fetchWithRetry(url);
@@ -1192,7 +1191,7 @@ export async function fetchG59_2016(lgaCode: string): Promise<G55Data | null> {
 // Module-level cache: parse the 24MB dataset once, reuse across all LGA calls.
 let _b46Data: Map<string, number> | null = null;
 
-export async function fetchB46_2011(lgaCode: string): Promise<G55Data | null> {
+export async function fetchB46_2011(lgaCode: string): Promise<JourneyToWorkData | null> {
   if (!_b46Data) {
     const url = `${ABS_BASE}/ABS_CENSUS2011_B46_LGA?startPeriod=2011&endPeriod=2011&dimensionAtObservation=AllDimensions`;
     const xml = await fetchWithRetry(url);
@@ -1834,7 +1833,7 @@ export interface AllABSData {
   b31_2011: HistoricalDwellingStructureData | null;
   g36: G36Data | null;
   g51: G51Data | null;
-  g55: G55Data | null;
+  g55: null;  // Always null — no ABS endpoint available
   g46: EducationData | null;
   g15: SchoolAttendanceData | null;
   g49: QualificationData | null;
@@ -1844,7 +1843,7 @@ export interface AllABSData {
   erp: ERPData | null;
   // New datasets
   g34: VehicleData | null;
-  g62: G55Data | null;
+  g62: JourneyToWorkData | null;
   g18: DisabilityData | null;
   g33Income: HouseholdIncomeData | null;
   g13: LanguageData | null;
@@ -1853,62 +1852,66 @@ export interface AllABSData {
   g60: OccupationData | null;
   housingStress: HousingStressData | null;
   buildingApprovals: BuildingApprovalsData | null;
-  g59: G55Data | null;  // 2016 JTW (ABS_C16_G59_LGA)
-  b46: G55Data | null;  // 2011 JTW (ABS_CENSUS2011_B46_LGA)
+  g59: JourneyToWorkData | null;  // 2016 JTW (ABS_C16_G59_LGA)
+  b46: JourneyToWorkData | null;  // 2011 JTW (ABS_CENSUS2011_B46_LGA)
 }
 
 export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData> {
   console.log(`  Fetching ABS data for LGA ${lgaCode}...`);
 
   // Batch 1: Core demographics
+  const logWarn = (dataset: string) => (err: unknown) => {
+    console.warn(`[ABS] ${dataset} failed for LGA ${lgaCode}:`, (err as Error)?.message || err);
+    return null;
+  };
   const [g01, g02, seifa] = await Promise.all([
-    fetchG01(lgaCode).catch(() => null),
-    fetchG02(lgaCode).catch(() => null),
-    fetchSEIFA(lgaCode).catch(() => null),
+    fetchG01(lgaCode).catch(logWarn('G01')),
+    fetchG02(lgaCode).catch(logWarn('G02')),
+    fetchSEIFA(lgaCode).catch(logWarn('SEIFA')),
   ]);
 
   await sleep(300);
 
   // Batch 2: Housing & employment
   const [g33, b31_2011, g36, g51] = await Promise.all([
-    fetchG33(lgaCode).catch(() => null),
-    fetchB31_2011(lgaCode).catch(() => null),
-    fetchG36(lgaCode).catch(() => null),
-    fetchG51(lgaCode).catch(() => null),
+    fetchG33(lgaCode).catch(logWarn('G33')),
+    fetchB31_2011(lgaCode).catch(logWarn('B31_2011')),
+    fetchG36(lgaCode).catch(logWarn('G36')),
+    fetchG51(lgaCode).catch(logWarn('G51')),
   ]);
 
   await sleep(300);
 
   // Batch 3: Transport, education, labour
-  const [g55, g46, g15, g49, labour, erp] = await Promise.all([
-    fetchG55(lgaCode).catch(() => null),
-    fetchG46(lgaCode).catch(() => null),
-    fetchG15(lgaCode).catch(() => null),
-    fetchG49(lgaCode).catch(() => null),
-    fetchLabour(lgaCode).catch(() => null),
-    fetchERP(lgaCode).catch(() => null),
+  const g55: null = null; // No ABS SDMX endpoint for JTW at LGA level
+  const [g46, g15, g49, labour, erp] = await Promise.all([
+    fetchG46(lgaCode).catch(logWarn('G46')),
+    fetchG15(lgaCode).catch(logWarn('G15')),
+    fetchG49(lgaCode).catch(logWarn('G49')),
+    fetchLabour(lgaCode).catch(logWarn('LABOUR')),
+    fetchERP(lgaCode).catch(logWarn('ERP')),
   ]);
 
   await sleep(300);
 
   // Batch 4: New datasets (demographics, transport, economy, housing, growth)
   const [g34, g62, g18, g33Income, g13] = await Promise.all([
-    fetchG34(lgaCode).catch(() => null),
-    fetchG62(lgaCode).catch(() => null),
-    fetchG18(lgaCode).catch(() => null),
-    fetchG33Income(lgaCode).catch(() => null),
-    fetchG13(lgaCode).catch(() => null),
+    fetchG34(lgaCode).catch(logWarn('G34')),
+    fetchG62(lgaCode).catch(logWarn('G62')),
+    fetchG18(lgaCode).catch(logWarn('G18')),
+    fetchG33Income(lgaCode).catch(logWarn('G33_INCOME')),
+    fetchG13(lgaCode).catch(logWarn('G13')),
   ]);
 
   await sleep(300);
 
   // Batch 5: Remaining new datasets
   const [g09, g25, g60, housingStress, buildingApprovals] = await Promise.all([
-    fetchG09(lgaCode).catch(() => null),
-    fetchG25(lgaCode).catch(() => null),
-    fetchG60(lgaCode).catch(() => null),
-    fetchHousingStress(lgaCode).catch(() => null),
-    fetchBuildingApprovals(lgaCode).catch(() => null),
+    fetchG09(lgaCode).catch(logWarn('G09')),
+    fetchG25(lgaCode).catch(logWarn('G25')),
+    fetchG60(lgaCode).catch(logWarn('G60')),
+    fetchHousingStress(lgaCode).catch(logWarn('HOUSING_STRESS')),
+    fetchBuildingApprovals(lgaCode).catch(logWarn('BUILDING_APPROVALS')),
   ]);
 
   await sleep(300);
@@ -1916,9 +1919,9 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
   // Batch 6: Historical JTW for mode share trend (2016 and 2011) plus
   // historical qualification datasets for education trend charts.
   const [g59, b46, g49_2016] = await Promise.all([
-    fetchG59_2016(lgaCode).catch(() => null),
-    fetchB46_2011(lgaCode).catch(() => null),
-    fetchG49_2016(lgaCode).catch(() => null),
+    fetchG59_2016(lgaCode).catch(logWarn('G59')),
+    fetchB46_2011(lgaCode).catch(logWarn('B46')),
+    fetchG49_2016(lgaCode).catch(logWarn('G49_2016')),
   ]);
 
   return {

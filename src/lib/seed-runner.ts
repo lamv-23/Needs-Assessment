@@ -58,6 +58,7 @@ async function seedStatic(): Promise<void> {
   }
 
   await operationsRepository.setConfigValue('static_last_seed', new Date().toISOString());
+  await operationsRepository.setConfigValue('tfnsw_last_refresh', new Date().toISOString());
   logServerInfo('seed_static_completed', {
     populationProjectionCount: Object.keys(popByLGA).length,
     employmentProjectionCount: Object.keys(empByLGA).length,
@@ -86,7 +87,7 @@ async function seedABS(lgaFilter?: string): Promise<void> {
       if (data.b31_2011) await seedRepository.upsertABSCache(lgaCode, 'B31_2011', data.b31_2011, 2011);
       if (data.g36) await seedRepository.upsertABSCache(lgaCode, 'G36', data.g36, 2021);
       if (data.g51) await seedRepository.upsertABSCache(lgaCode, 'G51', data.g51, 2021);
-      if (data.g55) await seedRepository.upsertABSCache(lgaCode, 'G55', data.g55, 2021);
+      // G55 is permanently stubbed (no ABS SDMX endpoint); G62 is used for JTW data instead
       if (data.g46) await seedRepository.upsertABSCache(lgaCode, 'G46', data.g46, 2021);
       if (data.g15) await seedRepository.upsertABSCache(lgaCode, 'G15', data.g15, 2021);
       if (data.g49) await seedRepository.upsertABSCache(lgaCode, 'G49', data.g49, 2021);

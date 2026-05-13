@@ -121,6 +121,7 @@ async function seedStaticData(): Promise<void> {
   console.log(`    → ${tfnsw_transport_data.length} transport records seeded`);
 
   setConfigValue('static_last_seed', new Date().toISOString());
+  setConfigValue('tfnsw_last_refresh', new Date().toISOString());
 
   const totalProjections = getNSWProjectionCount();
   console.log(`\n  ✅ Static data seeded. Total projection records: ${totalProjections}`);

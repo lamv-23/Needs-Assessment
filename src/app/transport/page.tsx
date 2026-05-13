@@ -133,19 +133,23 @@ export default function TransportPage() {
         <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Clock}
-            label="Average Commute Time"
-            value={data.avgCommute !== null ? `${data.avgCommute} min` : 'N/A'}
-            subtitle={data.avgCommute !== null ? 'Latest available value' : 'Not available for this area yet'}
-          />
-          <StatCard
-            icon={Train}
-            label="PT Patronage"
-            value={data.ptPatronage !== null ? formatNumber(data.ptPatronage) : 'N/A'}
-            subtitle={data.ptPatronage !== null ? 'Latest available value' : 'Shown when published for this area'}
-          />
+        <div className="flex flex-wrap gap-4">
+          {data.avgCommute !== null && (
+            <StatCard
+              icon={Clock}
+              label="Average Commute Time"
+              value={`${data.avgCommute} min`}
+              subtitle="Latest available value"
+            />
+          )}
+          {data.ptPatronage !== null && (
+            <StatCard
+              icon={Train}
+              label="PT Patronage"
+              value={formatNumber(data.ptPatronage)}
+              subtitle="Latest available value"
+            />
+          )}
           <StatCard
             icon={Car}
             label="Car Mode Share"
@@ -192,7 +196,7 @@ export default function TransportPage() {
             <div className="lg:col-span-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               <span className="mt-0.5 shrink-0">⚠</span>
               <span>
-                Some trend charts below use published estimates to show direction over time. Use them as a guide
+                Some trend charts use modelled estimates, not official data. Use them as a guide
                 alongside the official source badges above.
               </span>
             </div>

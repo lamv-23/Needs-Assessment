@@ -149,6 +149,7 @@ export default function ComparePage() {
     liveFields: anyLive ? ['population', 'medianAge', 'SEIFA', 'income', 'unemployment', 'rent'] : [],
     sampleFields: anyLive ? ['transport mode share', 'commute time'] : ['all'],
     hasLiveData: anyLive,
+    hasPartialLive: anyLive,
   };
 
   return (

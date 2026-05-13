@@ -29,7 +29,8 @@ const bundledMeta: DataMeta = {
   lastRefreshed: null,
   liveFields: [],
   sampleFields: [],
-  hasLiveData: true,
+  hasLiveData: false,
+  hasPartialLive: false,
 };
 
 interface AreaSlotData {

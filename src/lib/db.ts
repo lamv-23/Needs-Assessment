@@ -28,7 +28,7 @@ function findExistingDbPath(): string | null {
   const roots = [
     process.cwd(),
     __dirname,
-    typeof require !== 'undefined' && require.main ? path.dirname(require.main.filename) : null,
+    typeof require !== 'undefined' && require.main?.filename ? path.dirname(require.main.filename) : null,
   ].filter(Boolean) as string[];
 
   for (const root of roots) {
@@ -88,8 +88,19 @@ export function getDb(): Database.Database {
     db.pragma('foreign_keys = ON');
 
     initSchema(db);
+    cleanupZombieRefreshLogs(db);
   }
   return db;
+}
+
+function cleanupZombieRefreshLogs(database: Database.Database): void {
+  database.exec(`
+    UPDATE refresh_log
+    SET status = 'error',
+        completed_at = datetime('now'),
+        error_message = 'Abandoned: process interrupted without completion'
+    WHERE status = 'running' AND completed_at IS NULL
+  `);
 }
 
 function initSchema(database: Database.Database): void {
