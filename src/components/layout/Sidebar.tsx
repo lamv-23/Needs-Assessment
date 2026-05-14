@@ -9,7 +9,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useAppStore } from '@/store';
-import { getTaskForPath } from './navigation';
+import { getTaskForPath, TASKS } from './navigation';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -40,55 +40,79 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 py-3 overflow-y-auto">
-        {sidebarOpen ? (
-          <div className="px-4 pb-3">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Current task</p>
-            <div className="mt-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
-              <p className="text-sm font-semibold text-gray-900">{activeTask.label}</p>
-              <p className="mt-1 text-xs text-gray-500">{activeTask.description}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="mx-3 my-2 border-t border-gray-100" />
-        )}
+        {TASKS.map((task) => {
+          const isActive = activeTask.key === task.key;
+          const Icon = task.icon;
 
-        <div className="px-2 space-y-0.5">
-          {activeTask.items.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={!sidebarOpen ? item.label : undefined}
-                className={cn(
-                  'group relative flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150',
-                  isActive
-                    ? 'bg-primary-50 text-primary-700 shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                )}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1 bottom-1 w-[3px] bg-primary-500 rounded-full" />
-                )}
-                <div className={cn(
-                  'flex-shrink-0 w-5 h-5 flex items-center justify-center',
-                  isActive ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-600'
-                )}>
-                  <Icon className="w-[18px] h-[18px]" />
+          return (
+            <div key={task.key} className={cn(!sidebarOpen && 'mb-1')}>
+              {/* Task group header */}
+              {sidebarOpen ? (
+                <div className={cn('px-4 pb-1', !isActive && 'opacity-60')}>
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-gray-400" />
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">{task.label}</p>
+                    {isActive && <span className="text-[10px] text-primary-600 font-medium">· active</span>}
+                  </div>
                 </div>
-                {sidebarOpen && (
-                  <span className={cn('truncate text-[13px]', isActive && 'font-semibold')}>
-                    {item.label}
-                  </span>
-                )}
-                {isActive && sidebarOpen && (
-                  <div className="ml-auto h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
-                )}
-              </Link>
-            );
-          })}
-        </div>
+              ) : (
+                <div className="flex justify-center">
+                  <div className={cn('w-5 h-5 flex items-center justify-center', isActive ? 'text-primary-600' : 'text-gray-300')}>
+                    <Icon className="w-[18px] h-[18px]" />
+                  </div>
+                </div>
+              )}
+
+              {/* Items for active group when expanded */}
+              {sidebarOpen && isActive && (
+                <div className="px-2 space-y-0.5 mb-3">
+                  {task.items.map((item) => {
+                    const itemIsActive = pathname === item.href;
+                    const ItemIcon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          'group relative flex items-center gap-3 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+                          itemIsActive
+                            ? 'bg-primary-50 text-primary-700 shadow-sm'
+                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                        )}
+                      >
+                        {itemIsActive && (
+                          <span className="absolute left-0 top-1 bottom-1 w-[3px] bg-primary-500 rounded-full" />
+                        )}
+                        <div className={cn(
+                          'flex-shrink-0 w-5 h-5 flex items-center justify-center',
+                          itemIsActive ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-600'
+                        )}>
+                          <ItemIcon className="w-[18px] h-[18px]" />
+                        </div>
+                        <span className={cn('truncate text-[13px]', itemIsActive && 'font-semibold')}>
+                          {item.label}
+                        </span>
+                        {itemIsActive && (
+                          <div className="ml-auto h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-500" />
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Inactive groups: single link to group home when expanded */}
+              {sidebarOpen && !isActive && (
+                <Link
+                  href={task.href}
+                  className="mx-2 mb-3 block px-2.5 py-1.5 rounded-lg text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  {task.description}
+                </Link>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Collapse toggle */}

@@ -8,6 +8,7 @@ import { getRequestUserIdentity } from '@/lib/auth/dev-session';
 import { enqueueRefreshJob } from '@/lib/refresh-jobs';
 import { getOperationsRepository } from '@/lib/repositories';
 import { logServerError, logServerInfo, logServerWarn } from '@/lib/server/logger';
+import { getABSDatasetCoverage } from '@/lib/db';
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -50,13 +51,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const [config, logs, recentJobs, absCacheCount, nswProjectionCount, jobSummary] = await Promise.all([
+  const [config, logs, recentJobs, absCacheCount, nswProjectionCount, jobSummary, datasetCoverage] = await Promise.all([
     operationsRepository.getAllConfig(),
     operationsRepository.getRecentRefreshLogs(20),
     operationsRepository.getRecentRefreshJobs(20),
     operationsRepository.getABSCacheCount(),
     operationsRepository.getNSWProjectionCount(),
     operationsRepository.getRefreshJobSummary(),
+    Promise.resolve(getABSDatasetCoverage()),
   ]);
 
   return NextResponse.json({
@@ -66,6 +68,7 @@ export async function GET(req: NextRequest) {
     recentLogs: logs,
     recentJobs,
     jobSummary,
+    datasetCoverage,
   });
 }
 

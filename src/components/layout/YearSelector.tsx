@@ -17,7 +17,7 @@ export default function YearSelector() {
       >
         {YEARS.map((year) => (
           <option key={year} value={year}>
-            Census {year}
+            {year}
           </option>
         ))}
       </select>

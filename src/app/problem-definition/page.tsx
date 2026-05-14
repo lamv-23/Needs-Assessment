@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import PageNav from '@/components/ui/PageNav';
 
 // ─── Service Level Standards ──────────────────────────────────────────────────
 // Based on TfNSW planning standards and Connecting NSW mode share targets
@@ -440,6 +441,14 @@ export default function ProblemDefinitionPage() {
       <div className="p-6 space-y-8">
         <DataSourceBadge meta={transportMeta} isLoading={isLoading} />
 
+        <PageNav sections={[
+          { id: 'section-context', label: 'Context' },
+          { id: 'section-problem', label: 'Problem' },
+          { id: 'section-evidence', label: 'Evidence' },
+          { id: 'section-future-demand', label: 'Future Demand' },
+          { id: 'section-conclusion', label: 'Conclusion' },
+        ]} />
+
         {/* Urban type classification notice */}
         {urbanTypeInferred && (
           <FindingCallout severity="info" heading={`Urban type defaulted to "middle" for ${area.name}`}>
@@ -465,7 +474,7 @@ export default function ProblemDefinitionPage() {
         />
 
         {/* ══ Section 1 — The Context ═══════════════════════════════════════ */}
-        <section className="space-y-4">
+        <section id="section-context" className="space-y-4">
           <SectionHeading
             number="1"
             title="The Context"
@@ -519,7 +528,7 @@ export default function ProblemDefinitionPage() {
         </section>
 
         {/* ══ Section 2 — The Problem ═══════════════════════════════════════ */}
-        <section className="space-y-4">
+        <section id="section-problem" className="space-y-4">
           <SectionHeading
             number="2"
             title="The Problem"
@@ -656,7 +665,7 @@ export default function ProblemDefinitionPage() {
         </section>
 
         {/* ══ Section 3 — The Evidence ══════════════════════════════════════ */}
-        <section className="space-y-4">
+        <section id="section-evidence" className="space-y-4">
           <SectionHeading
             number="3"
             title="The Evidence"
@@ -761,7 +770,7 @@ export default function ProblemDefinitionPage() {
         </section>
 
         {/* ══ Section 4 — Future Demand ═════════════════════════════════════ */}
-        <section className="space-y-4">
+        <section id="section-future-demand" className="space-y-4">
           <SectionHeading
             number="4"
             title="Future Demand"
@@ -875,7 +884,7 @@ export default function ProblemDefinitionPage() {
         </section>
 
         {/* ══ Conclusion / Next Steps ═══════════════════════════════════════ */}
-        <section className="space-y-4">
+        <section id="section-conclusion" className="space-y-4">
           <SectionHeading
             number="✓"
             title="Conclusion & Next Steps"

@@ -24,6 +24,7 @@ import {
   upsertTfNSWCache,
   upsertTransportStatic,
   type GtfsStop,
+  type ChangeSummary,
 } from '@/lib/db';
 import type {
   CacheEntryRecord,
@@ -42,12 +43,21 @@ import type {
 } from './contracts';
 
 function mapRefreshLog(log: ReturnType<typeof getRecentRefreshLogs>[number]): RefreshLogRecord {
+  let changeSummary: ChangeSummary | null = null;
+  if (log.change_summary) {
+    try {
+      changeSummary = JSON.parse(log.change_summary) as ChangeSummary;
+    } catch {
+      changeSummary = null;
+    }
+  }
   return {
     id: log.id,
     source: log.source,
     status: log.status,
     lgasUpdated: log.lgas_updated,
     errorMessage: log.error_message,
+    changeSummary,
     startedAt: log.started_at,
     completedAt: log.completed_at,
   };

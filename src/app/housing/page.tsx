@@ -11,6 +11,7 @@ import { formatCurrency, CHART_COLORS } from '@/lib/utils';
 import { DollarSign, Building2, Key } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { StatCardSkeleton } from '@/components/ui/Skeleton';
 
 export default function HousingPage() {
   const { selectedArea, selectedYear } = useAppStore();
@@ -37,26 +38,33 @@ export default function HousingPage() {
         <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard
-            icon={DollarSign}
-            label="Median Weekly Rent"
-            value={formatCurrency(data.medianWeeklyRent)}
-            subtitle={meta.liveFields.includes('medianWeeklyRent') ? 'ABS 2021 Census' : 'Per week (indicative)'}
-          />
-          <StatCard
-            icon={Building2}
-            label="Top Dwelling Type"
-            value={`${topDwelling.name} (${topDwelling.value}%)`}
-            subtitle={meta.liveFields.includes('dwellingTypes') ? 'ABS 2021 Census' : 'Most common dwelling structure'}
-          />
-          <StatCard
-            icon={Key}
-            label="Top Tenure Type"
-            value={`${topTenure.name} (${topTenure.value}%)`}
-            subtitle={meta.liveFields.includes('tenure') ? 'ABS 2021 Census' : 'Most common tenure arrangement'}
-          />
-        </div>
+        {isLoading ? (
+          <StatCardSkeleton count={3} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <StatCard
+              icon={DollarSign}
+              accentColor="rose"
+              label="Median Weekly Rent"
+              value={formatCurrency(data.medianWeeklyRent)}
+              subtitle={meta.liveFields.includes('medianWeeklyRent') ? 'ABS 2021 Census' : 'Per week (indicative)'}
+            />
+            <StatCard
+              icon={Building2}
+              accentColor="rose"
+              label="Top Dwelling Type"
+              value={`${topDwelling.name} (${topDwelling.value}%)`}
+              subtitle={meta.liveFields.includes('dwellingTypes') ? 'ABS 2021 Census' : 'Most common dwelling structure'}
+            />
+            <StatCard
+              icon={Key}
+              accentColor="rose"
+              label="Top Tenure Type"
+              value={`${topTenure.name} (${topTenure.value}%)`}
+              subtitle={meta.liveFields.includes('tenure') ? 'ABS 2021 Census' : 'Most common tenure arrangement'}
+            />
+          </div>
+        )}
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

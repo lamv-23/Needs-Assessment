@@ -12,12 +12,21 @@ export interface TfnswCacheEntryRecord {
   dataYear: number;
 }
 
+export interface ChangeSummary {
+  before_abs_cache_count: number;
+  after_abs_cache_count: number;
+  before_projection_count: number;
+  after_projection_count: number;
+  datasets_changed: Record<string, { before: number; after: number }>;
+}
+
 export interface RefreshLogRecord {
   id: number;
   source: string;
   status: string;
   lgasUpdated: number;
   errorMessage: string | null;
+  changeSummary: ChangeSummary | null;
   startedAt: string;
   completedAt: string | null;
 }
@@ -120,7 +129,8 @@ export interface OperationsRepository {
     id: number,
     status: 'success' | 'error' | 'partial',
     lgasUpdated: number,
-    errorMessage?: string
+    errorMessage?: string,
+    changeSummary?: ChangeSummary
   ): MaybePromise<void>;
   enqueueRefreshJob(input: {
     jobType: 'static' | 'abs' | 'all';

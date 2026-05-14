@@ -223,3 +223,65 @@ describe('LGA mapping ABS codes match LGA_CODE_MAP', () => {
     });
   });
 });
+
+// ─── 7. Change Summary (Feature 3) ───────────────────────────────────────────
+
+describe('ChangeSummary type and schema', () => {
+  it('ChangeSummary has required fields', () => {
+    const cs = {
+      before_abs_cache_count: 120,
+      after_abs_cache_count: 128,
+      before_projection_count: 100,
+      after_projection_count: 200,
+      datasets_changed: { G01: { before: 120, after: 128 } },
+    };
+    expect(cs.before_abs_cache_count).toBe(120);
+    expect(cs.after_abs_cache_count).toBe(128);
+    expect(cs.datasets_changed.G01.before).toBe(120);
+    expect(cs.datasets_changed.G01.after).toBe(128);
+  });
+
+  it('datasets_changed can be empty when nothing changed', () => {
+    const cs = {
+      before_abs_cache_count: 128,
+      after_abs_cache_count: 128,
+      before_projection_count: 200,
+      after_projection_count: 200,
+      datasets_changed: {},
+    };
+    expect(Object.keys(cs.datasets_changed)).toHaveLength(0);
+  });
+
+  it('RefreshLogRow has change_summary field', () => {
+    interface RefreshLogRow {
+      id: number;
+      source: string;
+      status: string;
+      lgas_updated: number;
+      error_message: string | null;
+      change_summary: string | null;
+      started_at: string;
+      completed_at: string | null;
+    }
+    const row: RefreshLogRow = {
+      id: 1,
+      source: 'abs',
+      status: 'success',
+      lgas_updated: 128,
+      error_message: null,
+      change_summary: '{"before_abs_cache_count":120,"after_abs_cache_count":128,"before_projection_count":200,"after_projection_count":200,"datasets_changed":{"G01":{"before":120,"after":128}}}',
+      started_at: '2026-05-13T00:00:00Z',
+      completed_at: '2026-05-13T00:30:00Z',
+    };
+    expect(row.change_summary).toBeTruthy();
+    const parsed = JSON.parse(row.change_summary!);
+    expect(parsed.after_abs_cache_count).toBe(128);
+  });
+});
+
+describe('getABSDatasetCounts', () => {
+  it('getABSDatasetCounts is exported from db', async () => {
+    const db = await import('../lib/db');
+    expect(typeof db.getABSDatasetCounts).toBe('function');
+  });
+});

@@ -4,6 +4,7 @@ import { Outfit } from 'next/font/google';
 import Sidebar from '@/components/layout/Sidebar';
 import MainLayout from '@/components/layout/MainLayout';
 import MobileNav from '@/components/layout/MobileNav';
+import { DataAsAtBanner } from '@/components/ui/DataAsAtBanner';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -32,6 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased font-outfit">
+        <DataAsAtBanner />
         <Sidebar />
         <MainLayout>{children}</MainLayout>
         <MobileNav />

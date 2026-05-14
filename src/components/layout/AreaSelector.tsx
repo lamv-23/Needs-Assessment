@@ -45,25 +45,43 @@ export default function AreaSelector() {
     [areaType, search]
   );
 
-  // Group LGAs by region; non-LGAs are ungrouped
+  const allTypedAreas = useMemo(() =>
+    SAMPLE_AREAS.filter(
+      (area) => areaType === 'lga' ? area.type === 'lga' : area.type === areaType
+    ),
+    [areaType]
+  );
+
+  // Group LGAs by region; group SA2s/suburbs by parent LGA
   const groupedAreas = useMemo(() => {
-    if (areaType !== 'lga') return null;
+    if (areaType === 'lga') {
+      const groups: Record<string, Area[]> = {};
+      for (const area of filteredAreas) {
+        const region = area.region ?? 'Other';
+        if (!groups[region]) groups[region] = [];
+        groups[region].push(area);
+      }
+      return REGION_ORDER
+        .filter((r) => groups[r]?.length)
+        .map((r) => ({ region: r, areas: groups[r] }))
+        .concat(
+          Object.entries(groups)
+            .filter(([r]) => !REGION_ORDER.includes(r))
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([region, areas]) => ({ region, areas }))
+        );
+    }
+    // SA2 / suburb: group by parentId
+    const parentMap = new Map(SAMPLE_AREAS.filter((a) => a.type === 'lga').map((a) => [a.id, a.name]));
     const groups: Record<string, Area[]> = {};
     for (const area of filteredAreas) {
-      const region = area.region ?? 'Other';
-      if (!groups[region]) groups[region] = [];
-      groups[region].push(area);
+      const parentName = parentMap.get(area.parentId ?? '') ?? 'Other';
+      if (!groups[parentName]) groups[parentName] = [];
+      groups[parentName].push(area);
     }
-    // Sort regions by defined order, then any unlisted ones alphabetically
-    return REGION_ORDER
-      .filter((r) => groups[r]?.length)
-      .map((r) => ({ region: r, areas: groups[r] }))
-      .concat(
-        Object.entries(groups)
-          .filter(([r]) => !REGION_ORDER.includes(r))
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([region, areas]) => ({ region, areas }))
-      );
+    return Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([region, areas]) => ({ region, areas }));
   }, [areaType, filteredAreas]);
 
   const handleSelect = (area: Area) => {
@@ -99,19 +117,23 @@ export default function AreaSelector() {
         <div className="absolute right-0 top-full mt-1 w-[340px] bg-white rounded-lg shadow-lg border border-gray-200 z-50 flex flex-col max-h-[480px]">
           {/* Area type tabs */}
           <div className="flex border-b border-gray-200 shrink-0">
-            {(['lga', 'sa2', 'suburb'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => { setAreaType(type); setSearch(''); }}
-                className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
-                  areaType === type
-                    ? 'text-primary-600 border-b-2 border-primary-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {type === 'lga' ? `LGA${areaType === 'lga' ? ` (${filteredAreas.length})` : ''}` : type.toUpperCase()}
-              </button>
-            ))}
+            {(['lga', 'sa2', 'suburb'] as const).map((type) => {
+                const count = allTypedAreas.filter((a) => a.type === type).length;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => { setAreaType(type); setSearch(''); }}
+                    className={`flex-1 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors ${
+                      areaType === type
+                        ? 'text-primary-600 border-b-2 border-primary-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {type === 'lga' ? 'LGA' : type.toUpperCase()}
+                    {count > 0 && <span className="ml-1 text-[10px] font-normal">({count})</span>}
+                  </button>
+                );
+              })}
           </div>
 
           {/* Search */}
@@ -122,7 +144,7 @@ export default function AreaSelector() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={areaType === 'lga' ? 'Search 128 NSW LGAs...' : 'Search areas...'}
+                placeholder={areaType === 'lga' ? 'Search LGAs...' : areaType === 'sa2' ? 'Search SA2s...' : 'Search suburbs...'}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 autoFocus
               />
@@ -133,8 +155,9 @@ export default function AreaSelector() {
           <div className="overflow-y-auto flex-1">
             {filteredAreas.length === 0 ? (
               <p className="px-4 py-3 text-sm text-gray-500">No areas found</p>
-            ) : groupedAreas ? (
-              // Grouped view for LGAs
+            ) : groupedAreas.length === 0 ? (
+              <p className="px-4 py-3 text-sm text-gray-500">No areas found</p>
+            ) : (
               groupedAreas.map(({ region, areas }) => (
                 <div key={region}>
                   <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100 sticky top-0">
@@ -153,20 +176,6 @@ export default function AreaSelector() {
                     </button>
                   ))}
                 </div>
-              ))
-            ) : (
-              // Flat view for SA2 / suburb
-              filteredAreas.map((area) => (
-                <button
-                  key={area.id}
-                  onClick={() => handleSelect(area)}
-                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
-                    selectedArea?.id === area.id ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
-                  }`}
-                >
-                  <span className="font-medium">{area.name}</span>
-                  <span className="text-gray-400 ml-2 text-xs uppercase">{area.type}</span>
-                </button>
               ))
             )}
           </div>

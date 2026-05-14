@@ -9,6 +9,7 @@ import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { StatCardSkeleton } from '@/components/ui/Skeleton';
 
 export default function EducationPage() {
   const { selectedArea, selectedYear } = useAppStore();
@@ -30,7 +31,7 @@ export default function EducationPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       <Header title="Education" />
 
       <main className="p-6 space-y-6">
@@ -38,18 +39,24 @@ export default function EducationPage() {
         <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <StatCard
-            label={`Top Attainment: ${topAttainment.name}`}
-            value={formatPercent(topAttainment.value)}
-            subtitle={meta.liveFields.includes('attainment') ? 'ABS Census 2021' : 'Highest share of population'}
-          />
-          <StatCard
-            label="Total Education Attendance"
-            value={data.schoolEnrolment.length > 0 ? formatNumber(totalEnrolment) : 'N/A'}
-            subtitle={data.schoolEnrolment.length > 0 ? 'ABS Census 2021 education attendance' : 'No official school enrolment source integrated'}
-          />
-        </div>
+        {isLoading ? (
+          <StatCardSkeleton count={2} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <StatCard
+              accentColor="purple"
+              label={`Top Attainment: ${topAttainment.name}`}
+              value={formatPercent(topAttainment.value)}
+              subtitle={meta.liveFields.includes('attainment') ? 'ABS Census 2021' : 'Highest share of population'}
+            />
+            <StatCard
+              accentColor="purple"
+              label="Total Education Attendance"
+              value={data.schoolEnrolment.length > 0 ? formatNumber(totalEnrolment) : 'N/A'}
+              subtitle={data.schoolEnrolment.length > 0 ? 'ABS Census 2021 education attendance' : 'No official school enrolment source integrated'}
+            />
+          </div>
+        )}
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -23,6 +23,7 @@ import {
   completeRefreshLog,
   getNSWProjectionCount,
   getABSCacheCount,
+  getABSDatasetCounts,
 } from '../src/lib/db';
 import { fetchAllABSDataForLGA, LGA_CODE_MAP } from '../src/lib/abs-fetchers';
 import { nsw_population_projections } from '../src/lib/data/nsw-projections-data';
@@ -131,6 +132,9 @@ async function seedStaticData(): Promise<void> {
 
 async function seedABSData(lgaFilter?: string): Promise<void> {
   console.log('\n🌐 Fetching ABS data...\n');
+
+  const beforeDatasetCounts = getABSDatasetCounts();
+  const beforeAbsCount = getABSCacheCount();
 
   // Determine which LGAs to fetch
   let lgasToFetch: Array<[string, string]>;
@@ -283,9 +287,31 @@ async function seedABSData(lgaFilter?: string): Promise<void> {
     }
   }
 
+  const afterDatasetCounts = getABSDatasetCounts();
+  const afterAbsCount = getABSCacheCount();
+  const afterProjCount = getNSWProjectionCount();
+
+  const datasetsChanged: Record<string, { before: number; after: number }> = {};
+  const allDatasets = new Set([...Object.keys(beforeDatasetCounts), ...Object.keys(afterDatasetCounts)]);
+  for (const ds of allDatasets) {
+    const before = beforeDatasetCounts[ds] ?? 0;
+    const after = afterDatasetCounts[ds] ?? 0;
+    if (before !== after) {
+      datasetsChanged[ds] = { before, after };
+    }
+  }
+
+  const changeSummary = {
+    before_abs_cache_count: beforeAbsCount,
+    after_abs_cache_count: afterAbsCount,
+    before_projection_count: getNSWProjectionCount(),
+    after_projection_count: afterProjCount,
+    datasets_changed: datasetsChanged,
+  };
+
   const status = errorCount === 0 ? 'success' : successCount > 0 ? 'partial' : 'error';
   const errorMsg = errors.length > 0 ? errors.slice(0, 5).join('; ') : undefined;
-  completeRefreshLog(logId, status, successCount, errorMsg);
+  completeRefreshLog(logId, status, successCount, errorMsg, changeSummary);
 
   setConfigValue('abs_last_refresh', new Date().toISOString());
 
@@ -293,6 +319,14 @@ async function seedABSData(lgaFilter?: string): Promise<void> {
   console.log(`\n  ✅ ABS seeding complete.`);
   console.log(`     Success: ${successCount} | Errors: ${errorCount}`);
   console.log(`     Total LGAs in cache: ${totalCached}`);
+  console.log(`     Cache change: ${changeSummary.before_abs_cache_count} → ${changeSummary.after_abs_cache_count} LGAs`);
+  if (Object.keys(datasetsChanged).length > 0) {
+    console.log(`     Dataset changes:`);
+    for (const [ds, { before, after }] of Object.entries(datasetsChanged)) {
+      const diff = after - before;
+      console.log(`       ${ds}: ${before} → ${after} (${diff > 0 ? '+' : ''}${diff})`);
+    }
+  }
 
   if (errors.length > 0) {
     console.log('\n  ⚠️  Errors encountered:');

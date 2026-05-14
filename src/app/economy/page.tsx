@@ -9,6 +9,7 @@ import NeedsBarChart from '@/components/charts/BarChart';
 import NeedsLineChart from '@/components/charts/LineChart';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { StatCardSkeleton } from '@/components/ui/Skeleton';
 import { getEmployed2021 } from '@/lib/data/economy-helpers';
 
 export default function EconomyPage() {
@@ -20,7 +21,7 @@ export default function EconomyPage() {
   const { economy: { data, meta }, isLoading } = useLiveData(areaId, year);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div>
       <Header title="Economy & Employment" />
 
       <main className="p-6 space-y-6">
@@ -28,35 +29,44 @@ export default function EconomyPage() {
         <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Unemployment Rate"
-            value={formatPercent(data.unemploymentRate)}
-            subtitle={meta.liveFields.includes('unemploymentRate') ? 'ABS Data by Region' : 'Indicative'}
-          />
-          <StatCard
-            label="Participation Rate"
-            value={formatPercent(data.participationRate)}
-            subtitle={meta.liveFields.includes('participationRate') ? 'ABS Data by Region' : 'Indicative'}
-          />
-          <StatCard
-            label="Median Weekly Income"
-            value={formatCurrency(data.medianWeeklyIncome)}
-            subtitle={meta.liveFields.includes('medianWeeklyIncome') ? 'ABS 2021 Census' : 'Indicative'}
-          />
-          <StatCard
-            label="Employment Density"
-            value={data.jobDensity !== null ? data.jobDensity.toFixed(2) : 'N/A'}
-            subtitle={data.jobDensity !== null ? 'Jobs per km² (TZP24 jobs + LGA boundaries)' : 'No official density available'}
-          />
-          {data.employmentTrend.length > 0 && (
+        {isLoading ? (
+          <StatCardSkeleton count={4} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              label="Employed (2021)"
-              value={getEmployed2021(data.employmentTrend)?.toLocaleString() ?? '—'}
-              subtitle={meta.liveFields.includes('employmentTrend') ? 'TfNSW TZP24 baseline' : 'Indicative'}
+              accentColor="amber"
+              label="Unemployment Rate"
+              value={formatPercent(data.unemploymentRate)}
+              subtitle={meta.liveFields.includes('unemploymentRate') ? 'ABS Data by Region' : 'Indicative'}
             />
-          )}
-        </div>
+            <StatCard
+              accentColor="amber"
+              label="Participation Rate"
+              value={formatPercent(data.participationRate)}
+              subtitle={meta.liveFields.includes('participationRate') ? 'ABS Data by Region' : 'Indicative'}
+            />
+            <StatCard
+              accentColor="amber"
+              label="Median Weekly Income"
+              value={formatCurrency(data.medianWeeklyIncome)}
+              subtitle={meta.liveFields.includes('medianWeeklyIncome') ? 'ABS 2021 Census' : 'Indicative'}
+            />
+            <StatCard
+              accentColor="amber"
+              label="Employment Density"
+              value={data.jobDensity !== null ? data.jobDensity.toFixed(2) : 'N/A'}
+              subtitle={data.jobDensity !== null ? 'Jobs per km² (TZP24 jobs + LGA boundaries)' : 'No official density available'}
+            />
+            {data.employmentTrend.length > 0 && (
+              <StatCard
+                accentColor="amber"
+                label="Employed (2021)"
+                value={getEmployed2021(data.employmentTrend)?.toLocaleString() ?? '—'}
+                subtitle={meta.liveFields.includes('employmentTrend') ? 'TfNSW TZP24 baseline' : 'Indicative'}
+              />
+            )}
+          </div>
+        )}
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

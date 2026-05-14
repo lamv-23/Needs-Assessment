@@ -161,6 +161,7 @@ function initSchema(database: Database.Database): void {
       status TEXT NOT NULL,
       lgas_updated INTEGER DEFAULT 0,
       error_message TEXT,
+      change_summary TEXT,
       started_at TEXT NOT NULL,
       completed_at TEXT
     );
@@ -282,7 +283,35 @@ function initSchema(database: Database.Database): void {
       ('auto_refresh_enabled', 'false'),
       ('abs_last_refresh', ''),
       ('tfnsw_last_refresh', ''),
-      ('static_last_seed', '');
+      ('static_last_seed', ''),
+      ('data_snapshot_tag', '');
+
+    -- Data snapshots for versioning and citation
+    CREATE TABLE IF NOT EXISTS data_snapshots (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      tag             TEXT NOT NULL UNIQUE,
+      description     TEXT,
+      abs_last_refresh TEXT,
+      static_last_seed TEXT,
+      tfnsw_last_refresh TEXT,
+      abs_cache_count INTEGER,
+      projection_count INTEGER,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- Refresh change log: per-refresh diff summary
+    CREATE TABLE IF NOT EXISTS refresh_changes (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      refresh_log_id  INTEGER REFERENCES refresh_log(id),
+      lga_code        TEXT,
+      dataset         TEXT,
+      field_name      TEXT,
+      old_value       TEXT,
+      new_value       TEXT,
+      change_type     TEXT NOT NULL DEFAULT 'update'
+    );
+    CREATE INDEX IF NOT EXISTS idx_refresh_changes_log ON refresh_changes(refresh_log_id);
+    CREATE INDEX IF NOT EXISTS idx_refresh_changes_lga ON refresh_changes(lga_code);
   `);
 
   const refreshJobColumns = database
@@ -301,6 +330,18 @@ function initSchema(database: Database.Database): void {
     database.exec(`
       ALTER TABLE refresh_jobs
       ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3
+    `);
+  }
+
+  const refreshLogColumns = database
+    .prepare(`PRAGMA table_info(refresh_log)`)
+    .all() as Array<{ name: string }>;
+  const refreshLogColumnNames = new Set(refreshLogColumns.map((column) => column.name));
+
+  if (!refreshLogColumnNames.has('change_summary')) {
+    database.exec(`
+      ALTER TABLE refresh_log
+      ADD COLUMN change_summary TEXT
     `);
   }
 }
@@ -469,12 +510,21 @@ export function getAllConfig(): Record<string, string> {
 
 // ─── Refresh Log ──────────────────────────────────────────────────────────────
 
+export interface ChangeSummary {
+  before_abs_cache_count: number;
+  after_abs_cache_count: number;
+  before_projection_count: number;
+  after_projection_count: number;
+  datasets_changed: Record<string, { before: number; after: number }>;
+}
+
 export interface RefreshLogRow {
   id: number;
   source: string;
   status: string;
   lgas_updated: number;
   error_message: string | null;
+  change_summary: string | null;
   started_at: string;
   completed_at: string | null;
 }
@@ -492,14 +542,15 @@ export function completeRefreshLog(
   id: number,
   status: 'success' | 'error' | 'partial',
   lgasUpdated: number,
-  errorMessage?: string
+  errorMessage?: string,
+  changeSummary?: ChangeSummary
 ): void {
   const db = getDb();
   db.prepare(`
     UPDATE refresh_log
-    SET status = ?, lgas_updated = ?, error_message = ?, completed_at = datetime('now')
+    SET status = ?, lgas_updated = ?, error_message = ?, change_summary = ?, completed_at = datetime('now')
     WHERE id = ?
-  `).run(status, lgasUpdated, errorMessage ?? null, id);
+  `).run(status, lgasUpdated, errorMessage ?? null, changeSummary ? JSON.stringify(changeSummary) : null, id);
 }
 
 export function getRecentRefreshLogs(limit = 10): RefreshLogRow[] {
@@ -668,4 +719,131 @@ export function upsertNSWInfrastructure(row: Omit<NSWInfrastructureRow, 'fetched
       total_length_km = excluded.total_length_km,
       fetched_at = excluded.fetched_at
   `).run(row.lga_code, row.feature_type, row.total_length_km);
+}
+
+// ─── Data Snapshots ──────────────────────────────────────────────────────────
+
+export interface DataSnapshotRow {
+  id: number;
+  tag: string;
+  description: string | null;
+  abs_last_refresh: string | null;
+  static_last_seed: string | null;
+  tfnsw_last_refresh: string | null;
+  abs_cache_count: number | null;
+  projection_count: number | null;
+  created_at: string;
+}
+
+export function createSnapshot(tag: string, description?: string): DataSnapshotRow {
+  const db = getDb();
+  const config = getAllConfig();
+  const absCount = getABSCacheCount();
+  const projCount = getNSWProjectionCount();
+
+  db.prepare(`
+    INSERT INTO data_snapshots (tag, description, abs_last_refresh, static_last_seed, tfnsw_last_refresh, abs_cache_count, projection_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    tag,
+    description ?? null,
+    config['abs_last_refresh'] ?? '',
+    config['static_last_seed'] ?? '',
+    config['tfnsw_last_refresh'] ?? '',
+    absCount,
+    projCount,
+  );
+
+  setConfigValue('data_snapshot_tag', tag);
+
+  return db.prepare('SELECT * FROM data_snapshots WHERE tag = ?').get(tag) as DataSnapshotRow;
+}
+
+export function listSnapshots(limit: number = 20): DataSnapshotRow[] {
+  const db = getDb();
+  return db.prepare('SELECT * FROM data_snapshots ORDER BY created_at DESC LIMIT ?').all(limit) as DataSnapshotRow[];
+}
+
+export function activateSnapshot(tag: string): boolean {
+  const db = getDb();
+  const snapshot = db.prepare('SELECT * FROM data_snapshots WHERE tag = ?').get(tag) as DataSnapshotRow | undefined;
+  if (!snapshot) return false;
+  setConfigValue('data_snapshot_tag', tag);
+  return true;
+}
+
+export function deleteSnapshot(tag: string): boolean {
+  const db = getDb();
+  const result = db.prepare('DELETE FROM data_snapshots WHERE tag = ?').run(tag);
+  const config = getAllConfig();
+  if (config['data_snapshot_tag'] === tag) {
+    setConfigValue('data_snapshot_tag', '');
+  }
+  return result.changes > 0;
+}
+
+// ─── Refresh Changes ──────────────────────────────────────────────────────────
+
+export interface RefreshChangeRow {
+  id: number;
+  refresh_log_id: number;
+  lga_code: string | null;
+  dataset: string | null;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  change_type: string;
+}
+
+export function insertRefreshChange(change: Omit<RefreshChangeRow, 'id'>): void {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO refresh_changes (refresh_log_id, lga_code, dataset, field_name, old_value, new_value, change_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    change.refresh_log_id,
+    change.lga_code,
+    change.dataset,
+    change.field_name,
+    change.old_value,
+    change.new_value,
+    change.change_type,
+  );
+}
+
+export function getChangesForRefreshLog(refreshLogId: number): RefreshChangeRow[] {
+  const db = getDb();
+  return db.prepare('SELECT * FROM refresh_changes WHERE refresh_log_id = ? ORDER BY id').all(refreshLogId) as RefreshChangeRow[];
+}
+
+export function getABSDatasetCoverage(): Array<{ dataset: string; count: number; expected: number }> {
+  const db = getDb();
+  const LGA_COUNT = 128;
+  const rows = db.prepare(`
+    SELECT dataset, COUNT(DISTINCT lga_code) as cnt FROM abs_cache GROUP BY dataset ORDER BY dataset
+  `).all() as Array<{ dataset: string; cnt: number }>;
+  return rows.map(r => ({ dataset: r.dataset, count: r.cnt, expected: LGA_COUNT }));
+}
+
+export function getABSDatasetCounts(): Record<string, number> {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT dataset, COUNT(DISTINCT lga_code) as cnt FROM abs_cache GROUP BY dataset ORDER BY dataset
+  `).all() as Array<{ dataset: string; cnt: number }>;
+  return Object.fromEntries(rows.map(r => [r.dataset, r.cnt]));
+}
+
+export function getChangeSummaryForRefreshLog(refreshLogId: number): { total: number; updates: number; additions: number; removals: number } {
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT change_type, COUNT(*) as cnt FROM refresh_changes WHERE refresh_log_id = ? GROUP BY change_type
+  `).all(refreshLogId) as Array<{ change_type: string; cnt: number }>;
+  const summary = { total: 0, updates: 0, additions: 0, removals: 0 };
+  for (const row of rows) {
+    summary.total += row.cnt;
+    if (row.change_type === 'update') summary.updates = row.cnt;
+    else if (row.change_type === 'add') summary.additions = row.cnt;
+    else if (row.change_type === 'remove') summary.removals = row.cnt;
+  }
+  return summary;
 }

@@ -9,6 +9,7 @@ import NeedsPieChart from '@/components/charts/PieChart';
 import PopulationPyramid from '@/components/charts/PopulationPyramid';
 import MapRenderer from '@/components/maps/MapRenderer';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { StatCardSkeleton, ChartSkeleton } from '@/components/ui/Skeleton';
 import { useAppStore } from '@/store';
 import { useLiveData } from '@/hooks/useLiveData';
 import { buildLanguageChartData } from '@/lib/data/demographics-helpers';
@@ -59,32 +60,36 @@ export default function DemographicsPage() {
         <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Users}
-            label="Total Population"
-            value={formatNumber(data.totalPopulation)}
-            subtitle={meta.liveFields.includes('totalPopulation') ? 'ABS Census 2021' : `${year} (indicative)`}
-          />
-          <StatCard
-            icon={Calendar}
-            label="Median Age"
-            value={data.medianAge.toFixed(1)}
-            subtitle={meta.liveFields.includes('medianAge') ? 'ABS Census 2021' : 'Indicative'}
-          />
-          <StatCard
-            icon={ShieldCheck}
-            label="SEIFA Score"
-            value={formatNumber(data.seifaScore)}
-            subtitle={meta.liveFields.includes('seifaScore') ? 'IRSD — ABS 2021' : 'Indicative'}
-          />
-          <StatCard
-            icon={MapPin}
-            label="Population Density"
-            value={data.populationDensity !== null ? formatNumber(data.populationDensity) : 'N/A'}
-            subtitle={data.populationDensity !== null ? 'Persons per km² (official boundary-derived)' : 'No official boundary-derived density available'}
-          />
-        </div>
+        {isLoading ? (
+          <StatCardSkeleton count={4} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Users}
+              label="Total Population"
+              value={formatNumber(data.totalPopulation)}
+              subtitle={meta.liveFields.includes('totalPopulation') ? 'ABS Census 2021' : `${year} (indicative)`}
+            />
+            <StatCard
+              icon={Calendar}
+              label="Median Age"
+              value={data.medianAge.toFixed(1)}
+              subtitle={meta.liveFields.includes('medianAge') ? 'ABS Census 2021' : 'Indicative'}
+            />
+            <StatCard
+              icon={ShieldCheck}
+              label="SEIFA Score"
+              value={formatNumber(data.seifaScore)}
+              subtitle={meta.liveFields.includes('seifaScore') ? 'IRSD — ABS 2021' : 'Indicative'}
+            />
+            <StatCard
+              icon={MapPin}
+              label="Population Density"
+              value={data.populationDensity !== null ? formatNumber(data.populationDensity) : 'N/A'}
+              subtitle={data.populationDensity !== null ? 'Persons per km² (official boundary-derived)' : 'No official boundary-derived density available'}
+            />
+          </div>
+        )}
 
         {/* Interactive Demographic Hotspot Map */}
         <ChartWrapper

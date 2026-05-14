@@ -1,6 +1,7 @@
 import { ensurePostgresAppSchema, getPostgresPool } from '@/lib/postgres';
 import type {
   CacheEntryRecord,
+  ChangeSummary,
   CommuteTimeRecord,
   GtfsReliabilityRecord,
   LiveDataRepository,
@@ -241,24 +242,36 @@ const postgresOperationsRepository: OperationsRepository = {
       status: string;
       lgas_updated: number;
       error_message: string | null;
+      change_summary: string | null;
       started_at: Date | string;
       completed_at: Date | string | null;
     }>(
-      `SELECT id, source, status, lgas_updated, error_message, started_at, completed_at
+      `SELECT id, source, status, lgas_updated, error_message, change_summary, started_at, completed_at
        FROM refresh_log
        ORDER BY started_at DESC
        LIMIT $1`,
       [limit]
     );
-    return result.rows.map((row) => ({
-      id: Number(row.id),
-      source: row.source,
-      status: row.status,
-      lgasUpdated: row.lgas_updated,
-      errorMessage: row.error_message,
-      startedAt: toIsoString(row.started_at),
-      completedAt: row.completed_at ? toIsoString(row.completed_at) : null,
-    } satisfies RefreshLogRecord));
+    return result.rows.map((row) => {
+      let changeSummary: ChangeSummary | null = null;
+      if (row.change_summary) {
+        try {
+          changeSummary = JSON.parse(row.change_summary) as ChangeSummary;
+        } catch {
+          changeSummary = null;
+        }
+      }
+      return {
+        id: Number(row.id),
+        source: row.source,
+        status: row.status,
+        lgasUpdated: row.lgas_updated,
+        errorMessage: row.error_message,
+        changeSummary,
+        startedAt: toIsoString(row.started_at),
+        completedAt: row.completed_at ? toIsoString(row.completed_at) : null,
+      } satisfies RefreshLogRecord;
+    });
   },
   async startRefreshLog(source) {
     await ensurePostgresAppSchema();
@@ -271,7 +284,7 @@ const postgresOperationsRepository: OperationsRepository = {
     );
     return Number(result.rows[0].id);
   },
-  async completeRefreshLog(id, status, lgasUpdated, errorMessage) {
+  async completeRefreshLog(id, status, lgasUpdated, errorMessage, changeSummary?) {
     await ensurePostgresAppSchema();
     const pool = getPostgresPool();
     await pool.query(
@@ -279,9 +292,10 @@ const postgresOperationsRepository: OperationsRepository = {
        SET status = $1,
            lgas_updated = $2,
            error_message = $3,
+           change_summary = $4,
            completed_at = NOW()
-       WHERE id = $4`,
-      [status, lgasUpdated, errorMessage ?? null, id]
+       WHERE id = $5`,
+      [status, lgasUpdated, errorMessage ?? null, changeSummary ? JSON.stringify(changeSummary) : null, id]
     );
   },
   async enqueueRefreshJob(input) {

@@ -15,7 +15,7 @@ import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
 import { formatNumber, formatPercent, formatCurrency, CHART_COLORS } from '@/lib/utils';
 import { getCarModeShare, getPTModeShare, getModeValue } from '@/lib/data/transport-helpers';
 import { TRANSPORT_DATA_NOTE } from '@/lib/data/tfnsw-transport';
-import { Plus, X, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { Plus, X, ArrowUpRight, ArrowDownRight, Minus, Search } from 'lucide-react';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import { useMultiAreaData } from '@/hooks/useMultiAreaData';
 import type { Area } from '@/types';
@@ -48,6 +48,7 @@ export default function ComparePage() {
       setSelectedAreas([...selectedAreas, area]);
     }
     setShowSelector(false);
+    setAreaSearch('');
   };
 
   const removeArea = (areaId: string) => {
@@ -136,7 +137,47 @@ export default function ComparePage() {
     });
   }, [areasData]);
 
+  const REGION_ORDER = [
+    'Greater Sydney',
+    'Hunter',
+    'Central Coast',
+    'Illawarra-Shoalhaven',
+    'South East & Tablelands',
+    'New England & North West',
+    'North Coast',
+    'Central West & Orana',
+    'Riverina-Murray',
+    'Far West',
+  ];
+
+  const [areaSearch, setAreaSearch] = useState('');
+
   const availableLGAs = SAMPLE_AREAS.filter(a => a.type === 'lga' && !selectedAreas.find(s => s.id === a.id));
+
+  const filteredLGAs = useMemo(() =>
+    areaSearch
+      ? availableLGAs.filter(a => a.name.toLowerCase().includes(areaSearch.toLowerCase()))
+      : availableLGAs,
+    [availableLGAs, areaSearch]
+  );
+
+  const groupedAvailableLGAs = useMemo(() => {
+    const groups: Record<string, Area[]> = {};
+    for (const area of filteredLGAs) {
+      const region = area.region ?? 'Other';
+      if (!groups[region]) groups[region] = [];
+      groups[region].push(area);
+    }
+    return REGION_ORDER
+      .filter((r) => groups[r]?.length)
+      .map((r) => ({ region: r, areas: groups[r] }))
+      .concat(
+        Object.entries(groups)
+          .filter(([r]) => !REGION_ORDER.includes(r))
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([region, areas]) => ({ region, areas }))
+      );
+  }, [filteredLGAs]);
 
   const anyLive = areasData.some(d => d.hasLiveData);
   const liveAreaNames = areasData.filter(d => d.hasLiveData).map(d => d.area.name);
@@ -186,16 +227,43 @@ export default function ComparePage() {
                   <Plus className="w-3.5 h-3.5" /> Add area
                 </button>
                 {showSelector && (
-                  <div className="absolute top-full mt-1 left-0 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[300px] overflow-y-auto">
-                    {availableLGAs.map(area => (
-                      <button
-                        key={area.id}
-                        onClick={() => addArea(area)}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
-                      >
-                        {area.name}
-                      </button>
-                    ))}
+                  <div className="absolute top-full mt-1 left-0 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 flex flex-col max-h-[360px]">
+                    <div className="p-2 border-b border-gray-100 shrink-0">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={areaSearch}
+                          onChange={(e) => setAreaSearch(e.target.value)}
+                          placeholder="Search LGAs..."
+                          className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="overflow-y-auto flex-1">
+                      {groupedAvailableLGAs.length === 0 ? (
+                        <p className="px-4 py-3 text-sm text-gray-500">No areas found</p>
+                      ) : (
+                        groupedAvailableLGAs.map(({ region, areas }) => (
+                          <div key={region}>
+                            <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100 sticky top-0">
+                              {region}
+                              <span className="ml-1.5 font-normal normal-case">({areas.length})</span>
+                            </div>
+                            {areas.map((area) => (
+                              <button
+                                key={area.id}
+                                onClick={() => addArea(area)}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors text-gray-700"
+                              >
+                                {area.name}
+                              </button>
+                            ))}
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

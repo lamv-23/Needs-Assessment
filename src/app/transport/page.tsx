@@ -15,6 +15,8 @@ import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
 import { Clock, Train, Car, Bus, TrendingDown } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import PageNav from '@/components/ui/PageNav';
+import { StatCardSkeleton } from '@/components/ui/Skeleton';
 
 export default function TransportPage() {
   const { selectedArea, selectedYear } = useAppStore();
@@ -128,120 +130,129 @@ export default function TransportPage() {
         subtitle={`${area.name} — ${year}`}
       />
 
+      <PageNav sections={[
+        { id: 'mode-share-census', label: 'Mode Share' },
+        { id: 'traffic-crash', label: 'Traffic & Crash' },
+        { id: 'modelled-trends', label: 'Modelled Trends' },
+        { id: 'live-intel', label: 'Live Intelligence' },
+      ]} />
+
       <div className="p-6 space-y-6">
         {/* Data source attribution — always visible */}
         <DataSourceBadge meta={meta} isLoading={isLoading} />
 
         {/* Stat Cards */}
-        <div className="flex flex-wrap gap-4">
-          {data.avgCommute !== null && (
+        {isLoading ? (
+          <StatCardSkeleton count={5} />
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            {data.avgCommute !== null && (
+              <StatCard
+                icon={Clock}
+                accentColor="emerald"
+                label="Average Commute Time"
+                value={`${data.avgCommute} min`}
+                subtitle="Latest available value"
+              />
+            )}
+            {data.ptPatronage !== null && (
+              <StatCard
+                icon={Train}
+                accentColor="emerald"
+                label="PT Patronage"
+                value={formatNumber(data.ptPatronage)}
+                subtitle="Latest available value"
+              />
+            )}
             <StatCard
-              icon={Clock}
-              label="Average Commute Time"
-              value={`${data.avgCommute} min`}
-              subtitle="Latest available value"
+              icon={Car}
+              accentColor="emerald"
+              label="Car Mode Share"
+              value={formatPercent(carModeShare)}
+              subtitle="ABS Census 2021 — driver + passenger"
             />
-          )}
-          {data.ptPatronage !== null && (
             <StatCard
-              icon={Train}
-              label="PT Patronage"
-              value={formatNumber(data.ptPatronage)}
-              subtitle="Latest available value"
+              icon={Bus}
+              accentColor="emerald"
+              label="Public Transport Mode Share"
+              value={formatPercent(ptModeShare)}
+              subtitle="ABS Census 2021 — train + bus + ferry"
             />
-          )}
-          <StatCard
-            icon={Car}
-            label="Car Mode Share"
-            value={formatPercent(carModeShare)}
-            subtitle="ABS Census 2021 — driver + passenger"
-          />
-          <StatCard
-            icon={Bus}
-            label="Public Transport Mode Share"
-            value={formatPercent(ptModeShare)}
-            subtitle="ABS Census 2021 — train + bus + ferry"
-          />
-          <StatCard
-            icon={TrendingDown}
-            label="Active Transport"
-            value={formatPercent(activeModeShare)}
-            subtitle="ABS Census 2021 — cycling + walking"
-          />
-        </div>
+            <StatCard
+              icon={TrendingDown}
+              accentColor="emerald"
+              label="Active Transport"
+              value={formatPercent(activeModeShare)}
+              subtitle="ABS Census 2021 — cycling + walking"
+            />
+          </div>
+        )}
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Journey to Work - full width */}
-          <ChartWrapper
-            title="Journey to Work — Mode Share"
-            subtitle="Percentage of workers by transport mode"
-            className="lg:col-span-2"
-            data={data.journeyToWork}
-            dataKeys={['value']}
-          >
-            <NeedsBarChart
+          {/* Journey to Work */}
+          <div data-section="mode-share" className="contents">
+            <ChartWrapper
+              title="Journey to Work — Mode Share"
+              subtitle="Percentage of workers by transport mode"
+              className="lg:col-span-2"
               data={data.journeyToWork}
               dataKeys={['value']}
-              colors={CHART_COLORS}
-              layout="vertical"
-              xAxisLabel="Mode Share (%)"
-              yAxisLabel="Transport Mode"
-              height={400}
-            />
-          </ChartWrapper>
-
-          {/* TfNSW data disclaimer */}
-          {hasTfnswData && (
-            <div className="lg:col-span-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              <span className="mt-0.5 shrink-0">⚠</span>
-              <span>
-                Some trend charts use modelled estimates, not official data. Use them as a guide
-                alongside the official source badges above.
-              </span>
-            </div>
-          )}
-
-          {hasLiveTraffic && (
-            <ChartWrapper
-              title="Official Road Traffic Counts"
-              subtitle={`${latestTrafficPoint?.stationCount ?? 0} nearby count sites matched in ${area.name}`}
-              className="lg:col-span-2"
-              data={liveTrafficTrend.map((point) => ({
-                year: point.year,
-                'Average daily vehicles': point.avgDailyVehicles,
-              }))}
-              dataKeys={['Average daily vehicles']}
-              xAxisKey="year"
             >
-              <NeedsLineChart
+              <NeedsBarChart
+                data={data.journeyToWork}
+                dataKeys={['value']}
+                colors={CHART_COLORS}
+                layout="vertical"
+                xAxisLabel="Mode Share (%)"
+                yAxisLabel="Transport Mode"
+                height={400}
+              />
+            </ChartWrapper>
+
+            {/* TfNSW data disclaimer */}
+            {hasTfnswData && (
+              <div className="lg:col-span-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <span className="mt-0.5 shrink-0">⚠</span>
+                <span>
+                  Some trend charts use modelled estimates, not official data. Use them as a guide
+                  alongside the official source badges above.
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div data-section="traffic-crash" className="contents">
+            {hasLiveTraffic && (
+              <ChartWrapper
+                title="Official Road Traffic Counts"
+                subtitle={`${latestTrafficPoint?.stationCount ?? 0} nearby count sites matched in ${area.name}`}
+                className="lg:col-span-2"
                 data={liveTrafficTrend.map((point) => ({
                   year: point.year,
                   'Average daily vehicles': point.avgDailyVehicles,
                 }))}
                 dataKeys={['Average daily vehicles']}
-                colors={[CHART_COLORS[1]]}
                 xAxisKey="year"
-                height={320}
-              />
-            </ChartWrapper>
-          )}
+              >
+                <NeedsLineChart
+                  data={liveTrafficTrend.map((point) => ({
+                    year: point.year,
+                    'Average daily vehicles': point.avgDailyVehicles,
+                  }))}
+                  dataKeys={['Average daily vehicles']}
+                  colors={[CHART_COLORS[1]]}
+                  xAxisKey="year"
+                  height={320}
+                />
+              </ChartWrapper>
+            )}
 
-          {hasLiveCrash && (
-            <ChartWrapper
-              title="Crash Trend by Year"
-              subtitle="Annual crash totals for this area"
-              className="lg:col-span-2"
-              data={liveCrashTrend.map((point) => ({
-                year: point.year,
-                Total: point.totalCrashes,
-                Fatal: point.fatalCrashes,
-                Injury: point.injuryCrashes,
-              }))}
-              dataKeys={['Total', 'Fatal', 'Injury']}
-              xAxisKey="year"
-            >
-              <NeedsLineChart
+            {hasLiveCrash && (
+              <ChartWrapper
+                title="Crash Trend by Year"
+                subtitle="Annual crash totals for this area"
+                className="lg:col-span-2"
                 data={liveCrashTrend.map((point) => ({
                   year: point.year,
                   Total: point.totalCrashes,
@@ -249,29 +260,29 @@ export default function TransportPage() {
                   Injury: point.injuryCrashes,
                 }))}
                 dataKeys={['Total', 'Fatal', 'Injury']}
-                colors={[CHART_COLORS[0], CHART_COLORS[4], CHART_COLORS[2]]}
                 xAxisKey="year"
-                height={320}
-              />
-            </ChartWrapper>
-          )}
+              >
+                <NeedsLineChart
+                  data={liveCrashTrend.map((point) => ({
+                    year: point.year,
+                    Total: point.totalCrashes,
+                    Fatal: point.fatalCrashes,
+                    Injury: point.injuryCrashes,
+                  }))}
+                  dataKeys={['Total', 'Fatal', 'Injury']}
+                  colors={[CHART_COLORS[0], CHART_COLORS[4], CHART_COLORS[2]]}
+                  xAxisKey="year"
+                  height={320}
+                />
+              </ChartWrapper>
+            )}
 
-          {/* TfNSW Mode Share Trends - if available */}
-          {hasTfnswData && (
-            <ChartWrapper
-              title="Mode Share Trends (2019-2026)"
-              subtitle="Estimated travel mode mix over time"
-              className="lg:col-span-2"
-              data={tfnswMetrics.map(m => ({
-                year: m.year,
-                'Car': m.modeShareCar,
-                'PT': m.modeSharePT,
-                'Active': m.modeShareActive,
-              }))}
-              dataKeys={['Car', 'PT', 'Active']}
-              xAxisKey="year"
-            >
-              <NeedsLineChart
+            {/* TfNSW Mode Share Trends - if available */}
+            {hasTfnswData && (
+              <ChartWrapper
+                title="Mode Share Trends (2019-2026)"
+                subtitle="Estimated travel mode mix over time"
+                className="lg:col-span-2"
                 data={tfnswMetrics.map(m => ({
                   year: m.year,
                   'Car': m.modeShareCar,
@@ -279,109 +290,122 @@ export default function TransportPage() {
                   'Active': m.modeShareActive,
                 }))}
                 dataKeys={['Car', 'PT', 'Active']}
-                colors={[CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[5]]}
                 xAxisKey="year"
-                height={350}
-              />
-            </ChartWrapper>
-          )}
+              >
+                <NeedsLineChart
+                  data={tfnswMetrics.map(m => ({
+                    year: m.year,
+                    'Car': m.modeShareCar,
+                    'PT': m.modeSharePT,
+                    'Active': m.modeShareActive,
+                  }))}
+                  dataKeys={['Car', 'PT', 'Active']}
+                  colors={[CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[5]]}
+                  xAxisKey="year"
+                  height={350}
+                />
+              </ChartWrapper>
+            )}
 
-          {/* PT Patronage Trend - if available */}
-          {hasTfnswData && (
-            <ChartWrapper
-              title="PT Patronage Trend (2019-2026)"
-              subtitle="Trips per capita per day — historical"
-              className="lg:col-span-2"
-              data={tfnswMetrics.map(m => ({
-                year: m.year,
-                'PT Patronage': m.ptPatronagePerCapita,
-              }))}
-              dataKeys={['PT Patronage']}
-              xAxisKey="year"
-            >
-              <NeedsLineChart
+            {/* PT Patronage Trend - if available */}
+            {hasTfnswData && (
+              <ChartWrapper
+                title="PT Patronage Trend (2019-2026)"
+                subtitle="Trips per capita per day — historical"
+                className="lg:col-span-2"
                 data={tfnswMetrics.map(m => ({
                   year: m.year,
                   'PT Patronage': m.ptPatronagePerCapita,
                 }))}
                 dataKeys={['PT Patronage']}
-                colors={[CHART_COLORS[2]]}
                 xAxisKey="year"
-                height={350}
-              />
-            </ChartWrapper>
-          )}
+              >
+                <NeedsLineChart
+                  data={tfnswMetrics.map(m => ({
+                    year: m.year,
+                    'PT Patronage': m.ptPatronagePerCapita,
+                  }))}
+                  dataKeys={['PT Patronage']}
+                  colors={[CHART_COLORS[2]]}
+                  xAxisKey="year"
+                  height={350}
+                />
+              </ChartWrapper>
+            )}
 
-          {/* Commute Time Trend - if available */}
-          {hasTfnswData && (
-            <ChartWrapper
-              title="Average Commute Time (2019-2026)"
-              subtitle="Estimated one-way travel time"
-              className="lg:col-span-2"
-              data={tfnswMetrics.map(m => ({
-                year: m.year,
-                'Commute Time': m.averageCommuteTime,
-              }))}
-              dataKeys={['Commute Time']}
-              xAxisKey="year"
-            >
-              <NeedsLineChart
+            {/* Commute Time Trend - if available */}
+            {hasTfnswData && (
+              <ChartWrapper
+                title="Average Commute Time (2019-2026)"
+                subtitle="Estimated one-way travel time"
+                className="lg:col-span-2"
                 data={tfnswMetrics.map(m => ({
                   year: m.year,
                   'Commute Time': m.averageCommuteTime,
                 }))}
                 dataKeys={['Commute Time']}
-                colors={[CHART_COLORS[1]]}
                 xAxisKey="year"
-                height={300}
-              />
-            </ChartWrapper>
-          )}
+              >
+                <NeedsLineChart
+                  data={tfnswMetrics.map(m => ({
+                    year: m.year,
+                    'Commute Time': m.averageCommuteTime,
+                  }))}
+                  dataKeys={['Commute Time']}
+                  colors={[CHART_COLORS[1]]}
+                  xAxisKey="year"
+                  height={300}
+                />
+              </ChartWrapper>
+            )}
+          </div>
 
-          {/* Mode Share Trend */}
-          <ChartWrapper
-            title="Mode Share Trend"
-            subtitle="Change in transport modes across census years"
-            data={data.modeShareTrend.map((d: { year: number; car: number; train: number; bus: number; active: number; wfh: number }) => ({ ...d, name: String(d.year) }))}
-            dataKeys={['car', 'train', 'bus', 'active', 'wfh']}
-            xAxisKey="year"
-          >
-            <NeedsLineChart
+          <div data-section="mode-share" className="contents">
+            {/* Mode Share Trend */}
+            <ChartWrapper
+              title="Mode Share Trend"
+              subtitle="Change in transport modes across census years"
               data={data.modeShareTrend.map((d: { year: number; car: number; train: number; bus: number; active: number; wfh: number }) => ({ ...d, name: String(d.year) }))}
               dataKeys={['car', 'train', 'bus', 'active', 'wfh']}
-              colors={[
-                CHART_COLORS[0],
-                CHART_COLORS[2],
-                CHART_COLORS[3],
-                CHART_COLORS[4],
-                CHART_COLORS[6],
-              ]}
-              xAxisLabel="Year"
-              yAxisLabel="Mode Share (%)"
-              height={350}
-            />
-          </ChartWrapper>
+              xAxisKey="year"
+            >
+              <NeedsLineChart
+                data={data.modeShareTrend.map((d: { year: number; car: number; train: number; bus: number; active: number; wfh: number }) => ({ ...d, name: String(d.year) }))}
+                dataKeys={['car', 'train', 'bus', 'active', 'wfh']}
+                colors={[
+                  CHART_COLORS[0],
+                  CHART_COLORS[2],
+                  CHART_COLORS[3],
+                  CHART_COLORS[4],
+                  CHART_COLORS[6],
+                ]}
+                xAxisLabel="Year"
+                yAxisLabel="Mode Share (%)"
+                height={350}
+              />
+            </ChartWrapper>
 
-          {/* Vehicle Ownership */}
-          <ChartWrapper
-            title="Vehicle Ownership"
-            subtitle="Households by number of vehicles"
-            data={data.vehicleOwnership}
-            dataKeys={['value']}
-          >
-            <NeedsPieChart
+            {/* Vehicle Ownership */}
+            <ChartWrapper
+              title="Vehicle Ownership"
+              subtitle="Households by number of vehicles"
               data={data.vehicleOwnership}
-              colors={CHART_COLORS}
-              showLabels
-              height={350}
-              labelMode="value"
-              valueSuffix="%"
-            />
-          </ChartWrapper>
+              dataKeys={['value']}
+            >
+              <NeedsPieChart
+                data={data.vehicleOwnership}
+                colors={CHART_COLORS}
+                showLabels
+                height={350}
+                labelMode="value"
+                valueSuffix="%"
+              />
+            </ChartWrapper>
+          </div>
         </div>
 
         {/* ── Live & Recent Transport Intelligence ──────────────────────────── */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
+        <div data-section="live-intel" className="border border-slate-200 rounded-xl overflow-hidden">
           <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
             <div>
               <h2 className="text-base font-semibold text-slate-800">Live &amp; Recent Transport Intelligence</h2>

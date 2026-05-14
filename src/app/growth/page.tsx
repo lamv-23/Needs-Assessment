@@ -10,6 +10,8 @@ import { formatNumber, CHART_COLORS } from '@/lib/utils';
 import { Users, TrendingUp, Target, BarChart3, Briefcase } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { StatCardSkeleton } from '@/components/ui/Skeleton';
+import PageNav from '@/components/ui/PageNav';
 
 export default function GrowthPage() {
   const { selectedArea } = useAppStore();
@@ -50,151 +52,176 @@ export default function GrowthPage() {
         {/* Data source attribution — always visible */}
         <DataSourceBadge meta={meta} isLoading={isLoading} />
 
+        <PageNav sections={[
+          { id: 'growth-overview', label: 'Overview' },
+          { id: 'growth-population', label: 'Population' },
+          { id: 'growth-employment', label: 'Employment' },
+          { id: 'growth-building', label: 'Building' },
+        ]} />
+
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            icon={Users}
-            label="Population (2021)"
-            value={formatNumber(currentPop)}
-            subtitle={meta.liveFields.includes('populationProjections') ? 'NSW DPE Projection base' : '2021 (indicative)'}
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Annual Growth Rate"
-            value={`${data.annualGrowthRate}%`}
-            subtitle="Historical average"
-          />
-          <StatCard
-            icon={Target}
-            label="Projected Growth Rate (p.a.)"
-            value={`${data.projectedGrowthRate}%`}
-            subtitle={meta.liveFields.includes('populationProjections') ? 'NSW DPE 2021–2041' : 'Indicative'}
-          />
-          <StatCard
-            icon={BarChart3}
-            label="Projected 2041 Population"
-            value={formatNumber(projected2041)}
-            subtitle={meta.liveFields.includes('populationProjections') ? 'NSW DPE' : 'Indicative'}
-          />
-          <StatCard
-            icon={Briefcase}
-            label="Employment (2021)"
-            value={formatNumber(employmentBase2021)}
-            subtitle={meta.liveFields.includes('employmentGrowth') ? 'TfNSW TZP24' : 'Indicative'}
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Employment Growth Rate (p.a.)"
-            value={`${employmentGrowthRate}%`}
-            subtitle={meta.liveFields.includes('employmentGrowth') ? 'TfNSW 2021–2041' : 'N/A'}
-          />
-          <StatCard
-            icon={Briefcase}
-            label="Projected 2041 Employment"
-            value={formatNumber(employmentProjected2041)}
-            subtitle={meta.liveFields.includes('employmentGrowth') ? 'TfNSW Projection' : 'N/A'}
-          />
-        </div>
+        {isLoading ? (
+          <StatCardSkeleton count={7} />
+        ) : (
+          <div data-section="growth-overview" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Users}
+              accentColor="teal"
+              label="Population (2021)"
+              value={formatNumber(currentPop)}
+              subtitle={meta.liveFields.includes('populationProjections') ? 'NSW DPE Projection base' : '2021 (indicative)'}
+            />
+            <StatCard
+              icon={TrendingUp}
+              accentColor="teal"
+              label="Annual Growth Rate"
+              value={`${data.annualGrowthRate}%`}
+              subtitle="Historical average"
+            />
+            <StatCard
+              icon={Target}
+              accentColor="teal"
+              label="Projected Growth Rate (p.a.)"
+              value={`${data.projectedGrowthRate}%`}
+              subtitle={meta.liveFields.includes('populationProjections') ? 'NSW DPE 2021–2041' : 'Indicative'}
+            />
+            <StatCard
+              icon={BarChart3}
+              accentColor="teal"
+              label="Projected 2041 Population"
+              value={formatNumber(projected2041)}
+              subtitle={meta.liveFields.includes('populationProjections') ? 'NSW DPE' : 'Indicative'}
+            />
+            <StatCard
+              icon={Briefcase}
+              accentColor="teal"
+              label="Employment (2021)"
+              value={formatNumber(employmentBase2021)}
+              subtitle={meta.liveFields.includes('employmentGrowth') ? 'TfNSW TZP24' : 'Indicative'}
+            />
+            <StatCard
+              icon={TrendingUp}
+              accentColor="teal"
+              label="Employment Growth Rate (p.a.)"
+              value={`${employmentGrowthRate}%`}
+              subtitle={meta.liveFields.includes('employmentGrowth') ? 'TfNSW 2021–2041' : 'N/A'}
+            />
+            <StatCard
+              icon={Briefcase}
+              accentColor="teal"
+              label="Projected 2041 Employment"
+              value={formatNumber(employmentProjected2041)}
+              subtitle={meta.liveFields.includes('employmentGrowth') ? 'TfNSW Projection' : 'N/A'}
+            />
+          </div>
+        )}
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Population Growth & Projections - full width */}
-          <ChartWrapper
-            title="Population Growth & Projections"
-            subtitle={meta.liveFields.includes('populationProjections')
-              ? 'NSW DPE projections 2021–2041 (annual) with historical data'
-              : 'Historical census data and future projections (indicative)'}
-            className="lg:col-span-2"
-            data={populationTimeline}
-            dataKeys={['population']}
-            xAxisKey="year"
-          >
-            <NeedsLineChart
+          <div data-section="growth-population" className="contents">
+            <ChartWrapper
+              title="Population Growth & Projections"
+              subtitle={meta.liveFields.includes('populationProjections')
+                ? 'NSW DPE projections 2021–2041 (annual) with historical data'
+                : 'Historical census data and future projections (indicative)'}
+              className="lg:col-span-2"
               data={populationTimeline}
               dataKeys={['population']}
-              colors={[CHART_COLORS[0]]}
               xAxisKey="year"
-              height={400}
-            />
-          </ChartWrapper>
+            >
+              <NeedsLineChart
+                data={populationTimeline}
+                dataKeys={['population']}
+                colors={[CHART_COLORS[0]]}
+                xAxisKey="year"
+                height={400}
+              />
+            </ChartWrapper>
+          </div>
 
           {/* Employment Growth - full width */}
-          <ChartWrapper
-            title="Employment Growth & Projections"
-            subtitle={meta.liveFields.includes('employmentGrowth')
-              ? 'TfNSW employment projections 2021–2041 (annual)'
-              : 'Historical and projected employment (indicative)'}
-            className="lg:col-span-2"
-            data={data.employmentGrowth}
-            dataKeys={['jobs']}
-            xAxisKey="year"
-          >
-            <NeedsLineChart
+          <div data-section="growth-employment" className="contents">
+            <ChartWrapper
+              title="Employment Growth & Projections"
+              subtitle={meta.liveFields.includes('employmentGrowth')
+                ? 'TfNSW employment projections 2021–2041 (annual)'
+                : 'Historical and projected employment (indicative)'}
+              className="lg:col-span-2"
               data={data.employmentGrowth}
               dataKeys={['jobs']}
-              colors={[CHART_COLORS[2]]}
               xAxisKey="year"
-              height={350}
-            />
-          </ChartWrapper>
+            >
+              <NeedsLineChart
+                data={data.employmentGrowth}
+                dataKeys={['jobs']}
+                colors={[CHART_COLORS[2]]}
+                xAxisKey="year"
+                height={350}
+              />
+            </ChartWrapper>
 
-          {/* Growth Rate Comparison */}
-          <ChartWrapper
-            title="Population vs Employment Growth"
-            subtitle="Annual growth rate comparison (2021–2041)"
-            className="lg:col-span-2"
-            data={[
-              { category: 'Population', growth: data.projectedGrowthRate },
-              { category: 'Employment', growth: employmentGrowthRate },
-            ]}
-            dataKeys={['growth']}
-            xAxisKey="category"
-          >
-            <NeedsBarChart
+            {/* Growth Rate Comparison */}
+            <ChartWrapper
+              title="Population vs Employment Growth"
+              subtitle="Annual growth rate comparison (2021–2041)"
+              className="lg:col-span-2"
               data={[
                 { category: 'Population', growth: data.projectedGrowthRate },
                 { category: 'Employment', growth: employmentGrowthRate },
               ]}
               dataKeys={['growth']}
-              colors={[CHART_COLORS[3]]}
-              height={300}
-            />
-          </ChartWrapper>
+              xAxisKey="category"
+            >
+              <NeedsBarChart
+                data={[
+                  { category: 'Population', growth: data.projectedGrowthRate },
+                  { category: 'Employment', growth: employmentGrowthRate },
+                ]}
+                dataKeys={['growth']}
+                colors={[CHART_COLORS[3]]}
+                height={300}
+              />
+            </ChartWrapper>
+          </div>
 
           {/* Building Approvals Trend — only shown when ABS building approvals data is available */}
-          {(data.buildingApprovals?.length ?? 0) > 0 && (
-            <ChartWrapper
-              title="Building Approvals"
-              subtitle="Monthly residential building approvals (ABS Building Approvals)"
-              className="lg:col-span-2"
-              data={data.buildingApprovals!.map(b => ({
-                period: `${b.year}-${String(b.month).padStart(2, '0')}`,
-                approvals: b.residentialCount,
-              }))}
-              dataKeys={['approvals']}
-              xAxisKey="period"
-            >
-              <NeedsLineChart
+          <div data-section="growth-building" className="contents">
+            {(data.buildingApprovals?.length ?? 0) > 0 && (
+              <ChartWrapper
+                title="Building Approvals"
+                subtitle="Monthly residential building approvals (ABS Building Approvals)"
+                className="lg:col-span-2"
                 data={data.buildingApprovals!.map(b => ({
                   period: `${b.year}-${String(b.month).padStart(2, '0')}`,
                   approvals: b.residentialCount,
                 }))}
                 dataKeys={['approvals']}
-                colors={[CHART_COLORS[5] ?? CHART_COLORS[0]]}
                 xAxisKey="period"
-                xAxisLabel="Period"
-                yAxisLabel="Residential Approvals"
-                height={350}
-              />
-            </ChartWrapper>
-          )}
+              >
+                <NeedsLineChart
+                  data={data.buildingApprovals!.map(b => ({
+                    period: `${b.year}-${String(b.month).padStart(2, '0')}`,
+                    approvals: b.residentialCount,
+                  }))}
+                  dataKeys={['approvals']}
+                  colors={[CHART_COLORS[5] ?? CHART_COLORS[0]]}
+                  xAxisKey="period"
+                  xAxisLabel="Period"
+                  yAxisLabel="Residential Approvals"
+                  height={350}
+                />
+              </ChartWrapper>
+            )}
+          </div>
         </div>
 
         {/* Rolling Annual Approvals — only shown when ABS building approvals data is available */}
         {data.rollingAnnualApprovals !== undefined && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div data-section="growth-building" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={BarChart3}
+              accentColor="teal"
               label="Rolling Annual Approvals"
               value={formatNumber(data.rollingAnnualApprovals)}
               subtitle="Residential dwellings approved (12-month rolling — ABS)"

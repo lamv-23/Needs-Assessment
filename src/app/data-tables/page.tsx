@@ -1,11 +1,13 @@
 'use client';
 
+import React from 'react';
 import Header from '@/components/layout/Header';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import { useLiveData } from '@/hooks/useLiveData';
 import { useAppStore } from '@/store';
 import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 import { formatCurrency, formatNumber, formatPercent } from '@/lib/utils';
+import { ChevronRight } from 'lucide-react';
 
 type CellValue = string | number | null | undefined;
 
@@ -76,16 +78,23 @@ function Section({
   meta: Parameters<typeof DataSourceBadge>[0]['meta'];
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = React.useState(defaultOpen);
   return (
-    <details open={defaultOpen} className="bg-white border border-gray-200 rounded-lg">
-      <summary className="cursor-pointer px-4 py-3 font-semibold text-gray-900">
-        {title}
-      </summary>
-      <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
-        <DataSourceBadge meta={meta} className="mt-4" />
-        {children}
-      </div>
-    </details>
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-2 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
+      >
+        <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-90' : ''}`} />
+        <span className="font-semibold text-gray-900">{title}</span>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 space-y-4 border-t border-gray-100">
+          <DataSourceBadge meta={meta} className="mt-4" />
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 

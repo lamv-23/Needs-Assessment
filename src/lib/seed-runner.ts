@@ -14,6 +14,7 @@ import {
   getSeedWriteRepository,
 } from '@/lib/repositories';
 import { logServerError, logServerInfo } from '@/lib/server/logger';
+import { getABSDatasetCounts, getABSCacheCount, getNSWProjectionCount } from '@/lib/db';
 
 export type SeedMode = 'static' | 'abs' | 'all';
 
@@ -30,6 +31,10 @@ export default async function runSeed(mode: SeedMode, lgaId?: string): Promise<v
 async function seedStatic(): Promise<void> {
   const seedRepository = getSeedWriteRepository();
   const operationsRepository = getOperationsRepository();
+
+  const beforeAbsCount = getABSCacheCount();
+  const beforeProjCount = getNSWProjectionCount();
+  const beforeDatasetCounts = getABSDatasetCounts();
 
   // NSW population projections
   const popByLGA: Record<string, Array<{ year: number; totalPopulation: number }>> = {};
@@ -59,10 +64,31 @@ async function seedStatic(): Promise<void> {
 
   await operationsRepository.setConfigValue('static_last_seed', new Date().toISOString());
   await operationsRepository.setConfigValue('tfnsw_last_refresh', new Date().toISOString());
+
+  const afterAbsCount = getABSCacheCount();
+  const afterProjCount = getNSWProjectionCount();
+  const afterDatasetCounts = getABSDatasetCounts();
+
+  const datasetsChanged: Record<string, { before: number; after: number }> = {};
+  for (const ds of Object.keys(afterDatasetCounts)) {
+    const before = beforeDatasetCounts[ds] ?? 0;
+    const after = afterDatasetCounts[ds];
+    if (before !== after) {
+      datasetsChanged[ds] = { before, after };
+    }
+  }
+
   logServerInfo('seed_static_completed', {
     populationProjectionCount: Object.keys(popByLGA).length,
     employmentProjectionCount: Object.keys(empByLGA).length,
     transportRowCount: tfnsw_transport_data.length,
+    changeSummary: {
+      before_abs_cache_count: beforeAbsCount,
+      after_abs_cache_count: afterAbsCount,
+      before_projection_count: beforeProjCount,
+      after_projection_count: afterProjCount,
+      datasets_changed: datasetsChanged,
+    },
   });
 }
 
@@ -72,6 +98,10 @@ async function seedABS(lgaFilter?: string): Promise<void> {
   const lgasToFetch = lgaFilter
     ? [[lgaFilter, LGA_CODE_MAP[lgaFilter]] as [string, string]].filter(([, code]) => code)
     : Object.entries(LGA_CODE_MAP).filter(([id]) => id !== 'benchmark_gsy');
+
+  const beforeDatasetCounts = getABSDatasetCounts();
+  const beforeAbsCount = getABSCacheCount();
+  const beforeProjCount = getNSWProjectionCount();
 
   const logId = await operationsRepository.startRefreshLog('abs');
   let success = 0;
@@ -117,13 +147,36 @@ async function seedABS(lgaFilter?: string): Promise<void> {
     }
   }
 
+  const afterDatasetCounts = getABSDatasetCounts();
+  const afterAbsCount = getABSCacheCount();
+  const afterProjCount = getNSWProjectionCount();
+
+  const datasetsChanged: Record<string, { before: number; after: number }> = {};
+  const allDatasets = new Set([...Object.keys(beforeDatasetCounts), ...Object.keys(afterDatasetCounts)]);
+  for (const ds of allDatasets) {
+    const before = beforeDatasetCounts[ds] ?? 0;
+    const after = afterDatasetCounts[ds] ?? 0;
+    if (before !== after) {
+      datasetsChanged[ds] = { before, after };
+    }
+  }
+
+  const changeSummary = {
+    before_abs_cache_count: beforeAbsCount,
+    after_abs_cache_count: afterAbsCount,
+    before_projection_count: beforeProjCount,
+    after_projection_count: afterProjCount,
+    datasets_changed: datasetsChanged,
+  };
+
   const status = errors.length === 0 ? 'success' : success > 0 ? 'partial' : 'error';
-  await operationsRepository.completeRefreshLog(logId, status, success, errors.slice(0, 3).join('; '));
+  await operationsRepository.completeRefreshLog(logId, status, success, errors.slice(0, 3).join('; '), changeSummary);
   await operationsRepository.setConfigValue('abs_last_refresh', new Date().toISOString());
   logServerInfo('seed_abs_completed', {
     lgaFilter: lgaFilter ?? null,
     successCount: success,
     errorCount: errors.length,
     status,
+    changeSummary,
   });
 }
