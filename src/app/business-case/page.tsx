@@ -26,7 +26,7 @@ import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
 import { getCarModeShare, getPTModeShare } from '@/lib/data/transport-helpers';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
-import { Wand2, Download, RotateCcw } from 'lucide-react';
+import { Wand2, Download, RotateCcw, Sparkles, Loader2 } from 'lucide-react';
 
 // Which themes activate which sections
 const THEME_TO_SECTIONS: Record<ThemeKey, SectionId[]> = {
@@ -67,6 +67,9 @@ export default function BusinessCasePage() {
   const clearProjectSession = useProjectSessionStore((state) => state.clearProjectSession);
 
   const [wizardOpen, setWizardOpen] = useState(!projectName);
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiNarratives, setAiNarratives] = useState<Record<string, string>>({});
   const reportRef = useRef<HTMLDivElement>(null);
 
   const primaryAreaId = areaIds[0] ?? 'lga_sydney';
@@ -103,6 +106,46 @@ export default function BusinessCasePage() {
     clearProjections();
     clearProjectSession();
     setWizardOpen(true);
+  };
+
+  const generateSectionNarrative = async (id: SectionId) => {
+    setAiLoading(prev => ({ ...prev, [id]: true }));
+    setAiError(null);
+
+    const areaName = primaryArea?.name ?? primaryAreaId;
+    const prompts: Partial<Record<SectionId, string>> = {
+      scene: `Write the 'Setting the Scene' section for a transport business case in ${areaName}. Population: ${formatNumber(d.totalPopulation)}, Median Age: ${d.medianAge}, SEIFA: ${d.seifaScore ?? 'N/A'}, car mode share: ${formatPercent(carModeShare)}, median weekly income: $${e.medianWeeklyIncome}/wk.`,
+      growth: `Write the 'Growth Pressure' section for a transport business case in ${areaName}. Describe population and employment growth trends and their implications for transport infrastructure demand.`,
+      'car-dependency': `Write the 'Car Dependency' section for a transport business case in ${areaName}. Car driver mode share: ${formatPercent(carModeShare)}, public transport mode share: ${formatPercent(ptModeShare)}. Explain the implications of high car dependency for liveability, access, and emissions.`,
+      congestion: `Write the 'Congestion & Commute' section for a transport business case in ${areaName}. Average commute time: ${t.avgCommute !== null ? `${t.avgCommute} minutes` : 'not available'}, PT mode share: ${formatPercent(ptModeShare)}. Describe congestion pressures and commuter experience.`,
+      economy: `Write the 'Economic Activity' section for a transport business case in ${areaName}. Unemployment: ${formatPercent(e.unemploymentRate)}, median income: $${e.medianWeeklyIncome}/wk. Describe the economic context and how transport investment supports productivity and access to jobs.`,
+      gap: `Write the 'Infrastructure Gap' section for a transport business case in ${areaName}. Car mode share: ${formatPercent(carModeShare)} (target ~60%), PT mode share: ${formatPercent(ptModeShare)} (target ~20–25%). Describe the level of service gap and what this means for investment prioritisation.`,
+      evidence: `Write a brief 'Evidence Summary' for a transport business case in ${areaName}. Summarise the strength of the evidence base, noting what data is available (ABS Census, NSW DPE projections, TfNSW mode share data) and what gaps remain (crash data, infrastructure condition, detailed BCA modelling).`,
+    };
+
+    const prompt = prompts[id];
+    if (!prompt) {
+      setAiLoading(prev => ({ ...prev, [id]: false }));
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAiError(data.error ?? 'AI generation failed');
+      } else {
+        setAiNarratives(prev => ({ ...prev, [id]: data.text }));
+      }
+    } catch {
+      setAiError('Ollama is not running. Start it with: ollama serve');
+    } finally {
+      setAiLoading(prev => ({ ...prev, [id]: false }));
+    }
   };
 
   const handleExportPDF = async () => {
@@ -179,10 +222,28 @@ export default function BusinessCasePage() {
     const callout = callouts[id];
     return (
       <div key={id} className="space-y-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">{SECTION_HEADINGS[id]}</h2>
-          {callout && <p className="text-sm text-gray-500 mt-1 italic">{callout}</p>}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{SECTION_HEADINGS[id]}</h2>
+            {callout && <p className="text-sm text-gray-500 mt-1 italic">{callout}</p>}
+          </div>
+          <button
+            onClick={() => generateSectionNarrative(id)}
+            disabled={aiLoading[id]}
+            title="AI Draft"
+            className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-xs text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors disabled:opacity-40"
+          >
+            {aiLoading[id]
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Sparkles className="w-3.5 h-3.5" />}
+            AI Draft
+          </button>
         </div>
+        {aiNarratives[id] && (
+          <div className="px-4 py-3 bg-violet-50 border border-violet-200 rounded-lg text-sm text-gray-700 whitespace-pre-wrap">
+            {aiNarratives[id]}
+          </div>
+        )}
 
         {id === 'scene' && (
           <div className="grid grid-cols-3 gap-3">
@@ -376,6 +437,11 @@ export default function BusinessCasePage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">Sections</label>
+              {aiError && (
+                <div className="mb-2 px-3 py-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                  {aiError}
+                </div>
+              )}
               <div className="space-y-1">
                 {SECTION_IDS.map(id => {
                   const alwaysOn = ALWAYS_ON.includes(id);

@@ -23,6 +23,8 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import type { Area } from '@/types';
 
@@ -58,6 +60,8 @@ export default function ReportPage() {
   const [reportTitle, setReportTitle] = useState('Transport Needs Assessment Report');
   const [previewMode, setPreviewMode] = useState(false);
   const [customSections, setCustomSections] = useState<ReportSection[]>([]);
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
+  const [aiError, setAiError] = useState<string | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
 
   const area = selectedArea || SAMPLE_AREAS.find(a => a.id === 'lga_sydney')!;
@@ -116,6 +120,56 @@ export default function ReportPage() {
 
   const updateSectionTitle = (id: string, title: string) => {
     setSections(sections.map(s => s.id === id ? { ...s, title } : s));
+  };
+
+  const generateNarrative = async (section: ReportSection) => {
+    setAiLoading(prev => ({ ...prev, [section.id]: true }));
+    setAiError(null);
+
+    const prompts: Record<SectionType, string> = {
+      demographics: `Write the Population & Demographics section for ${area.name}. Population: ${formatNumber(demographics.totalPopulation)}, Median Age: ${demographics.medianAge}, SEIFA score: ${demographics.seifaScore}, car mode share: ${formatPercent(getCarModeShare(transport.journeyToWork))}, PT mode share: ${formatPercent(getPTModeShare(transport.journeyToWork))}.`,
+      transport: `Write the Transport & Commuting section for ${area.name}. Car driver mode share: ${formatPercent(getCarModeShare(transport.journeyToWork))}, public transport mode share: ${formatPercent(getPTModeShare(transport.journeyToWork))}, average commute time: ${transport.avgCommute !== null ? `${transport.avgCommute} minutes` : 'not available'}.`,
+      economy: `Write the Economy & Employment section for ${area.name}. Unemployment rate: ${formatPercent(economy.unemploymentRate)}, median weekly income: ${formatCurrency(economy.medianWeeklyIncome)}, job density: ${economy.jobDensity !== null ? economy.jobDensity : 'not available'}.`,
+      education: `Write the Education section for ${area.name}. Describe educational attainment levels based on available data.`,
+      housing: `Write the Housing & Land Use section for ${area.name}. Median weekly rent: ${formatCurrency(housing.medianWeeklyRent)}.`,
+      growth: `Write the Growth & Projections section for ${area.name}. Annual growth rate: ${formatPercent(growth.annualGrowthRate)}, projected 2041 population: ${formatNumber(nswProjections.find(p => p.year === 2041)?.totalPopulation ?? growth.populationProjections[3]?.population ?? 0)}.`,
+      custom: `Write a brief planning narrative for ${area.name}.`,
+    };
+
+    try {
+      const res = await fetch('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompts[section.type] }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAiError(data.error ?? 'AI generation failed');
+      } else {
+        // For built-in sections, create a custom section with the narrative
+        if (section.type === 'custom') {
+          updateCustomText(section.id, data.text);
+        } else {
+          const newSection: ReportSection = {
+            id: `ai_${section.id}_${Date.now()}`,
+            type: 'custom',
+            title: `${section.title} — Analysis`,
+            included: true,
+            customText: data.text,
+          };
+          setSections(prev => {
+            const idx = prev.findIndex(s => s.id === section.id);
+            const next = [...prev];
+            next.splice(idx + 1, 0, newSection);
+            return next;
+          });
+        }
+      }
+    } catch {
+      setAiError('Ollama is not running. Start it with: ollama serve');
+    } finally {
+      setAiLoading(prev => ({ ...prev, [section.id]: false }));
+    }
   };
 
   const handleExportPDF = async () => {
@@ -324,6 +378,11 @@ export default function ReportPage() {
 
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <h3 className="font-semibold text-gray-900 mb-3">Sections</h3>
+              {aiError && (
+                <div className="mb-3 px-3 py-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                  {aiError}
+                </div>
+              )}
               <div className="space-y-2">
                 {sections.map((section, i) => (
                   <div
@@ -343,6 +402,16 @@ export default function ReportPage() {
                       <span className="flex-1">{section.title}</span>
                     </label>
                     <div className="flex gap-1">
+                      <button
+                        onClick={() => generateNarrative(section)}
+                        disabled={aiLoading[section.id]}
+                        title="AI Draft"
+                        className="p-0.5 text-violet-400 hover:text-violet-600 disabled:opacity-40"
+                      >
+                        {aiLoading[section.id]
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Sparkles className="w-3.5 h-3.5" />}
+                      </button>
                       <button onClick={() => moveSection(section.id, 'up')} className="p-0.5 hover:text-primary-600" disabled={i === 0}>
                         <ChevronUp className="w-3.5 h-3.5" />
                       </button>
