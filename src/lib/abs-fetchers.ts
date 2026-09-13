@@ -780,11 +780,12 @@ export interface ERPData {
 }
 
 export async function fetchERP(lgaCode: string): Promise<ERPData | null> {
-  // ABS_ANNUAL_ERP_LGA2021: Annual ERP by LGA (uses LGA_2021 boundary)
-  // Uses LGA_2021 (not REGION) as the region dimension
+  // ABS_ANNUAL_ERP_LGA2025: Annual ERP by LGA, 2001-2025 (uses LGA_2025 boundary)
+  // Uses LGA_2025 (not REGION) as the region dimension.
+  // The older ABS_ANNUAL_ERP_LGA2021 flow stops at 2021 - do not use it.
   // SEX_ABS: 1=Male, 2=Female, 3=Persons
   // AGE: TOT = all ages total
-  const url = `${ABS_BASE}/ABS_ANNUAL_ERP_LGA2021?startPeriod=2016&endPeriod=2023&dimensionAtObservation=AllDimensions`;
+  const url = `${ABS_BASE}/ABS_ANNUAL_ERP_LGA2025?startPeriod=2001&endPeriod=2025&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
@@ -793,8 +794,8 @@ export async function fetchERP(lgaCode: string): Promise<ERPData | null> {
   const byYear: Record<number, number> = {};
   let latestYear = 0;
 
-  for (let year = 2016; year <= 2023; year++) {
-    const v = lookupValue(data, { LGA_2021: lgaCode, SEX_ABS: '3', AGE: 'TOT' }, year.toString());
+  for (let year = 2001; year <= 2025; year++) {
+    const v = lookupValue(data, { LGA_2025: lgaCode, SEX_ABS: '3', AGE: 'TOT' }, year.toString());
     if (v !== null && v > 0) {
       byYear[year] = Math.round(v);
       latestYear = Math.max(latestYear, year);
@@ -1762,7 +1763,11 @@ export async function fetchHousingStress(lgaCode: string): Promise<HousingStress
 // ─── Building Approvals ───────────────────────────────────────────────────────
 // ABS Building Approvals small-area datasets:
 //   BA_LGA2024 → monthly LGA approvals for 2024/25
-//   BA_LGA2025 → monthly LGA approvals for 2025/26 FYTD
+//   BA_LGA2025 → monthly LGA approvals for 2025/26 (full FY)
+//   BA_LGA2026 → monthly LGA approvals for 2026/27 FYTD
+//
+// NOTE: BA_LGA2026 keys its region dimension as REGION_TYPE=LGA2025, not LGA2026.
+// A LGA2026 key returns HTTP 404.
 //
 // Datastructure confirmed from live ABS API:
 //   MEASURE=1      → Number of dwelling units
@@ -1795,7 +1800,7 @@ function parseTimeSeriesXml(xml: string): BuildingApprovalsData['periods'] {
 }
 
 async function fetchBuildingApprovalsSeries(
-  datasetId: 'BA_LGA2024' | 'BA_LGA2025',
+  datasetId: 'BA_LGA2024' | 'BA_LGA2025' | 'BA_LGA2026',
   regionType: 'LGA2024' | 'LGA2025',
   lgaCode: string,
   startPeriod: string,
@@ -1811,6 +1816,7 @@ export async function fetchBuildingApprovals(lgaCode: string): Promise<BuildingA
     await Promise.all([
       fetchBuildingApprovalsSeries('BA_LGA2024', 'LGA2024', lgaCode, '2024-07'),
       fetchBuildingApprovalsSeries('BA_LGA2025', 'LGA2025', lgaCode, '2025-07'),
+      fetchBuildingApprovalsSeries('BA_LGA2026', 'LGA2025', lgaCode, '2026-07'),
     ])
   )
     .flat()

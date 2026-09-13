@@ -959,17 +959,31 @@ export async function getLiveGrowthData(areaId: string): Promise<LiveGrowthResul
     sampleFields.push('employmentGrowth');
   }
 
-  // Also pull ERP historical data from ABS if available
+  // Also pull ERP historical data from ABS if available.
+  // NSW DPE only reports population for the 2011/2016/2021 benchmark years, so
+  // when it's the source, merge in any more recent ERP actuals (e.g. 2022-2025)
+  // rather than letting the ABS series go unused.
   const lgaCode = getLGACode(areaId);
-  if (lgaCode && !liveFields.includes('populationHistory')) {
+  if (lgaCode) {
     const erp = await getABS<ERPData>(lgaCode, 'ERP');
     const erpMeta = await getABSMeta(lgaCode, 'ERP');
     if (erp && Object.keys(erp.byYear).length > 0) {
-      populationHistory = Object.entries(erp.byYear)
+      const erpPoints = Object.entries(erp.byYear)
         .map(([yr, pop]) => ({ year: Number(yr), population: pop }))
         .sort((a, b) => a.year - b.year);
-      liveFields.push('populationHistory');
-      sources.push('ABS Estimated Resident Population');
+
+      if (!liveFields.includes('populationHistory')) {
+        populationHistory = erpPoints;
+        liveFields.push('populationHistory');
+        sources.push('ABS Estimated Resident Population');
+      } else {
+        const maxExistingYear = Math.max(...populationHistory.map(p => p.year));
+        const extraYears = erpPoints.filter(p => p.year > maxExistingYear);
+        if (extraYears.length > 0) {
+          populationHistory = [...populationHistory, ...extraYears].sort((a, b) => a.year - b.year);
+          sources.push('ABS Estimated Resident Population');
+        }
+      }
       if (!fetchedAt) fetchedAt = erpMeta?.fetchedAt ?? null;
     }
   }
