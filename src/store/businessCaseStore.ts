@@ -56,6 +56,12 @@ export const useBusinessCaseStore = create<BusinessCaseState>()(
     }),
     {
       name: 'business-case-store',
+      // Load from localStorage explicitly (via useHasHydrated) instead of at
+      // store-creation time, so the server render and the client's first
+      // paint both see the same un-hydrated defaults — avoids a hydration
+      // mismatch on pages that branch on this store's state (e.g. wizardOpen
+      // in business-case/page.tsx).
+      skipHydration: true,
       partialize: (state) => ({
         projectName: state.projectName,
         projectType: state.projectType,

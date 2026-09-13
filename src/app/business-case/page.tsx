@@ -1,7 +1,7 @@
 // src/app/business-case/page.tsx
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import ChartWrapper from '@/components/charts/ChartWrapper';
 import NeedsBarChart from '@/components/charts/BarChart';
@@ -21,6 +21,7 @@ import {
   type SectionId,
 } from '@/store/businessCaseStore';
 import { useAppStore } from '@/store';
+import { useHasHydrated } from '@/store/useHasHydrated';
 import { useLiveData } from '@/hooks/useLiveData';
 import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
@@ -66,8 +67,19 @@ export default function BusinessCasePage() {
   const clearProjections = useProjectionStore((state) => state.clearProjections);
   const clearProjectSession = useProjectSessionStore((state) => state.clearProjectSession);
 
-  const [wizardOpen, setWizardOpen] = useState(!projectName);
+  // businessCaseStore uses skipHydration (see store for why); wizardOpen must
+  // start true to match the store's un-hydrated default (projectName === '')
+  // on both server and the client's first paint, then correct itself once
+  // hydration confirms a saved project exists — see useHasHydrated.
+  const hasHydrated = useHasHydrated(useBusinessCaseStore);
+  const [wizardOpen, setWizardOpen] = useState(true);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hasHydrated && projectName) {
+      setWizardOpen(false);
+    }
+  }, [hasHydrated, projectName]);
 
   const primaryAreaId = areaIds[0] ?? 'lga_sydney';
   const primaryArea = SAMPLE_AREAS.find(a => a.id === primaryAreaId);
