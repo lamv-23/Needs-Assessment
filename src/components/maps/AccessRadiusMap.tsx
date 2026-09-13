@@ -78,11 +78,18 @@ export default function AccessRadiusMap({
         zoomControl: true,
       });
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© <a href="https://carto.com/">Carto</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-      }).addTo(map);
+      L.tileLayer(
+        'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution:
+            'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community',
+          maxZoom: 16,
+        }
+      ).addTo(map);
+      L.tileLayer(
+        'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 16 }
+      ).addTo(map);
 
       map.on('click', (e) => {
         onPointChange(e.latlng.lat, e.latlng.lng);
