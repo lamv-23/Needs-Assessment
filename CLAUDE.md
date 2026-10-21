@@ -42,7 +42,7 @@ npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-dat
 | Source | Coverage | Update |
 |---|---|---|
 | ABS Census API (SDMX-ML XML) | Population, medians, dwelling type, tenure, industry, education attendance/completion, qualifications, SEIFA, labour | `npm run seed:abs` |
-| ABS ERP API | Historical population by year (2001–2024) | `npm run seed:abs` |
+| ABS ERP API | Historical population by year (2001–2025) | `npm run seed:abs` |
 | ABS Building Approvals API (BA_LGA2024 / BA_LGA2025) | Monthly residential building approvals by LGA | `npm run seed:abs` |
 | NSW DPE bundled data | Population projections 2021–2041 by LGA | `npm run seed:static` (or `parse:population` then `seed:static`) |
 | TfNSW TZP24 bundled data | Employment projections 2021–2066 by LGA | `npm run seed:static` (or `parse:employment` then `seed:static`) |
@@ -62,21 +62,27 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 ### ABS Datasets Fetched per LGA
 | Internal name | ABS Dataset ID | Content |
 |---|---|---|
-| G01 | C21_G01_LGA | Population by sex |
-| G02 | C21_G02_LGA | Medians (age, income, rent, mortgage, avg household size) |
-| G33 | C21_G36_LGA | Dwelling structure (separate house, semi, flat, other) |
+| G01 | C21_G01_LGA | Population by sex and age (total persons = PCHAR `P_1`; `S_1` is Year 12 completion) |
+| G02 | C21_G02_LGA | Medians: MEDAVG 1 age, 4 household income, 5 mortgage, 6 rent, 8 household size (2 is personal, 3 family income) |
+| G33 | C21_G36_LGA | Dwelling structure of occupied private dwellings (total = `OCC`; `_T` includes unoccupied) |
 | B31_2011 | ABS_CENSUS2011_B31_LGA | Historical dwelling structure (2011 baseline for housing trend) |
-| G36 | C21_G37_LGA | Tenure type (owned, mortgage, rented) |
-| G51 | C21_G53_LGA | Industry of employment (ANZSIC divisions A–S) |
+| G36 | C21_G37_LGA | Tenure (rented = `R_T`; `3` is real estate agent only) |
+| G51 | C21_G54_LGA | Industry of employment, all employed (C21_G53 is qualified workers only) |
 | G46 | C21_G16_LGA | School completion (Yr12 / Yr11 / Yr10 / below) |
 | G15 | C21_G15_LGA | Education institution attendance (preschool / primary / secondary / tertiary) |
-| G49 | C21_G49_LGA | Qualification level (postgrad / grad dip / bach / adv dip / cert) |
-| G49_2016 | ABS_C16_G49_LGA | Historical qualification level (2016 baseline for education trends) |
-| SEIFA | ABS_SEIFA2021_LGA | IRSAD score |
-| LABOUR | C21_G46_LGA | Labour force status (FT/PT employed, unemployed, NILF) |
-| ERP | ABS_ANNUAL_ERP_LGA2021 | Estimated resident population 2001–2024 |
-| BUILDING_APPROVALS | BA_LGA2024 / BA_LGA2025 | Monthly residential building approvals by LGA |
-| G34 | C21_G34_LGA | Motor vehicles per dwelling (0 / 1 / 2 / 3+) — zero-car households |
+| G49 | C21_G49_LGA | Non-school qualification level (4 adv diploma, 51 cert III/IV); total covers qualified persons only — shares use persons 15+ from G01 |
+| G49_2016 | ABS_C16_G46_LGA | 2016 non-school qualification level (same universe as G49; ABS_C16_G49 is by occupation) |
+| G09 | C21_G09_LGA | Country of birth (Australia = `11`; labels from the codelist; filter AGEP `_T`) |
+| G13 | C21_G13_LGA | Language at home (English only = LANP `1`; limited English = ENGLP `3`; labels from the codelist) |
+| G25 | C21_G32_LGA + C21_G35_LGA | Families by type (FINF `_T`) and households: family / lone person / group |
+| G33_INCOME | C21_G33_LGA | Household income bands (HIND 1 = negative/nil … 17 = $4,000+; 18 = partial) |
+| G18 | C21_G18_LGA | Need for assistance |
+| G60 | C21_G60_LGA | Occupation (ANZSCO major groups; total = OCCP `_T`) |
+| SEIFA | ABS_SEIFA2021_LGA | IRSD / IRSAD / IER / IEO scores |
+| LABOUR | C21_G46_LGA | Labour force status (LFSP 5 employed, 8 unemployed, 9 labour force); counts kept |
+| ERP | ABS_ANNUAL_ERP_LGA2025 | Estimated resident population 2001–2025 |
+| BUILDING_APPROVALS | BA_LGA2024 / BA_LGA2025 / BA_LGA2026 | Monthly residential building approvals by LGA |
+| G34 | C21_G34_LGA | Motor vehicles per dwelling (3+ = VEHD 3 + 4; total = `V_T`, stated) — zero-car households |
 | G62 / G59 / B46 | C21_G62_LGA / ABS_C16_G59_LGA / ABS_CENSUS2011_B46_LGA | Method of travel to work 2021/2016/2011 (mode share + trend) — decoded by `decodeJourneyToWork` with `MTWP_CODES_20xx` (232 = walked, 233 = worked at home, 234 = did not go; not modes). `npm run seed:g62` refreshes all three |
 | COMMUTE_DIST_2016 | ABS_REGIONAL_LGA2020 | Avg / median commuting distance (Census 2016) |
 | G55 | — | Not used (C21_G55_LGA is industry × hours); journey-to-work comes from G62/G59/B46 |
@@ -87,8 +93,8 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 3. Run `npm run seed -- --lga lga_xxx` to fetch ABS data
 
 ### Adding New ABS Data Fields
-1. Find dataset/dimension codes at data.api.abs.gov.au
-2. Add fetch fn to `src/lib/abs-fetchers.ts` (follow SDMX-ML XML pattern)
+1. Find dataset/dimension codes at data.api.abs.gov.au. **Check every code against the official codelist** (`/rest/dataflow/ABS/<ID>?references=all&detail=referencepartial`) — most past bugs were plausible-looking wrong codes, subtotals summed with their parts, or a dimension left unfiltered (lookupValue returns the first partial match)
+2. Add fetch fn to `src/lib/abs-fetchers.ts` (follow SDMX-ML XML pattern), with the code mapping in a pure `decodeXxx(get)` and a test in `src/__tests__/abs-decoders*.test.ts`; verify one LGA against a published figure
 3. Add the returned type and field to the relevant `Live*Result` in `src/lib/data/live-data.ts`
 4. Update the relevant page component
 

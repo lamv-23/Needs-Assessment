@@ -21,7 +21,7 @@
  *   G49_2016 → ABS_C16_G49_LGA : OCCP_C16 × SEX_ABS × QALLP_C16 (historical qualifications)
  *   SEIFA→ ABS_SEIFA2021_LGA: LGA_2021 × SEIFAINDEXTYPE × SEIFA_MEASURE=SCORE
  *   LABOUR→ C21_G46_LGA : SEXP × LFSP × AGEP (1=FT emp, 2=PT emp, 3=away, 4=unemp, 5+=NILF)
- *   ERP  → ABS_ANNUAL_ERP_LGA2021: LGA_2021 × SEX_ABS × AGE=TOT (multi-year)
+ *   ERP  → ABS_ANNUAL_ERP_LGA2025: LGA_2025 × SEX_ABS × AGE=TOT (2001–2025)
  */
 
 const ABS_BASE = 'https://data.api.abs.gov.au/rest/data';
@@ -749,8 +749,8 @@ export function decodeJourneyToWork(
 export interface SEIFAData {
   irsd: number; // Index of Relative Socio-economic Disadvantage
   irsad: number; // Index of Relative Socio-economic Advantage and Disadvantage
-  ier: number; // Index of Education and Occupation
-  ieo: number; // Index of Economic Resources
+  ier: number; // Index of Economic Resources
+  ieo: number; // Index of Education and Occupation
 }
 
 export async function fetchSEIFA(lgaCode: string): Promise<SEIFAData | null> {
@@ -1216,9 +1216,7 @@ export async function fetchG18(lgaCode: string): Promise<DisabilityData | null> 
   const data = parseSdmxXml(xml);
 
   const get = (assnp: string) =>
-    lookupValue(data, { ASSNP: assnp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { ASSNP: assnp, SEXP: '3', REGION: lgaCode }, '2021')
-    ?? sumValues(data, { ASSNP: assnp, REGION: lgaCode }, '2021');
+    lookupValue(data, { ASSNP: assnp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021') ?? 0;
 
   const needs   = get('1');
   const doesNot = get('2');
@@ -1548,74 +1546,23 @@ export async function fetchG60(lgaCode: string): Promise<OccupationData | null> 
   const data = parseSdmxXml(xml);
 
   const get = (occp: string, sexp: string) =>
-    lookupValue(data, { OCCP: occp, SEXP: sexp, AGEP: '_T', REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { OCCP: occp, SEXP: sexp, REGION: lgaCode }, '2021')
-    ?? sumValues(data, { OCCP: occp, SEXP: sexp, REGION: lgaCode }, '2021');
+    lookupValue(data, { OCCP: occp, SEXP: sexp, AGEP: '_T', REGION: lgaCode }, '2021');
 
   const occupations = Object.entries(OCCP_LABELS).map(([code, name]) => ({
     name,
     code,
-    employed: Math.round(get(code, '3')),
-    male:     Math.round(get(code, '1')),
-    female:   Math.round(get(code, '2')),
+    employed: Math.round(get(code, '3') ?? 0),
+    male:     Math.round(get(code, '1') ?? 0),
+    female:   Math.round(get(code, '2') ?? 0),
   })).filter(o => o.employed > 0);
 
-  const total = occupations.reduce((s, o) => s + o.employed, 0);
+  // OCCP _T = all employed, incl. inadequately described / not stated (_N).
+  const total = Math.round(get('_T', '3') ?? occupations.reduce((s, o) => s + o.employed, 0));
   if (total === 0) return null;
 
   return {
     occupations: occupations.sort((a, b) => b.employed - a.employed),
     total,
-  };
-}
-
-// ─── G43 / G44: Housing Stress ────────────────────────────────────────────────
-// G43 (C21_G43_LGA): Rent-to-income ratio for renting households
-// G44 (C21_G44_LGA): Mortgage repayment-to-income ratio for mortgage households
-// "Housing stress" threshold = 30%+ of income on housing costs
-// RIND / MRIND codes: 1=<10%, 2=10–20%, 3=20–30%, 4=30%+, _N=not stated, _T=total
-
-export interface HousingStressData {
-  rentStressRate: number;     // % of renting households at 30%+ rent burden
-  mortgageStressRate: number; // % of mortgage households at 30%+ repayment burden
-  rentTotal: number;
-  mortgageTotal: number;
-}
-
-export async function fetchHousingStress(lgaCode: string): Promise<HousingStressData | null> {
-  const [xmlRent, xmlMortgage] = await Promise.all([
-    fetchWithRetry(`${ABS_BASE}/C21_G43_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`),
-    fetchWithRetry(`${ABS_BASE}/C21_G44_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`),
-  ]);
-
-  let rentStressRate = 0, mortgageStressRate = 0, rentTotal = 0, mortgageTotal = 0;
-
-  // C21_G43_LGA: Rent-to-income ratio (RLHP dimension)
-  // RLHP codes: 1=<10%, 2=10-15%, 3=15-20%, 4=20-25%, 5=25-30%,
-  //             6=30-35%, 7=35-40%, 8=40-50%, 9=50%+, _T=total
-  // Housing stress threshold = 30%+ → codes 6, 7, 8, 9
-  if (xmlRent) {
-    const rentData = parseSdmxXml(xmlRent);
-    const get = (rlhp: string) =>
-      lookupValue(rentData, { RLHP: rlhp, REGION: lgaCode }, '2021')
-      ?? sumValues(rentData, { RLHP: rlhp, REGION: lgaCode }, '2021');
-    rentTotal = get('_T');
-    const stressed = get('6') + get('7') + get('8') + get('9');
-    if (rentTotal > 0) rentStressRate = Math.round((stressed / rentTotal) * 1000) / 10;
-  }
-
-  // C21_G44_LGA: Mortgage repayment by income (FINF dimension = family income ranges)
-  // This table cross-tabs mortgage size × income, not directly a stress ratio.
-  // We skip G44 for now as the stress calculation requires additional processing.
-  void xmlMortgage;
-
-  if (rentTotal === 0 && mortgageTotal === 0) return null;
-
-  return {
-    rentStressRate,
-    mortgageStressRate,
-    rentTotal:     Math.round(rentTotal),
-    mortgageTotal: Math.round(mortgageTotal),
   };
 }
 
@@ -1715,7 +1662,6 @@ export interface AllABSData {
   g09: BirthplaceData | null;
   g25: FamilyData | null;
   g60: OccupationData | null;
-  housingStress: HousingStressData | null;
   buildingApprovals: BuildingApprovalsData | null;
   g59: JourneyToWorkData | null;  // 2016 JTW (ABS_C16_G59_LGA)
   b46: JourneyToWorkData | null;  // 2011 JTW (ABS_CENSUS2011_B46_LGA)
@@ -1772,11 +1718,10 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
   await sleep(300);
 
   // Batch 5: Remaining new datasets
-  const [g09, g25, g60, housingStress, buildingApprovals] = await Promise.all([
+  const [g09, g25, g60, buildingApprovals] = await Promise.all([
     fetchG09(lgaCode).catch(logWarn('G09')),
     fetchG25(lgaCode).catch(logWarn('G25')),
     fetchG60(lgaCode).catch(logWarn('G60')),
-    fetchHousingStress(lgaCode).catch(logWarn('HOUSING_STRESS')),
     fetchBuildingApprovals(lgaCode).catch(logWarn('BUILDING_APPROVALS')),
   ]);
 
@@ -1793,7 +1738,7 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
 
   return {
     lgaCode, g01, g02, g33, b31_2011, g36, g51, g55, g46, g15, g49, g49_2016, seifa, labour, erp,
-    g34, g62, g18, g33Income, g13, g09, g25, g60, housingStress, buildingApprovals,
+    g34, g62, g18, g33Income, g13, g09, g25, g60, buildingApprovals,
     g59, b46, commuteDistance2016,
   };
 }

@@ -35,7 +35,7 @@ import type {
   G01Data, G02Data, G33Data, G36Data, G51Data, JourneyToWorkData, SEIFAData, LabourData, ERPData,
   EducationData as G46Data, SchoolAttendanceData, QualificationData, HistoricalDwellingStructureData,
   VehicleData, DisabilityData, HouseholdIncomeData, LanguageData, BirthplaceData,
-  FamilyData, OccupationData, HousingStressData, BuildingApprovalsData, CommuteDistanceData,
+  FamilyData, OccupationData, BuildingApprovalsData, CommuteDistanceData,
 } from '../abs-fetchers';
 import {
   HTS_COMMUTE_DATASET, STATION_PATRONAGE_DATASET,
@@ -950,18 +950,9 @@ export async function getLiveHousingData(areaId: string, year: number): Promise<
     sampleFields.push('dwellingTypes', 'tenure', 'medianWeeklyRent');
   }
 
-  // Housing stress from G43/G44
-  let mortgageStressRate = sample.mortgageStressRate;
-  let rentStressRate = sample.rentStressRate;
-  if (lgaCode) {
-    const hs = await getABS<HousingStressData>(lgaCode, 'HOUSING_STRESS');
-    if (hs && (hs.rentTotal > 0 || hs.mortgageTotal > 0)) {
-      mortgageStressRate = hs.mortgageStressRate;
-      rentStressRate = hs.rentStressRate;
-      liveFields.push('mortgageStressRate', 'rentStressRate');
-      if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
-    }
-  }
+  // Housing stress: no ABS 2021 LGA table gives housing cost as a share of income,
+  // so there is no official source integrated (flagged as such by DataSourceBadge).
+  const { mortgageStressRate, rentStressRate } = sample;
 
   sampleFields.push('medianHousePrice');
 

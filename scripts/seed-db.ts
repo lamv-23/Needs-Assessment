@@ -251,10 +251,6 @@ async function seedABSData(lgaFilter?: string): Promise<void> {
          upsertABSCache(lgaCode, 'G15', data.g15, 2021);
          process.stdout.write('G15 ✓ ');
        }
-       if (data.housingStress) {
-         upsertABSCache(lgaCode, 'HOUSING_STRESS', data.housingStress, 2021);
-         process.stdout.write('HOUSING_STRESS ✓ ');
-       }
       if (data.buildingApprovals) {
         upsertABSCache(lgaCode, 'BUILDING_APPROVALS', data.buildingApprovals, 2024);
         process.stdout.write('BUILDING_APPROVALS ✓ ');

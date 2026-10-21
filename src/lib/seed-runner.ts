@@ -137,7 +137,6 @@ async function seedABS(lgaFilter?: string): Promise<void> {
       if (data.g09) await seedRepository.upsertABSCache(lgaCode, 'G09', data.g09, 2021);
       if (data.g25) await seedRepository.upsertABSCache(lgaCode, 'G25', data.g25, 2021);
       if (data.g60) await seedRepository.upsertABSCache(lgaCode, 'G60', data.g60, 2021);
-      if (data.housingStress) await seedRepository.upsertABSCache(lgaCode, 'HOUSING_STRESS', data.housingStress, 2021);
       if (data.buildingApprovals) await seedRepository.upsertABSCache(lgaCode, 'BUILDING_APPROVALS', data.buildingApprovals, 2024);
 
       success++;

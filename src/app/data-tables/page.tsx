@@ -104,6 +104,13 @@ export default function DataTablesPage() {
   const liveData = useLiveData(area.id, selectedYear);
 
   const demographics = liveData.demographics.data;
+  // Count with its share of total population, e.g. "122,723 (58.0%)".
+  const personsWithShare = (count: number | undefined) =>
+    count === undefined
+      ? 'N/A'
+      : demographics.totalPopulation > 0
+        ? `${formatNumber(count)} (${formatPercent((count / demographics.totalPopulation) * 100)})`
+        : formatNumber(count);
   const transport = liveData.transport.data;
   const economy = liveData.economy.data;
   const education = liveData.education.data;
@@ -131,10 +138,10 @@ export default function DataTablesPage() {
               ['Median age', demographics.medianAge],
               ['SEIFA score', demographics.seifaScore],
               ['Population density', demographics.populationDensity !== null ? `${formatNumber(demographics.populationDensity, 1)} persons/km²` : 'N/A'],
-              ['English only', demographics.englishOnly !== undefined ? formatPercent(demographics.englishOnly) : 'N/A'],
-              ['Limited English', demographics.limitedEnglish !== undefined ? formatPercent(demographics.limitedEnglish) : 'N/A'],
+              ['Speaks English only (persons)', personsWithShare(demographics.englishOnly)],
+              ['Limited English (persons)', personsWithShare(demographics.limitedEnglish)],
               ['Disability rate', demographics.disabilityRate !== undefined ? formatPercent(demographics.disabilityRate) : 'N/A'],
-              ['Needs assistance', demographics.needsAssistance !== undefined ? formatPercent(demographics.needsAssistance) : 'N/A'],
+              ['Needs assistance (persons)', personsWithShare(demographics.needsAssistance)],
             ]}
           />
           <SimpleTable
@@ -259,8 +266,8 @@ export default function DataTablesPage() {
               ['Participation rate', formatPercent(economy.participationRate)],
               ['Median weekly income', formatCurrency(economy.medianWeeklyIncome)],
               ['Job density', economy.jobDensity !== null ? formatNumber(economy.jobDensity, 1) : 'N/A'],
-              ['Low income households', economy.lowIncomeHouseholds !== undefined ? formatPercent(economy.lowIncomeHouseholds) : 'N/A'],
-              ['High income households', economy.highIncomeHouseholds !== undefined ? formatPercent(economy.highIncomeHouseholds) : 'N/A'],
+              ['Low income households (under $500/wk)', economy.lowIncomeHouseholds !== undefined ? formatNumber(economy.lowIncomeHouseholds) : 'N/A'],
+              ['High income households ($2,000+/wk)', economy.highIncomeHouseholds !== undefined ? formatNumber(economy.highIncomeHouseholds) : 'N/A'],
             ]}
           />
           <SimpleTable
