@@ -21,6 +21,7 @@
     "test:watch": "jest --watch",
     "seed:gtfs": "tsx scripts/seed-gtfs.ts",
     "seed:transport": "tsx scripts/seed-official-transport.ts",
+    "build:fallbacks": "tsx scripts/build-fallbacks.ts",
     "seed:commute-times": "tsx scripts/seed-commute-times.ts",
     "seed:infrastructure": "tsx scripts/seed-infrastructure.ts",
     "seed:osm-stops": "tsx scripts/seed-osm-stops.ts",

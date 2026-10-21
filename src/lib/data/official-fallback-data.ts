@@ -5,9 +5,9 @@
 export const OFFICIAL_FALLBACKS = {
   "lga_sydney": {
     "demographics": {
-      "totalPopulation": 156613,
-      "malePopulation": 81420,
-      "femalePopulation": 75196,
+      "totalPopulation": 211632,
+      "malePopulation": 110615,
+      "femalePopulation": 101018,
       "medianAge": 34,
       "ageDistribution": [
         {
@@ -163,39 +163,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 12.8
+          "value": 14.5
         },
         {
           "name": "Car (passenger)",
-          "value": 3
+          "value": 1.4
         },
         {
           "name": "Train",
-          "value": 52.3
+          "value": 6.3
         },
         {
           "name": "Bus",
-          "value": 10.9
+          "value": 3.7
         },
         {
           "name": "Ferry",
-          "value": 9.2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0.5
         },
         {
           "name": "Cycling",
-          "value": 0.3
+          "value": 1.8
         },
         {
           "name": "Walking",
-          "value": 1.6
+          "value": 10.4
         },
         {
           "name": "Work from home",
-          "value": 0.1
+          "value": 58.9
         },
         {
           "name": "Other",
-          "value": 2
+          "value": 2.5
         }
       ],
       "vehicleOwnership": [
@@ -219,27 +223,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 36,
-          "train": 4,
-          "bus": 7.1,
-          "active": 4.3,
-          "wfh": 0
+          "car": 27.5,
+          "train": 17.6,
+          "bus": 15.2,
+          "active": 30.8,
+          "wfh": 4.3
         },
         {
           "year": 2016,
-          "car": 32.2,
-          "train": 4.1,
-          "bus": 6.7,
-          "active": 3.9,
-          "wfh": 0.2
+          "car": 23.9,
+          "train": 23.7,
+          "bus": 14,
+          "active": 29.2,
+          "wfh": 4.5
         },
         {
           "year": 2021,
-          "car": 15.8,
-          "train": 52.3,
-          "bus": 10.9,
-          "active": 1.9,
-          "wfh": 0.1
+          "car": 15.9,
+          "train": 6.3,
+          "bus": 3.7,
+          "active": 12.2,
+          "wfh": 58.9
         }
       ],
       "ptPatronage": null,
@@ -678,9 +682,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_parramatta": {
     "demographics": {
-      "totalPopulation": 155288,
-      "malePopulation": 77389,
-      "femalePopulation": 77900,
+      "totalPopulation": 256729,
+      "malePopulation": 128734,
+      "femalePopulation": 127995,
       "medianAge": 35,
       "ageDistribution": [
         {
@@ -827,39 +831,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 29.2
+          "value": 33.8
         },
         {
           "name": "Car (passenger)",
-          "value": 1.3
+          "value": 2.8
         },
         {
           "name": "Train",
-          "value": 43.9
+          "value": 6.4
         },
         {
           "name": "Bus",
-          "value": 13.2
+          "value": 1.8
         },
         {
           "name": "Ferry",
-          "value": 2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0.1
+          "value": 0.3
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 2.3
         },
         {
           "name": "Work from home",
-          "value": 0.1
+          "value": 50.9
         },
         {
           "name": "Other",
-          "value": 2
+          "value": 1.8
         }
       ],
       "vehicleOwnership": [
@@ -883,19 +891,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 56.6,
-          "train": 3.4,
-          "bus": 7.1,
-          "active": 0.6,
-          "wfh": 0.1
+          "car": 59.7,
+          "train": 23.4,
+          "bus": 6.4,
+          "active": 4.3,
+          "wfh": 3.7
         },
         {
           "year": 2021,
-          "car": 30.5,
-          "train": 43.9,
-          "bus": 13.2,
-          "active": 0.4,
-          "wfh": 0.1
+          "car": 36.5,
+          "train": 6.4,
+          "bus": 1.8,
+          "active": 2.6,
+          "wfh": 50.9
         }
       ],
       "ptPatronage": null,
@@ -1334,9 +1342,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_blacktown": {
     "demographics": {
-      "totalPopulation": 188860,
-      "malePopulation": 92260,
-      "femalePopulation": 96597,
+      "totalPopulation": 396776,
+      "malePopulation": 197876,
+      "femalePopulation": 198905,
       "medianAge": 34,
       "ageDistribution": [
         {
@@ -1477,39 +1485,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 40
+          "value": 47
         },
         {
           "name": "Car (passenger)",
-          "value": 0.9
+          "value": 4.1
         },
         {
           "name": "Train",
-          "value": 33.1
+          "value": 5.4
         },
         {
           "name": "Bus",
-          "value": 14.4
+          "value": 1.3
         },
         {
           "name": "Ferry",
-          "value": 0.7
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.1
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.1
+        },
+        {
+          "name": "Walking",
+          "value": 0.8
+        },
+        {
+          "name": "Work from home",
+          "value": 39
+        },
+        {
           "name": "Other",
-          "value": 1.6
+          "value": 2.2
         }
       ],
       "vehicleOwnership": [
@@ -1533,27 +1545,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62.9,
-          "train": 2.1,
-          "bus": 7.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 73.4,
+          "train": 16.2,
+          "bus": 3.2,
+          "active": 1.8,
+          "wfh": 2.3
         },
         {
           "year": 2016,
-          "car": 64.2,
-          "train": 2.5,
-          "bus": 7.1,
-          "active": 0.4,
-          "wfh": 0
+          "car": 71.6,
+          "train": 17.1,
+          "bus": 4.4,
+          "active": 1.4,
+          "wfh": 2.8
         },
         {
           "year": 2021,
-          "car": 40.9,
-          "train": 33.1,
-          "bus": 14.4,
-          "active": 0.3,
-          "wfh": 0
+          "car": 51.1,
+          "train": 5.4,
+          "bus": 1.3,
+          "active": 1,
+          "wfh": 39
         }
       ],
       "ptPatronage": null,
@@ -1992,9 +2004,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_penrith": {
     "demographics": {
-      "totalPopulation": 82732,
-      "malePopulation": 38348,
-      "femalePopulation": 44392,
+      "totalPopulation": 217664,
+      "malePopulation": 107583,
+      "femalePopulation": 110085,
       "medianAge": 35,
       "ageDistribution": [
         {
@@ -2131,39 +2143,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 47.9
+          "value": 56.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 4.1
         },
         {
           "name": "Train",
-          "value": 26.3
+          "value": 3
         },
         {
           "name": "Bus",
-          "value": 15
+          "value": 0.6
         },
         {
           "name": "Ferry",
-          "value": 1.1
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.1
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.3
+        },
+        {
+          "name": "Work from home",
+          "value": 31
+        },
+        {
           "name": "Other",
-          "value": 1
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -2187,27 +2203,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 65.5,
-          "train": 2.8,
-          "bus": 9.4,
-          "active": 0.4,
-          "wfh": 0
+          "car": 78.9,
+          "train": 10.9,
+          "bus": 1.1,
+          "active": 2.1,
+          "wfh": 3.1
         },
         {
           "year": 2016,
-          "car": 67.3,
-          "train": 3,
-          "bus": 8.5,
-          "active": 0.3,
-          "wfh": 0
+          "car": 78.7,
+          "train": 11.4,
+          "bus": 1.1,
+          "active": 1.7,
+          "wfh": 3.4
         },
         {
           "year": 2021,
-          "car": 48.3,
-          "train": 26.3,
-          "bus": 15,
-          "active": 0.3,
-          "wfh": 0
+          "car": 60.7,
+          "train": 3,
+          "bus": 0.6,
+          "active": 1.5,
+          "wfh": 31
         }
       ],
       "ptPatronage": null,
@@ -2646,9 +2662,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_camden": {
     "demographics": {
-      "totalPopulation": 49311,
-      "malePopulation": 22583,
-      "femalePopulation": 26730,
+      "totalPopulation": 119325,
+      "malePopulation": 58587,
+      "femalePopulation": 60735,
       "medianAge": 33,
       "ageDistribution": [
         {
@@ -2785,23 +2801,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 48.1
+          "value": 56.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 3.3
         },
         {
           "name": "Train",
-          "value": 28.7
+          "value": 2.1
         },
         {
           "name": "Bus",
-          "value": 14.9
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 0.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -2809,15 +2829,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.1
+          "value": 0.7
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 33.9
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 2.6
         }
       ],
       "vehicleOwnership": [
@@ -2841,27 +2861,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 69.5,
-          "train": 3.7,
-          "bus": 9.8,
-          "active": 0.2,
-          "wfh": 0
+          "car": 82.9,
+          "train": 6.9,
+          "bus": 0.8,
+          "active": 1.6,
+          "wfh": 4.2
         },
         {
           "year": 2016,
-          "car": 71,
-          "train": 3.8,
-          "bus": 9.1,
-          "active": 0.2,
-          "wfh": 0
+          "car": 82.5,
+          "train": 8.1,
+          "bus": 0.9,
+          "active": 1.2,
+          "wfh": 4.3
         },
         {
           "year": 2021,
-          "car": 48.4,
-          "train": 28.7,
-          "bus": 14.9,
-          "active": 0.2,
-          "wfh": 0
+          "car": 60.1,
+          "train": 2.1,
+          "bus": 0.4,
+          "active": 0.9,
+          "wfh": 33.9
         }
       ],
       "ptPatronage": null,
@@ -3300,9 +3320,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_campbelltown": {
     "demographics": {
-      "totalPopulation": 73685,
-      "malePopulation": 35368,
-      "femalePopulation": 38321,
+      "totalPopulation": 176519,
+      "malePopulation": 86646,
+      "femalePopulation": 89874,
       "medianAge": 35,
       "ageDistribution": [
         {
@@ -3434,39 +3454,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 44.2
+          "value": 53.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 4.8
         },
         {
           "name": "Train",
-          "value": 25.7
+          "value": 6.2
         },
         {
           "name": "Bus",
-          "value": 16.8
+          "value": 0.8
         },
         {
           "name": "Ferry",
-          "value": 1
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.1
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.1
+        },
+        {
+          "name": "Walking",
+          "value": 1.2
+        },
+        {
+          "name": "Work from home",
+          "value": 31
+        },
+        {
           "name": "Other",
-          "value": 1.4
+          "value": 2.4
         }
       ],
       "vehicleOwnership": [
@@ -3490,27 +3514,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61,
-          "train": 1.9,
-          "bus": 9.2,
-          "active": 0.3,
-          "wfh": 0
+          "car": 73.8,
+          "train": 17.9,
+          "bus": 1.3,
+          "active": 1.8,
+          "wfh": 2.1
         },
         {
           "year": 2016,
-          "car": 62.4,
-          "train": 2.3,
-          "bus": 7.9,
-          "active": 0.3,
-          "wfh": 0
+          "car": 73.2,
+          "train": 18.9,
+          "bus": 1.3,
+          "active": 1.5,
+          "wfh": 2.5
         },
         {
           "year": 2021,
-          "car": 44.7,
-          "train": 25.7,
-          "bus": 16.8,
-          "active": 0.3,
-          "wfh": 0
+          "car": 58.2,
+          "train": 6.2,
+          "bus": 0.8,
+          "active": 1.3,
+          "wfh": 31
         }
       ],
       "ptPatronage": null,
@@ -3949,9 +3973,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_liverpool": {
     "demographics": {
-      "totalPopulation": 104593,
-      "malePopulation": 50667,
-      "femalePopulation": 53925,
+      "totalPopulation": 233446,
+      "malePopulation": 116163,
+      "femalePopulation": 117283,
       "medianAge": 34,
       "ageDistribution": [
         {
@@ -4093,39 +4117,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 42.9
+          "value": 51.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.6
+          "value": 4.2
         },
         {
           "name": "Train",
-          "value": 29.1
+          "value": 3.5
         },
         {
           "name": "Bus",
-          "value": 16.5
+          "value": 0.9
         },
         {
           "name": "Ferry",
-          "value": 1.5
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.8
+        },
+        {
+          "name": "Work from home",
+          "value": 35.1
+        },
+        {
           "name": "Other",
-          "value": 1.1
+          "value": 2.5
         }
       ],
       "vehicleOwnership": [
@@ -4149,27 +4177,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 65.7,
-          "train": 2.5,
-          "bus": 7.3,
-          "active": 0.5,
-          "wfh": 0
+          "car": 77.1,
+          "train": 11.6,
+          "bus": 2.1,
+          "active": 2.8,
+          "wfh": 2.7
         },
         {
           "year": 2016,
-          "car": 66.6,
-          "train": 3,
-          "bus": 6.7,
-          "active": 0.3,
-          "wfh": 0
+          "car": 76,
+          "train": 13,
+          "bus": 2,
+          "active": 2.4,
+          "wfh": 3.3
         },
         {
           "year": 2021,
-          "car": 43.5,
-          "train": 29.1,
-          "bus": 16.5,
-          "active": 0.3,
-          "wfh": 0
+          "car": 55.9,
+          "train": 3.5,
+          "bus": 0.9,
+          "active": 2,
+          "wfh": 35.1
         }
       ],
       "ptPatronage": null,
@@ -4608,9 +4636,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_fairfield": {
     "demographics": {
-      "totalPopulation": 85008,
-      "malePopulation": 42090,
-      "femalePopulation": 42920,
+      "totalPopulation": 208475,
+      "malePopulation": 102874,
+      "femalePopulation": 105605,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -4762,39 +4790,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 47.5
+          "value": 57
         },
         {
           "name": "Car (passenger)",
-          "value": 0.6
+          "value": 5.2
         },
         {
           "name": "Train",
-          "value": 23.5
+          "value": 4.1
         },
         {
           "name": "Bus",
-          "value": 16
+          "value": 0.9
         },
         {
           "name": "Ferry",
-          "value": 1.3
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.5
+        },
+        {
+          "name": "Work from home",
+          "value": 28.1
+        },
+        {
           "name": "Other",
-          "value": 1.2
+          "value": 2.9
         }
       ],
       "vehicleOwnership": [
@@ -4818,27 +4850,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 64.7,
-          "train": 2,
-          "bus": 6.2,
-          "active": 0.4,
-          "wfh": 0
+          "car": 77.3,
+          "train": 12.8,
+          "bus": 2.2,
+          "active": 2.2,
+          "wfh": 2.1
         },
         {
           "year": 2016,
-          "car": 65.5,
-          "train": 2.3,
-          "bus": 5.8,
-          "active": 0.3,
-          "wfh": 0
+          "car": 76.2,
+          "train": 13.8,
+          "bus": 2.1,
+          "active": 2,
+          "wfh": 2.5
         },
         {
           "year": 2021,
-          "car": 48.1,
-          "train": 23.5,
-          "bus": 16,
-          "active": 0.3,
-          "wfh": 0
+          "car": 62.2,
+          "train": 4.1,
+          "bus": 0.9,
+          "active": 1.7,
+          "wfh": 28.1
         }
       ],
       "ptPatronage": null,
@@ -5277,9 +5309,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_canterbury_bankstown": {
     "demographics": {
-      "totalPopulation": 176189,
-      "malePopulation": 87257,
-      "femalePopulation": 88935,
+      "totalPopulation": 371006,
+      "malePopulation": 186002,
+      "femalePopulation": 184997,
       "medianAge": 36,
       "ageDistribution": [
         {
@@ -5421,23 +5453,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 36.2
+          "value": 44.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.8
+          "value": 3.8
         },
         {
           "name": "Train",
-          "value": 32.3
+          "value": 6.3
         },
         {
           "name": "Bus",
-          "value": 17.9
+          "value": 1.1
         },
         {
           "name": "Ferry",
-          "value": 1.5
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -5445,15 +5481,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 1.9
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 39.6
         },
         {
           "name": "Other",
-          "value": 1.7
+          "value": 2.5
         }
       ],
       "vehicleOwnership": [
@@ -5477,19 +5513,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 59.2,
-          "train": 2.8,
-          "bus": 6.8,
-          "active": 0.6,
-          "wfh": 0.1
+          "car": 67.3,
+          "train": 21.3,
+          "bus": 2.5,
+          "active": 2.5,
+          "wfh": 3
         },
         {
           "year": 2021,
-          "car": 37,
-          "train": 32.3,
-          "bus": 17.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 48.2,
+          "train": 6.3,
+          "bus": 1.1,
+          "active": 2.1,
+          "wfh": 39.6
         }
       ],
       "ptPatronage": null,
@@ -5871,9 +5907,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_sutherland": {
     "demographics": {
-      "totalPopulation": 113588,
-      "malePopulation": 53946,
-      "femalePopulation": 59637,
+      "totalPopulation": 230211,
+      "malePopulation": 112561,
+      "femalePopulation": 117649,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -6024,39 +6060,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 39.6
+          "value": 46.3
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 2.7
         },
         {
           "name": "Train",
-          "value": 37.2
+          "value": 3.2
         },
         {
           "name": "Bus",
-          "value": 14.2
-        },
-        {
-          "name": "Ferry",
-          "value": 1.6
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 1.8
+        },
+        {
+          "name": "Work from home",
+          "value": 43.5
+        },
+        {
           "name": "Other",
-          "value": 0.7
+          "value": 2
         }
       ],
       "vehicleOwnership": [
@@ -6080,27 +6120,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61.2,
-          "train": 4,
-          "bus": 10.5,
-          "active": 0.5,
-          "wfh": 0
+          "car": 73.4,
+          "train": 16,
+          "bus": 0.6,
+          "active": 2.8,
+          "wfh": 4.5
         },
         {
           "year": 2016,
-          "car": 61,
-          "train": 4.5,
-          "bus": 9.3,
-          "active": 0.5,
-          "wfh": 0
+          "car": 70.9,
+          "train": 18.1,
+          "bus": 0.6,
+          "active": 2.8,
+          "wfh": 5
         },
         {
           "year": 2021,
-          "car": 39.8,
-          "train": 37.2,
-          "bus": 14.2,
-          "active": 0.3,
-          "wfh": 0
+          "car": 49,
+          "train": 3.2,
+          "bus": 0.2,
+          "active": 2.1,
+          "wfh": 43.5
         }
       ],
       "ptPatronage": null,
@@ -6539,9 +6579,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_hornsby": {
     "demographics": {
-      "totalPopulation": 89786,
-      "malePopulation": 43626,
-      "femalePopulation": 46160,
+      "totalPopulation": 151811,
+      "malePopulation": 74360,
+      "femalePopulation": 77455,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -6683,39 +6723,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 30.1
+          "value": 34.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 2.4
         },
         {
           "name": "Train",
-          "value": 46.9
+          "value": 5.3
         },
         {
           "name": "Bus",
-          "value": 11.8
+          "value": 0.6
         },
         {
           "name": "Ferry",
-          "value": 2.1
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.1
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 2.4
+        },
+        {
+          "name": "Work from home",
+          "value": 53.3
+        },
+        {
           "name": "Other",
-          "value": 1.2
+          "value": 1.6
         }
       ],
       "vehicleOwnership": [
@@ -6739,27 +6783,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 54.4,
-          "train": 5.4,
-          "bus": 9.5,
-          "active": 0.5,
-          "wfh": 0
+          "car": 61.4,
+          "train": 22.8,
+          "bus": 3.7,
+          "active": 3.6,
+          "wfh": 6
         },
         {
           "year": 2016,
-          "car": 53.1,
-          "train": 5.8,
-          "bus": 8.6,
-          "active": 0.4,
-          "wfh": 0
+          "car": 58,
+          "train": 25.7,
+          "bus": 4.2,
+          "active": 3.3,
+          "wfh": 6.4
         },
         {
           "year": 2021,
-          "car": 30.5,
-          "train": 46.9,
-          "bus": 11.8,
-          "active": 0.2,
-          "wfh": 0
+          "car": 36.6,
+          "train": 5.3,
+          "bus": 0.6,
+          "active": 2.6,
+          "wfh": 53.3
         }
       ],
       "ptPatronage": null,
@@ -7198,9 +7242,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_ku_ring_gai": {
     "demographics": {
-      "totalPopulation": 80274,
-      "malePopulation": 38785,
-      "femalePopulation": 41490,
+      "totalPopulation": 124076,
+      "malePopulation": 59850,
+      "femalePopulation": 64222,
       "medianAge": 42,
       "ageDistribution": [
         {
@@ -7347,39 +7391,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 25.4
+          "value": 28.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 2.2
         },
         {
           "name": "Train",
-          "value": 54.8
+          "value": 3.7
         },
         {
           "name": "Bus",
-          "value": 11.3
+          "value": 0.5
         },
         {
           "name": "Ferry",
-          "value": 1.3
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.5
+        },
+        {
+          "name": "Work from home",
+          "value": 62
+        },
+        {
           "name": "Other",
-          "value": 0.8
+          "value": 1.1
         }
       ],
       "vehicleOwnership": [
@@ -7403,27 +7451,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 51.9,
-          "train": 7.9,
-          "bus": 9.8,
-          "active": 0.8,
-          "wfh": 0
+          "car": 60.1,
+          "train": 23.6,
+          "bus": 2,
+          "active": 3.2,
+          "wfh": 8.9
         },
         {
           "year": 2016,
-          "car": 49.1,
-          "train": 8.4,
-          "bus": 8.3,
-          "active": 0.8,
-          "wfh": 0
+          "car": 54.8,
+          "train": 28.2,
+          "bus": 2.5,
+          "active": 3.1,
+          "wfh": 9.2
         },
         {
           "year": 2021,
-          "car": 25.7,
-          "train": 54.8,
-          "bus": 11.3,
-          "active": 0.2,
-          "wfh": 0
+          "car": 30.9,
+          "train": 3.7,
+          "bus": 0.5,
+          "active": 1.7,
+          "wfh": 62
         }
       ],
       "ptPatronage": null,
@@ -7805,9 +7853,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_northern_beaches": {
     "demographics": {
-      "totalPopulation": 149994,
-      "malePopulation": 72668,
-      "femalePopulation": 77322,
+      "totalPopulation": 263554,
+      "malePopulation": 128929,
+      "femalePopulation": 134623,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -7948,39 +7996,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 33
+          "value": 37.6
         },
         {
           "name": "Car (passenger)",
-          "value": 2.4
+          "value": 2.5
         },
         {
           "name": "Train",
-          "value": 44
+          "value": 0.4
         },
         {
           "name": "Bus",
-          "value": 12.1
+          "value": 3.2
         },
         {
           "name": "Ferry",
-          "value": 2.3
+          "value": 0.2
         },
         {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.5
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Cycling",
           "value": 0.6
+        },
+        {
+          "name": "Walking",
+          "value": 2.7
+        },
+        {
+          "name": "Work from home",
+          "value": 50.3
+        },
+        {
+          "name": "Other",
+          "value": 2.5
         }
       ],
       "vehicleOwnership": [
@@ -8004,19 +8056,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 65.7,
-          "train": 7.1,
-          "bus": 8.3,
-          "active": 1.2,
-          "wfh": 0
+          "car": 63.7,
+          "train": 3,
+          "bus": 14.1,
+          "active": 4.8,
+          "wfh": 7.8
         },
         {
           "year": 2021,
-          "car": 35.4,
-          "train": 44,
-          "bus": 12.1,
-          "active": 0.6,
-          "wfh": 0
+          "car": 40.1,
+          "train": 0.4,
+          "bus": 3.2,
+          "active": 3.3,
+          "wfh": 50.3
         }
       ],
       "ptPatronage": null,
@@ -8398,9 +8450,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_willoughby": {
     "demographics": {
-      "totalPopulation": 48975,
-      "malePopulation": 23492,
-      "femalePopulation": 25487,
+      "totalPopulation": 75613,
+      "malePopulation": 36400,
+      "femalePopulation": 39215,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -8556,39 +8608,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 20.3
+          "value": 22.7
         },
         {
           "name": "Car (passenger)",
-          "value": 1.8
+          "value": 2.2
         },
         {
           "name": "Train",
-          "value": 54.4
+          "value": 4.9
         },
         {
           "name": "Bus",
-          "value": 10.6
+          "value": 2.3
         },
         {
           "name": "Ferry",
-          "value": 4.4
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.3
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 4.9
+        },
+        {
+          "name": "Work from home",
+          "value": 61.1
+        },
+        {
           "name": "Other",
-          "value": 1.2
+          "value": 1.5
         }
       ],
       "vehicleOwnership": [
@@ -8612,27 +8668,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 50.6,
-          "train": 6,
-          "bus": 7.8,
-          "active": 1.4,
-          "wfh": 0
+          "car": 47.9,
+          "train": 21.2,
+          "bus": 12.5,
+          "active": 9.3,
+          "wfh": 6.6
         },
         {
           "year": 2016,
-          "car": 47.5,
-          "train": 6.2,
-          "bus": 7.4,
-          "active": 1.2,
-          "wfh": 0
+          "car": 42.6,
+          "train": 25.6,
+          "bus": 13.1,
+          "active": 9.6,
+          "wfh": 6.8
         },
         {
           "year": 2021,
-          "car": 22.1,
-          "train": 54.4,
-          "bus": 10.6,
-          "active": 0.5,
-          "wfh": 0
+          "car": 24.9,
+          "train": 4.9,
+          "bus": 2.3,
+          "active": 5.3,
+          "wfh": 61.1
         }
       ],
       "ptPatronage": null,
@@ -9071,9 +9127,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_lane_cove": {
     "demographics": {
-      "totalPopulation": 26355,
-      "malePopulation": 12856,
-      "femalePopulation": 13495,
+      "totalPopulation": 39438,
+      "malePopulation": 19305,
+      "femalePopulation": 20130,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -9224,39 +9280,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 22.7
+          "value": 25.3
         },
         {
           "name": "Car (passenger)",
-          "value": 2.5
+          "value": 2.1
         },
         {
           "name": "Train",
-          "value": 55.7
+          "value": 1.8
         },
         {
           "name": "Bus",
-          "value": 10.2
+          "value": 3.2
         },
         {
           "name": "Ferry",
-          "value": 3.1
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 3.4
+        },
+        {
+          "name": "Work from home",
+          "value": 62.1
+        },
+        {
           "name": "Other",
-          "value": 1
+          "value": 1.5
         }
       ],
       "vehicleOwnership": [
@@ -9280,27 +9340,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61.4,
-          "train": 5.9,
-          "bus": 8.7,
-          "active": 1.8,
-          "wfh": 0
+          "car": 53.1,
+          "train": 9.4,
+          "bus": 20,
+          "active": 6.9,
+          "wfh": 6.5
         },
         {
           "year": 2016,
-          "car": 61.9,
-          "train": 5.5,
-          "bus": 7.7,
-          "active": 1.4,
-          "wfh": 0
+          "car": 50.8,
+          "train": 12.1,
+          "bus": 21.2,
+          "active": 6.1,
+          "wfh": 6
         },
         {
           "year": 2021,
-          "car": 25.1,
-          "train": 55.7,
-          "bus": 10.2,
-          "active": 0.6,
-          "wfh": 0
+          "car": 27.4,
+          "train": 1.8,
+          "bus": 3.2,
+          "active": 3.9,
+          "wfh": 62.1
         }
       ],
       "ptPatronage": null,
@@ -9682,9 +9742,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_mosman": {
     "demographics": {
-      "totalPopulation": 19123,
-      "malePopulation": 8824,
-      "femalePopulation": 10302,
+      "totalPopulation": 28329,
+      "malePopulation": 13033,
+      "femalePopulation": 15294,
       "medianAge": 45,
       "ageDistribution": [
         {
@@ -9830,39 +9890,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 19.8
+          "value": 22.2
         },
         {
           "name": "Car (passenger)",
-          "value": 3
+          "value": 1.7
         },
         {
           "name": "Train",
-          "value": 58.8
+          "value": 0.7
         },
         {
           "name": "Bus",
-          "value": 10.2
+          "value": 3.8
         },
         {
           "name": "Ferry",
-          "value": 3.1
+          "value": 0.3
         },
         {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 3.4
+        },
+        {
+          "name": "Work from home",
+          "value": 65.7
+        },
+        {
           "name": "Other",
-          "value": 0.9
+          "value": 1.7
         }
       ],
       "vehicleOwnership": [
@@ -9886,27 +9950,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 59.4,
-          "train": 7.9,
-          "bus": 8.1,
-          "active": 1.6,
-          "wfh": 0
+          "car": 48.9,
+          "train": 4.1,
+          "bus": 23.4,
+          "active": 6.5,
+          "wfh": 8.6
         },
         {
           "year": 2016,
-          "car": 61.4,
-          "train": 8.8,
-          "bus": 7.5,
-          "active": 1.4,
-          "wfh": 0
+          "car": 47.2,
+          "train": 4.7,
+          "bus": 25.6,
+          "active": 5.9,
+          "wfh": 9.6
         },
         {
           "year": 2021,
-          "car": 22.8,
-          "train": 58.8,
-          "bus": 10.2,
-          "active": 0.5,
-          "wfh": 0
+          "car": 23.9,
+          "train": 0.7,
+          "bus": 3.8,
+          "active": 3.8,
+          "wfh": 65.7
         }
       ],
       "ptPatronage": null,
@@ -10345,9 +10409,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_north_sydney": {
     "demographics": {
-      "totalPopulation": 50107,
-      "malePopulation": 23516,
-      "femalePopulation": 26598,
+      "totalPopulation": 68950,
+      "malePopulation": 32443,
+      "femalePopulation": 36505,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -10498,39 +10562,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 16.1
+          "value": 17.6
         },
         {
           "name": "Car (passenger)",
-          "value": 2.3
+          "value": 1.5
         },
         {
           "name": "Train",
-          "value": 60.9
+          "value": 3.7
         },
         {
           "name": "Bus",
-          "value": 8.7
+          "value": 2.8
         },
         {
           "name": "Ferry",
-          "value": 4.9
-        },
-        {
-          "name": "Cycling",
           "value": 0.2
         },
         {
-          "name": "Walking",
-          "value": 0.5
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 5.4
+        },
+        {
+          "name": "Work from home",
+          "value": 66.8
+        },
+        {
           "name": "Other",
-          "value": 1.2
+          "value": 1.4
         }
       ],
       "vehicleOwnership": [
@@ -10554,27 +10622,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 47.6,
-          "train": 5.4,
-          "bus": 6.9,
-          "active": 1.9,
-          "wfh": 0
+          "car": 37.3,
+          "train": 18.5,
+          "bus": 18.7,
+          "active": 14.3,
+          "wfh": 5.8
         },
         {
           "year": 2016,
-          "car": 45.8,
-          "train": 5.9,
-          "bus": 6.4,
-          "active": 1.6,
-          "wfh": 0
+          "car": 35,
+          "train": 23.4,
+          "bus": 17.7,
+          "active": 12.9,
+          "wfh": 6.4
         },
         {
           "year": 2021,
-          "car": 18.3,
-          "train": 60.9,
-          "bus": 8.7,
-          "active": 0.6,
-          "wfh": 0
+          "car": 19.1,
+          "train": 3.7,
+          "bus": 2.8,
+          "active": 5.9,
+          "wfh": 66.8
         }
       ],
       "ptPatronage": null,
@@ -10956,9 +11024,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_ryde": {
     "demographics": {
-      "totalPopulation": 81724,
-      "malePopulation": 39726,
-      "femalePopulation": 41999,
+      "totalPopulation": 129123,
+      "malePopulation": 63042,
+      "femalePopulation": 66080,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -11100,39 +11168,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 29
+          "value": 33.1
         },
         {
           "name": "Car (passenger)",
-          "value": 2
+          "value": 2.4
         },
         {
           "name": "Train",
-          "value": 46
+          "value": 4.8
         },
         {
           "name": "Bus",
-          "value": 11.9
+          "value": 2.6
         },
         {
           "name": "Ferry",
-          "value": 2.3
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 2.6
+        },
+        {
+          "name": "Work from home",
+          "value": 52.4
+        },
+        {
           "name": "Other",
-          "value": 1.5
+          "value": 1.7
         }
       ],
       "vehicleOwnership": [
@@ -11156,27 +11228,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61.9,
-          "train": 3.6,
-          "bus": 8.6,
-          "active": 0.8,
-          "wfh": 0
+          "car": 62.4,
+          "train": 14,
+          "bus": 11.7,
+          "active": 4.9,
+          "wfh": 4
         },
         {
           "year": 2016,
-          "car": 59.1,
-          "train": 4.1,
-          "bus": 7.6,
-          "active": 0.7,
-          "wfh": 0
+          "car": 57.2,
+          "train": 18.2,
+          "bus": 12,
+          "active": 5.1,
+          "wfh": 4.4
         },
         {
           "year": 2021,
-          "car": 31,
-          "train": 46,
-          "bus": 11.9,
-          "active": 0.3,
-          "wfh": 0
+          "car": 35.5,
+          "train": 4.8,
+          "bus": 2.6,
+          "active": 2.9,
+          "wfh": 52.4
         }
       ],
       "ptPatronage": null,
@@ -11615,9 +11687,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_hunters_hill": {
     "demographics": {
-      "totalPopulation": 8068,
-      "malePopulation": 3954,
-      "femalePopulation": 4118,
+      "totalPopulation": 13559,
+      "malePopulation": 6597,
+      "femalePopulation": 6962,
       "medianAge": 46,
       "ageDistribution": [
         {
@@ -11760,39 +11832,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 30.3
+          "value": 34.6
         },
         {
           "name": "Car (passenger)",
-          "value": 1.7
+          "value": 2.1
         },
         {
           "name": "Train",
-          "value": 48.9
+          "value": 0.4
         },
         {
           "name": "Bus",
-          "value": 12
+          "value": 2.3
         },
         {
           "name": "Ferry",
-          "value": 2.2
+          "value": 0.5
         },
         {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 2.5
+        },
+        {
+          "name": "Work from home",
+          "value": 55.7
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 1.5
         }
       ],
       "vehicleOwnership": [
@@ -11816,27 +11892,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 65.9,
-          "train": 7.1,
-          "bus": 8.8,
-          "active": 1.3,
-          "wfh": 0
+          "car": 65.4,
+          "train": 1.9,
+          "bus": 13.8,
+          "active": 4,
+          "wfh": 7.8
         },
         {
           "year": 2016,
-          "car": 66.5,
-          "train": 7.7,
-          "bus": 8.2,
-          "active": 1.1,
-          "wfh": 0
+          "car": 64.2,
+          "train": 2.6,
+          "bus": 13.7,
+          "active": 3.3,
+          "wfh": 8.5
         },
         {
           "year": 2021,
-          "car": 32.1,
-          "train": 48.9,
-          "bus": 12,
-          "active": 0.3,
-          "wfh": 0
+          "car": 36.7,
+          "train": 0.4,
+          "bus": 2.3,
+          "active": 2.7,
+          "wfh": 55.7
         }
       ],
       "ptPatronage": null,
@@ -12218,9 +12294,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_strathfield": {
     "demographics": {
-      "totalPopulation": 29957,
-      "malePopulation": 15476,
-      "femalePopulation": 14480,
+      "totalPopulation": 45593,
+      "malePopulation": 23365,
+      "femalePopulation": 22229,
       "medianAge": 33,
       "ageDistribution": [
         {
@@ -12362,39 +12438,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 31.2
+          "value": 35.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.6
+          "value": 3.1
         },
         {
           "name": "Train",
-          "value": 36.3
+          "value": 14.6
         },
         {
           "name": "Bus",
-          "value": 11.6
+          "value": 0.8
         },
         {
           "name": "Ferry",
-          "value": 1.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 2
+        },
+        {
+          "name": "Work from home",
+          "value": 41.3
+        },
+        {
           "name": "Other",
-          "value": 3.6
+          "value": 2.4
         }
       ],
       "vehicleOwnership": [
@@ -12418,27 +12498,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 49.7,
-          "train": 3.2,
-          "bus": 7,
-          "active": 0.5,
-          "wfh": 0
+          "car": 57,
+          "train": 31.4,
+          "bus": 2.3,
+          "active": 3.5,
+          "wfh": 3.5
         },
         {
           "year": 2016,
-          "car": 45.7,
-          "train": 3.3,
-          "bus": 6.3,
-          "active": 0.5,
-          "wfh": 0.1
+          "car": 51.2,
+          "train": 36.7,
+          "bus": 2.4,
+          "active": 3.8,
+          "wfh": 3.5
         },
         {
           "year": 2021,
-          "car": 31.9,
-          "train": 36.3,
-          "bus": 11.6,
-          "active": 0.4,
-          "wfh": 0
+          "car": 38.6,
+          "train": 14.6,
+          "bus": 0.8,
+          "active": 2.3,
+          "wfh": 41.3
         }
       ],
       "ptPatronage": null,
@@ -12877,9 +12957,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_burwood": {
     "demographics": {
-      "totalPopulation": 25664,
-      "malePopulation": 12626,
-      "femalePopulation": 13037,
+      "totalPopulation": 40217,
+      "malePopulation": 19657,
+      "femalePopulation": 20556,
       "medianAge": 34,
       "ageDistribution": [
         {
@@ -13144,39 +13224,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 24.9
+          "value": 28.9
         },
         {
           "name": "Car (passenger)",
-          "value": 1.7
+          "value": 2.9
         },
         {
           "name": "Train",
-          "value": 35.8
+          "value": 18.1
         },
         {
           "name": "Bus",
-          "value": 13.5
+          "value": 2.2
         },
         {
           "name": "Ferry",
-          "value": 3.4
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
+          "name": "Walking",
+          "value": 3.9
+        },
+        {
           "name": "Work from home",
-          "value": 0.2
+          "value": 41.5
         },
         {
           "name": "Other",
-          "value": 4.5
+          "value": 2.1
         }
       ],
       "vehicleOwnership": [
@@ -13200,27 +13284,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 43.8,
-          "train": 3,
-          "bus": 7.6,
-          "active": 0.7,
-          "wfh": 0
+          "car": 48.7,
+          "train": 35.9,
+          "bus": 3.8,
+          "active": 5.8,
+          "wfh": 3.3
         },
         {
           "year": 2016,
-          "car": 40.8,
-          "train": 3.4,
-          "bus": 7.5,
-          "active": 0.5,
-          "wfh": 0.2
+          "car": 44.6,
+          "train": 39.7,
+          "bus": 3.8,
+          "active": 5.7,
+          "wfh": 3.7
         },
         {
           "year": 2021,
-          "car": 26.6,
-          "train": 35.8,
-          "bus": 13.5,
-          "active": 0.4,
-          "wfh": 0.2
+          "car": 31.8,
+          "train": 18.1,
+          "bus": 2.2,
+          "active": 4.2,
+          "wfh": 41.5
         }
       ],
       "ptPatronage": null,
@@ -13659,9 +13743,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_canada_bay": {
     "demographics": {
-      "totalPopulation": 54124,
-      "malePopulation": 26007,
-      "femalePopulation": 28115,
+      "totalPopulation": 89177,
+      "malePopulation": 42959,
+      "femalePopulation": 46218,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -13926,39 +14010,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 29.3
+          "value": 33.2
         },
         {
           "name": "Car (passenger)",
-          "value": 1.3
+          "value": 2.4
         },
         {
           "name": "Train",
-          "value": 46.8
+          "value": 4.9
         },
         {
           "name": "Bus",
-          "value": 11.5
+          "value": 1.7
         },
         {
           "name": "Ferry",
-          "value": 1.8
+          "value": 0.2
         },
         {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 2.1
+        },
+        {
+          "name": "Work from home",
+          "value": 53.1
+        },
+        {
           "name": "Other",
-          "value": 1.4
+          "value": 1.9
         }
       ],
       "vehicleOwnership": [
@@ -13982,27 +14070,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 60.7,
-          "train": 4.1,
-          "bus": 8.3,
-          "active": 1.2,
-          "wfh": 0
+          "car": 62.5,
+          "train": 13.8,
+          "bus": 10,
+          "active": 4,
+          "wfh": 4.5
         },
         {
           "year": 2016,
-          "car": 56.5,
-          "train": 4.5,
-          "bus": 7.3,
-          "active": 1.1,
-          "wfh": 0.1
+          "car": 56.4,
+          "train": 19.2,
+          "bus": 9.6,
+          "active": 4.2,
+          "wfh": 4.9
         },
         {
           "year": 2021,
-          "car": 30.6,
-          "train": 46.8,
-          "bus": 11.5,
-          "active": 0.5,
-          "wfh": 0
+          "car": 35.6,
+          "train": 4.9,
+          "bus": 1.7,
+          "active": 2.5,
+          "wfh": 53.1
         }
       ],
       "ptPatronage": null,
@@ -14384,9 +14472,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_inner_west": {
     "demographics": {
-      "totalPopulation": 117113,
-      "malePopulation": 56111,
-      "femalePopulation": 61003,
+      "totalPopulation": 182818,
+      "malePopulation": 89169,
+      "femalePopulation": 93648,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -14651,39 +14739,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 20.6
+          "value": 23.4
         },
         {
           "name": "Car (passenger)",
-          "value": 1.6
+          "value": 1.7
         },
         {
           "name": "Train",
-          "value": 52.7
+          "value": 5.5
         },
         {
           "name": "Bus",
-          "value": 11.6
+          "value": 2.1
         },
         {
           "name": "Ferry",
-          "value": 3.4
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 1.1
-        },
-        {
-          "name": "Work from home",
           "value": 0.1
         },
         {
+          "name": "Light rail",
+          "value": 0.2
+        },
+        {
+          "name": "Cycling",
+          "value": 1.3
+        },
+        {
+          "name": "Walking",
+          "value": 3.9
+        },
+        {
+          "name": "Work from home",
+          "value": 59.8
+        },
+        {
           "name": "Other",
-          "value": 1.4
+          "value": 2
         }
       ],
       "vehicleOwnership": [
@@ -14707,19 +14799,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 45.4,
-          "train": 4.6,
-          "bus": 7.7,
-          "active": 3,
-          "wfh": 0.3
+          "car": 41.5,
+          "train": 27.2,
+          "bus": 11.9,
+          "active": 8.6,
+          "wfh": 5.1
         },
         {
           "year": 2021,
-          "car": 22.2,
-          "train": 52.7,
-          "bus": 11.6,
-          "active": 1.4,
-          "wfh": 0.1
+          "car": 25.1,
+          "train": 5.5,
+          "bus": 2.1,
+          "active": 5.2,
+          "wfh": 59.8
         }
       ],
       "ptPatronage": null,
@@ -15101,9 +15193,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_bayside": {
     "demographics": {
-      "totalPopulation": 100078,
-      "malePopulation": 49508,
-      "femalePopulation": 50568,
+      "totalPopulation": 175184,
+      "malePopulation": 87327,
+      "femalePopulation": 87860,
       "medianAge": 35,
       "ageDistribution": [
         {
@@ -15368,39 +15460,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 33.6
+          "value": 38.7
         },
         {
           "name": "Car (passenger)",
-          "value": 1.8
+          "value": 3.5
         },
         {
           "name": "Train",
-          "value": 34
+          "value": 9.9
         },
         {
           "name": "Bus",
-          "value": 12.7
+          "value": 2.4
         },
         {
           "name": "Ferry",
-          "value": 2.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0.2
+          "value": 0.5
         },
         {
           "name": "Walking",
-          "value": 0.4
+          "value": 3
         },
         {
           "name": "Work from home",
-          "value": 0.1
+          "value": 39.2
         },
         {
           "name": "Other",
-          "value": 2.5
+          "value": 2.8
         }
       ],
       "vehicleOwnership": [
@@ -15424,11 +15520,11 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2021,
-          "car": 35.4,
-          "train": 34,
-          "bus": 12.7,
-          "active": 0.7,
-          "wfh": 0.1
+          "car": 42.2,
+          "train": 9.9,
+          "bus": 2.4,
+          "active": 3.6,
+          "wfh": 39.2
         }
       ],
       "ptPatronage": null,
@@ -15867,9 +15963,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_georges_river": {
     "demographics": {
-      "totalPopulation": 87855,
-      "malePopulation": 43406,
-      "femalePopulation": 44451,
+      "totalPopulation": 152274,
+      "malePopulation": 75024,
+      "femalePopulation": 77250,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -16134,39 +16230,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 29.9
+          "value": 35.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.6
+          "value": 3.1
         },
         {
           "name": "Train",
-          "value": 36.6
+          "value": 11.3
         },
         {
           "name": "Bus",
-          "value": 16.1
+          "value": 0.9
         },
         {
           "name": "Ferry",
-          "value": 2.4
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0.1
+          "value": 0.2
         },
         {
           "name": "Walking",
-          "value": 0.1
+          "value": 2.9
         },
         {
           "name": "Work from home",
-          "value": 0.1
+          "value": 43.8
         },
         {
           "name": "Other",
-          "value": 2.4
+          "value": 1.8
         }
       ],
       "vehicleOwnership": [
@@ -16190,19 +16290,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 49.2,
-          "train": 3.3,
-          "bus": 7.8,
-          "active": 0.3,
-          "wfh": 0.2
+          "car": 56.4,
+          "train": 32.6,
+          "bus": 1.6,
+          "active": 3.7,
+          "wfh": 3.6
         },
         {
           "year": 2021,
-          "car": 30.6,
-          "train": 36.6,
-          "bus": 16.1,
-          "active": 0.2,
-          "wfh": 0.1
+          "car": 39,
+          "train": 11.3,
+          "bus": 0.9,
+          "active": 3,
+          "wfh": 43.8
         }
       ],
       "ptPatronage": null,
@@ -16584,9 +16684,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_randwick": {
     "demographics": {
-      "totalPopulation": 82798,
-      "malePopulation": 39255,
-      "femalePopulation": 43545,
+      "totalPopulation": 134252,
+      "malePopulation": 65376,
+      "femalePopulation": 68869,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -16851,39 +16951,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 27.1
+          "value": 30.8
         },
         {
           "name": "Car (passenger)",
-          "value": 3.7
+          "value": 2.5
         },
         {
           "name": "Train",
-          "value": 45.2
+          "value": 1.3
         },
         {
           "name": "Bus",
-          "value": 11.6
+          "value": 4.9
         },
         {
           "name": "Ferry",
-          "value": 4.1
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0.6
         },
         {
           "name": "Cycling",
-          "value": 0.2
+          "value": 1.1
         },
         {
           "name": "Walking",
-          "value": 1
+          "value": 4.6
         },
         {
           "name": "Work from home",
-          "value": 0.1
+          "value": 51.4
         },
         {
           "name": "Other",
-          "value": 1
+          "value": 2.8
         }
       ],
       "vehicleOwnership": [
@@ -16907,27 +17011,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 64.8,
-          "train": 4,
-          "bus": 8.9,
-          "active": 2.3,
-          "wfh": 0
+          "car": 53.8,
+          "train": 4.7,
+          "bus": 24.5,
+          "active": 9,
+          "wfh": 4.4
         },
         {
           "year": 2016,
-          "car": 64.9,
-          "train": 4.5,
-          "bus": 8.1,
-          "active": 2.4,
-          "wfh": 0
+          "car": 51.3,
+          "train": 5.3,
+          "bus": 25.3,
+          "active": 9.2,
+          "wfh": 5
         },
         {
           "year": 2021,
-          "car": 30.8,
-          "train": 45.2,
-          "bus": 11.6,
-          "active": 1.2,
-          "wfh": 0.1
+          "car": 33.3,
+          "train": 1.3,
+          "bus": 4.9,
+          "active": 5.7,
+          "wfh": 51.4
         }
       ],
       "ptPatronage": null,
@@ -17366,9 +17470,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_waverley": {
     "demographics": {
-      "totalPopulation": 45927,
-      "malePopulation": 21901,
-      "femalePopulation": 24021,
+      "totalPopulation": 68605,
+      "malePopulation": 33273,
+      "femalePopulation": 35334,
       "medianAge": 35,
       "ageDistribution": [
         {
@@ -17633,39 +17737,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 19.9
+          "value": 22.2
         },
         {
           "name": "Car (passenger)",
-          "value": 2
+          "value": 1.5
         },
         {
           "name": "Train",
-          "value": 55.1
+          "value": 4
         },
         {
           "name": "Bus",
-          "value": 9.9
+          "value": 2.4
         },
         {
           "name": "Ferry",
-          "value": 3.9
+          "value": 0.1
         },
         {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 1
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 1.1
+        },
+        {
+          "name": "Walking",
+          "value": 4.3
+        },
+        {
+          "name": "Work from home",
+          "value": 61.4
+        },
+        {
           "name": "Other",
-          "value": 2.1
+          "value": 2.9
         }
       ],
       "vehicleOwnership": [
@@ -17689,27 +17797,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 48.2,
-          "train": 5.7,
-          "bus": 7.1,
-          "active": 2.8,
-          "wfh": 0
+          "car": 47.1,
+          "train": 22.3,
+          "bus": 10.2,
+          "active": 8.5,
+          "wfh": 6.2
         },
         {
           "year": 2016,
-          "car": 45.1,
-          "train": 6.3,
-          "bus": 6.3,
-          "active": 2.8,
-          "wfh": 0
+          "car": 43.1,
+          "train": 25.8,
+          "bus": 9.4,
+          "active": 8.8,
+          "wfh": 6.8
         },
         {
           "year": 2021,
-          "car": 21.9,
-          "train": 55.1,
-          "bus": 9.9,
-          "active": 1.2,
-          "wfh": 0
+          "car": 23.8,
+          "train": 4,
+          "bus": 2.4,
+          "active": 5.4,
+          "wfh": 61.4
         }
       ],
       "ptPatronage": null,
@@ -18148,9 +18256,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_woollahra": {
     "demographics": {
-      "totalPopulation": 37085,
-      "malePopulation": 17208,
-      "femalePopulation": 19875,
+      "totalPopulation": 53496,
+      "malePopulation": 24952,
+      "femalePopulation": 28543,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -18415,39 +18523,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 19.8
+          "value": 22
         },
         {
           "name": "Car (passenger)",
-          "value": 1.3
+          "value": 2
         },
         {
           "name": "Train",
-          "value": 57
+          "value": 2.7
         },
         {
           "name": "Bus",
-          "value": 9.6
+          "value": 1.7
         },
         {
           "name": "Ferry",
-          "value": 4.5
+          "value": 0.4
         },
         {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.6
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.6
+        },
+        {
+          "name": "Walking",
+          "value": 5
+        },
+        {
+          "name": "Work from home",
+          "value": 63.4
+        },
+        {
           "name": "Other",
-          "value": 1.3
+          "value": 2.1
         }
       ],
       "vehicleOwnership": [
@@ -18471,27 +18583,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 48,
-          "train": 8,
-          "bus": 7.6,
-          "active": 2.4,
-          "wfh": 0
+          "car": 47.5,
+          "train": 15.8,
+          "bus": 10.2,
+          "active": 10.9,
+          "wfh": 8.8
         },
         {
           "year": 2016,
-          "car": 45.4,
-          "train": 8.4,
-          "bus": 6.4,
-          "active": 2.1,
-          "wfh": 0
+          "car": 43.9,
+          "train": 19.8,
+          "bus": 9.4,
+          "active": 10.7,
+          "wfh": 9.1
         },
         {
           "year": 2021,
-          "car": 21.1,
-          "train": 57,
-          "bus": 9.6,
-          "active": 0.8,
-          "wfh": 0
+          "car": 24.1,
+          "train": 2.7,
+          "bus": 1.7,
+          "active": 5.6,
+          "wfh": 63.4
         }
       ],
       "ptPatronage": null,
@@ -18930,9 +19042,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_blue_mountains": {
     "demographics": {
-      "totalPopulation": 38662,
-      "malePopulation": 18066,
-      "femalePopulation": 20599,
+      "totalPopulation": 78121,
+      "malePopulation": 37865,
+      "femalePopulation": 40258,
       "medianAge": 45,
       "ageDistribution": [
         {
@@ -19197,39 +19309,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 39.1
+          "value": 46.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 2.6
         },
         {
           "name": "Train",
-          "value": 36.6
+          "value": 2.1
         },
         {
           "name": "Bus",
-          "value": 16.1
-        },
-        {
-          "name": "Ferry",
-          "value": 1.6
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 2
+        },
+        {
+          "name": "Work from home",
+          "value": 43.8
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 2.2
         }
       ],
       "vehicleOwnership": [
@@ -19253,27 +19369,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 58.6,
-          "train": 6.3,
-          "bus": 12.9,
-          "active": 0.6,
-          "wfh": 0
+          "car": 72.7,
+          "train": 13,
+          "bus": 0.4,
+          "active": 3.4,
+          "wfh": 7.3
         },
         {
           "year": 2016,
-          "car": 60.9,
-          "train": 6.8,
-          "bus": 11.2,
-          "active": 0.5,
-          "wfh": 0
+          "car": 72.6,
+          "train": 12.9,
+          "bus": 0.5,
+          "active": 3.3,
+          "wfh": 7.7
         },
         {
           "year": 2021,
-          "car": 39.2,
-          "train": 36.6,
-          "bus": 16.1,
-          "active": 0.3,
-          "wfh": 0
+          "car": 49.5,
+          "train": 2.1,
+          "bus": 0.1,
+          "active": 2.2,
+          "wfh": 43.8
         }
       ],
       "ptPatronage": null,
@@ -19655,9 +19771,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_wollondilly": {
     "demographics": {
-      "totalPopulation": 17662,
-      "malePopulation": 7661,
-      "femalePopulation": 9997,
+      "totalPopulation": 53961,
+      "malePopulation": 27032,
+      "femalePopulation": 26931,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -19922,39 +20038,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 52.6
+          "value": 62
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 3.7
         },
         {
           "name": "Train",
-          "value": 23.6
+          "value": 0.9
         },
         {
           "name": "Bus",
-          "value": 14.7
-        },
-        {
-          "name": "Ferry",
-          "value": 1.3
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.1
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.1
+        },
+        {
+          "name": "Walking",
+          "value": 1.6
+        },
+        {
+          "name": "Work from home",
+          "value": 27.9
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 3.8
         }
       ],
       "vehicleOwnership": [
@@ -19978,27 +20098,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 68.8,
-          "train": 5.1,
-          "bus": 9.9,
-          "active": 0.2,
-          "wfh": 0
+          "car": 82.4,
+          "train": 4.2,
+          "bus": 0.5,
+          "active": 1.9,
+          "wfh": 5.8
         },
         {
           "year": 2016,
-          "car": 70.7,
-          "train": 5.3,
-          "bus": 9.9,
-          "active": 0.2,
-          "wfh": 0
+          "car": 83.2,
+          "train": 4.5,
+          "bus": 0.4,
+          "active": 1.7,
+          "wfh": 6
         },
         {
           "year": 2021,
-          "car": 52.7,
-          "train": 23.6,
-          "bus": 14.7,
-          "active": 0.1,
-          "wfh": 0
+          "car": 65.7,
+          "train": 0.9,
+          "bus": 0.1,
+          "active": 1.6,
+          "wfh": 27.9
         }
       ],
       "ptPatronage": null,
@@ -20437,9 +20557,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_hawkesbury": {
     "demographics": {
-      "totalPopulation": 23538,
-      "malePopulation": 10419,
-      "femalePopulation": 13127,
+      "totalPopulation": 67207,
+      "malePopulation": 33461,
+      "femalePopulation": 33755,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -20704,39 +20824,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 50.6
+          "value": 59.1
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 3.5
         },
         {
           "name": "Train",
-          "value": 25.3
+          "value": 1.3
         },
         {
           "name": "Bus",
-          "value": 14
-        },
-        {
-          "name": "Ferry",
-          "value": 1.7
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.9
+        },
+        {
+          "name": "Work from home",
+          "value": 29.6
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 4.1
         }
       ],
       "vehicleOwnership": [
@@ -20760,27 +20884,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.6,
-          "train": 5.1,
-          "bus": 9.5,
-          "active": 0.6,
-          "wfh": 0
+          "car": 80.2,
+          "train": 4.7,
+          "bus": 0.6,
+          "active": 3.6,
+          "wfh": 5.7
         },
         {
           "year": 2016,
-          "car": 69.7,
-          "train": 5.3,
-          "bus": 8.3,
-          "active": 0.4,
-          "wfh": 0
+          "car": 80.8,
+          "train": 5.4,
+          "bus": 0.5,
+          "active": 2.5,
+          "wfh": 5.9
         },
         {
           "year": 2021,
-          "car": 50.7,
-          "train": 25.3,
-          "bus": 14,
-          "active": 0.2,
-          "wfh": 0
+          "car": 62.6,
+          "train": 1.3,
+          "bus": 0.2,
+          "active": 2.1,
+          "wfh": 29.6
         }
       ],
       "ptPatronage": null,
@@ -21219,9 +21343,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_hills": {
     "demographics": {
-      "totalPopulation": 108229,
-      "malePopulation": 52712,
-      "femalePopulation": 55518,
+      "totalPopulation": 191876,
+      "malePopulation": 94657,
+      "femalePopulation": 97221,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -21486,39 +21610,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 34.3
+          "value": 39.2
         },
         {
           "name": "Car (passenger)",
-          "value": 1.1
+          "value": 2.5
         },
         {
           "name": "Train",
-          "value": 45.3
+          "value": 2.2
         },
         {
           "name": "Bus",
-          "value": 12.3
+          "value": 1.5
         },
         {
           "name": "Ferry",
-          "value": 0.8
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.1
         },
         {
+          "name": "Walking",
+          "value": 0.9
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 51.9
         },
         {
           "name": "Other",
-          "value": 0.9
+          "value": 1.6
         }
       ],
       "vehicleOwnership": [
@@ -21542,27 +21670,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 71.2,
-          "train": 5.5,
-          "bus": 8.8,
-          "active": 0.4,
-          "wfh": 0
+          "car": 75.4,
+          "train": 4.5,
+          "bus": 9.6,
+          "active": 1.8,
+          "wfh": 6.1
         },
         {
           "year": 2016,
-          "car": 72.8,
-          "train": 6.1,
-          "bus": 7.7,
-          "active": 0.3,
-          "wfh": 0
+          "car": 71.8,
+          "train": 4.2,
+          "bus": 13.4,
+          "active": 1.6,
+          "wfh": 6.6
         },
         {
           "year": 2021,
-          "car": 35.4,
-          "train": 45.3,
-          "bus": 12.3,
-          "active": 0.1,
-          "wfh": 0
+          "car": 41.7,
+          "train": 2.2,
+          "bus": 1.5,
+          "active": 1,
+          "wfh": 51.9
         }
       ],
       "ptPatronage": null,
@@ -21944,9 +22072,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_cumberland": {
     "demographics": {
-      "totalPopulation": 114764,
-      "malePopulation": 58932,
-      "femalePopulation": 55835,
+      "totalPopulation": 235439,
+      "malePopulation": 121502,
+      "femalePopulation": 113938,
       "medianAge": 34,
       "ageDistribution": [
         {
@@ -22083,39 +22211,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 36
+          "value": 42.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.7
+          "value": 4.3
         },
         {
           "name": "Train",
-          "value": 29.8
+          "value": 11.7
         },
         {
           "name": "Bus",
-          "value": 15
+          "value": 1
         },
         {
           "name": "Ferry",
-          "value": 1.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0.2
+          "value": 0.3
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 2.1
         },
         {
           "name": "Work from home",
-          "value": 0.1
+          "value": 35.4
         },
         {
           "name": "Other",
-          "value": 2.9
+          "value": 2.5
         }
       ],
       "vehicleOwnership": [
@@ -22139,19 +22271,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 56.1,
-          "train": 2.6,
-          "bus": 6.3,
-          "active": 0.5,
-          "wfh": 0.1
+          "car": 64.1,
+          "train": 25.2,
+          "bus": 2.5,
+          "active": 2.4,
+          "wfh": 2.8
         },
         {
           "year": 2021,
-          "car": 36.7,
-          "train": 29.8,
-          "bus": 15,
-          "active": 0.4,
-          "wfh": 0.1
+          "car": 47,
+          "train": 11.7,
+          "bus": 1,
+          "active": 2.3,
+          "wfh": 35.4
         }
       ],
       "ptPatronage": null,
@@ -22590,9 +22722,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_newcastle": {
     "demographics": {
-      "totalPopulation": 79176,
-      "malePopulation": 37917,
-      "femalePopulation": 41254,
+      "totalPopulation": 168873,
+      "malePopulation": 82975,
+      "femalePopulation": 85893,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -22857,39 +22989,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 50.5
+          "value": 60.1
         },
         {
           "name": "Car (passenger)",
-          "value": 1
+          "value": 3.6
         },
         {
           "name": "Train",
-          "value": 23.4
+          "value": 0.4
         },
         {
           "name": "Bus",
-          "value": 15.6
+          "value": 1.4
         },
         {
           "name": "Ferry",
-          "value": 2.6
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
+          "name": "Light rail",
+          "value": 0.1
+        },
+        {
+          "name": "Cycling",
+          "value": 1.1
+        },
+        {
           "name": "Walking",
-          "value": 0.9
+          "value": 3.1
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 27.8
         },
         {
           "name": "Other",
-          "value": 0.4
+          "value": 2.3
         }
       ],
       "vehicleOwnership": [
@@ -22913,27 +23049,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.6,
-          "train": 2.8,
-          "bus": 12.3,
-          "active": 2,
-          "wfh": 0
+          "car": 82.2,
+          "train": 1.4,
+          "bus": 3.1,
+          "active": 6.6,
+          "wfh": 3.3
         },
         {
           "year": 2016,
-          "car": 69.8,
-          "train": 3.5,
-          "bus": 11.1,
-          "active": 2,
-          "wfh": 0
+          "car": 82,
+          "train": 1.2,
+          "bus": 3.1,
+          "active": 6.5,
+          "wfh": 4
         },
         {
           "year": 2021,
-          "car": 51.5,
-          "train": 23.4,
-          "bus": 15.6,
-          "active": 1.1,
-          "wfh": 0
+          "car": 63.6,
+          "train": 0.4,
+          "bus": 1.4,
+          "active": 4.2,
+          "wfh": 27.8
         }
       ],
       "ptPatronage": null,
@@ -23372,9 +23508,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_lake_macquarie": {
     "demographics": {
-      "totalPopulation": 76495,
-      "malePopulation": 35498,
-      "femalePopulation": 41005,
+      "totalPopulation": 213845,
+      "malePopulation": 104311,
+      "femalePopulation": 109529,
       "medianAge": 42,
       "ageDistribution": [
         {
@@ -23639,39 +23775,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 56
+          "value": 66.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 4
         },
         {
           "name": "Train",
-          "value": 20.5
+          "value": 0.3
         },
         {
           "name": "Bus",
-          "value": 15.5
+          "value": 0.7
         },
         {
           "name": "Ferry",
-          "value": 1.1
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 1.3
+        },
+        {
+          "name": "Work from home",
+          "value": 24.3
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 2.4
         }
       ],
       "vehicleOwnership": [
@@ -23695,27 +23835,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 71.3,
-          "train": 3.3,
-          "bus": 12.1,
-          "active": 0.5,
-          "wfh": 0
+          "car": 87.5,
+          "train": 1.4,
+          "bus": 1.5,
+          "active": 2.4,
+          "wfh": 3.9
         },
         {
           "year": 2016,
-          "car": 73.8,
-          "train": 3.9,
-          "bus": 11.2,
-          "active": 0.5,
-          "wfh": 0
+          "car": 87.8,
+          "train": 1.3,
+          "bus": 1.3,
+          "active": 2.1,
+          "wfh": 4.4
         },
         {
           "year": 2021,
-          "car": 56.5,
-          "train": 20.5,
-          "bus": 15.5,
-          "active": 0.3,
-          "wfh": 0
+          "car": 70.6,
+          "train": 0.3,
+          "bus": 0.7,
+          "active": 1.6,
+          "wfh": 24.3
         }
       ],
       "ptPatronage": null,
@@ -24097,9 +24237,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_cessnock": {
     "demographics": {
-      "totalPopulation": 16717,
-      "malePopulation": 7409,
-      "femalePopulation": 9308,
+      "totalPopulation": 63632,
+      "malePopulation": 32030,
+      "femalePopulation": 31603,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -24356,39 +24496,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 61.7
+          "value": 74.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 4.2
         },
         {
           "name": "Train",
-          "value": 13
+          "value": 0.2
         },
         {
           "name": "Bus",
-          "value": 17
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 1.4
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.1
-        },
-        {
-          "name": "Work from home",
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.7
+        },
+        {
+          "name": "Work from home",
+          "value": 15.8
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 2.8
         }
       ],
       "vehicleOwnership": [
@@ -24412,27 +24556,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 68.6,
-          "train": 3.4,
-          "bus": 13.1,
-          "active": 0.4,
-          "wfh": 0
+          "car": 87.9,
+          "train": 0.5,
+          "bus": 0.6,
+          "active": 2.9,
+          "wfh": 4
         },
         {
           "year": 2016,
-          "car": 71.8,
-          "train": 3.7,
-          "bus": 12.9,
-          "active": 0.2,
-          "wfh": 0
+          "car": 89,
+          "train": 0.5,
+          "bus": 0.6,
+          "active": 2.2,
+          "wfh": 4.3
         },
         {
           "year": 2021,
-          "car": 61.9,
-          "train": 13,
-          "bus": 17,
-          "active": 0.2,
-          "wfh": 0
+          "car": 79,
+          "train": 0.2,
+          "bus": 0.3,
+          "active": 1.9,
+          "wfh": 15.8
         }
       ],
       "ptPatronage": null,
@@ -24814,9 +24958,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_maitland": {
     "demographics": {
-      "totalPopulation": 30263,
-      "malePopulation": 13786,
-      "femalePopulation": 16480,
+      "totalPopulation": 90226,
+      "malePopulation": 43917,
+      "femalePopulation": 46310,
       "medianAge": 36,
       "ageDistribution": [
         {
@@ -25081,39 +25225,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 59
+          "value": 70.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.3
         },
         {
           "name": "Train",
-          "value": 17
+          "value": 0.8
         },
         {
           "name": "Bus",
-          "value": 15.9
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 1.1
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.3
+        },
+        {
+          "name": "Work from home",
+          "value": 20.3
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 2.3
         }
       ],
       "vehicleOwnership": [
@@ -25137,27 +25285,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 70.6,
-          "train": 3,
-          "bus": 12.2,
-          "active": 0.4,
-          "wfh": 0
+          "car": 87.8,
+          "train": 2.4,
+          "bus": 0.6,
+          "active": 2.4,
+          "wfh": 3.5
         },
         {
           "year": 2016,
-          "car": 74.1,
-          "train": 3.4,
-          "bus": 11.3,
-          "active": 0.4,
-          "wfh": 0
+          "car": 89.1,
+          "train": 1.5,
+          "bus": 0.7,
+          "active": 2,
+          "wfh": 3.8
         },
         {
           "year": 2021,
-          "car": 59.3,
-          "train": 17,
-          "bus": 15.9,
-          "active": 0.2,
-          "wfh": 0
+          "car": 74.8,
+          "train": 0.8,
+          "bus": 0.4,
+          "active": 1.5,
+          "wfh": 20.3
         }
       ],
       "ptPatronage": null,
@@ -25539,9 +25687,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_port_stephens": {
     "demographics": {
-      "totalPopulation": 24173,
-      "malePopulation": 11269,
-      "femalePopulation": 12907,
+      "totalPopulation": 75276,
+      "malePopulation": 37059,
+      "femalePopulation": 38218,
       "medianAge": 47,
       "ageDistribution": [
         {
@@ -25806,39 +25954,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 56
+          "value": 67.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 4.3
         },
         {
           "name": "Train",
-          "value": 18.1
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 16.7
+          "value": 0.7
         },
         {
           "name": "Ferry",
-          "value": 1.8
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 0.3
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 2.2
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 21.9
         },
         {
           "name": "Other",
-          "value": 0.4
+          "value": 2.8
         }
       ],
       "vehicleOwnership": [
@@ -25862,27 +26014,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 69.5,
-          "train": 4.3,
-          "bus": 12.1,
-          "active": 0.5,
-          "wfh": 0
+          "car": 85.7,
+          "train": 0.3,
+          "bus": 1.2,
+          "active": 3.9,
+          "wfh": 4.9
         },
         {
           "year": 2016,
-          "car": 71.4,
-          "train": 4.8,
-          "bus": 11.6,
-          "active": 0.5,
-          "wfh": 0
+          "car": 86,
+          "train": 0.3,
+          "bus": 1.1,
+          "active": 3.3,
+          "wfh": 5.5
         },
         {
           "year": 2021,
-          "car": 56.4,
-          "train": 18.1,
-          "bus": 16.7,
-          "active": 0.3,
-          "wfh": 0
+          "car": 72.1,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 2.5,
+          "wfh": 21.9
         }
       ],
       "ptPatronage": null,
@@ -26264,9 +26416,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_singleton": {
     "demographics": {
-      "totalPopulation": 7258,
-      "malePopulation": 3425,
-      "femalePopulation": 3833,
+      "totalPopulation": 24577,
+      "malePopulation": 12659,
+      "femalePopulation": 11918,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -26531,23 +26683,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 60.3
+          "value": 72
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 4.2
         },
         {
           "name": "Train",
-          "value": 12.6
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 15.7
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 4.2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -26555,15 +26711,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.1
+          "value": 5
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 15.1
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -26587,27 +26743,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.7,
-          "train": 4.3,
-          "bus": 12.3,
-          "active": 0.4,
-          "wfh": 0
+          "car": 85.8,
+          "train": 0.2,
+          "bus": 0.4,
+          "active": 4.4,
+          "wfh": 5
         },
         {
           "year": 2016,
-          "car": 70.2,
-          "train": 4.8,
-          "bus": 11.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 85,
+          "train": 0.3,
+          "bus": 0.3,
+          "active": 4.4,
+          "wfh": 5.5
         },
         {
           "year": 2021,
-          "car": 60.5,
-          "train": 12.6,
-          "bus": 15.7,
-          "active": 0.2,
-          "wfh": 0
+          "car": 76.2,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 5.1,
+          "wfh": 15.1
         }
       ],
       "ptPatronage": null,
@@ -26989,9 +27145,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_muswellbrook": {
     "demographics": {
-      "totalPopulation": 4118,
-      "malePopulation": 1811,
-      "femalePopulation": 2308,
+      "totalPopulation": 16357,
+      "malePopulation": 8397,
+      "femalePopulation": 7957,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -27256,39 +27412,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 66.4
+          "value": 77.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 5.2
         },
         {
           "name": "Train",
-          "value": 9.3
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 13.7
-        },
-        {
-          "name": "Ferry",
-          "value": 2.9
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 3.4
+        },
+        {
+          "name": "Work from home",
+          "value": 10.9
+        },
+        {
           "name": "Other",
-          "value": 0.6
+          "value": 2.5
         }
       ],
       "vehicleOwnership": [
@@ -27312,27 +27472,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.6,
-          "train": 3.9,
-          "bus": 11.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 86.1,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 5.1,
+          "wfh": 4.5
         },
         {
           "year": 2016,
-          "car": 72.3,
-          "train": 4.1,
-          "bus": 11.4,
-          "active": 0.3,
-          "wfh": 0
+          "car": 88,
+          "train": 0.2,
+          "bus": 0.3,
+          "active": 3.7,
+          "wfh": 4.6
         },
         {
           "year": 2021,
-          "car": 66.5,
-          "train": 9.3,
-          "bus": 13.7,
-          "active": 0.2,
-          "wfh": 0
+          "car": 82.6,
+          "train": 0,
+          "bus": 0.2,
+          "active": 3.6,
+          "wfh": 10.9
         }
       ],
       "ptPatronage": null,
@@ -27714,9 +27874,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_upper_hunter": {
     "demographics": {
-      "totalPopulation": 4314,
-      "malePopulation": 1832,
-      "femalePopulation": 2479,
+      "totalPopulation": 14229,
+      "malePopulation": 7112,
+      "femalePopulation": 7119,
       "medianAge": 42,
       "ageDistribution": [
         {
@@ -27981,39 +28141,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.5
+          "value": 71.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 4.7
         },
         {
           "name": "Train",
-          "value": 12.2
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 10.9
+          "value": 0.2
         },
         {
           "name": "Ferry",
-          "value": 4.5
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.4
         },
         {
+          "name": "Walking",
+          "value": 5
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 13.8
         },
         {
           "name": "Other",
-          "value": 1.1
+          "value": 3.8
         }
       ],
       "vehicleOwnership": [
@@ -28037,27 +28201,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62,
-          "train": 8.4,
-          "bus": 10,
-          "active": 0.4,
-          "wfh": 0
+          "car": 76.9,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 7.8,
+          "wfh": 9.6
         },
         {
           "year": 2016,
-          "car": 65.3,
-          "train": 8.1,
-          "bus": 10.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 79.8,
+          "train": 0.1,
+          "bus": 0.4,
+          "active": 6.4,
+          "wfh": 9.2
         },
         {
           "year": 2021,
-          "car": 63.7,
-          "train": 12.2,
-          "bus": 10.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 76.6,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 5.5,
+          "wfh": 13.8
         }
       ],
       "ptPatronage": null,
@@ -28439,9 +28603,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_dungog": {
     "demographics": {
-      "totalPopulation": 2911,
-      "malePopulation": 1270,
-      "femalePopulation": 1636,
+      "totalPopulation": 9541,
+      "malePopulation": 4761,
+      "femalePopulation": 4781,
       "medianAge": 46,
       "ageDistribution": [
         {
@@ -28706,39 +28870,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 56.6
+          "value": 66.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 3.1
         },
         {
           "name": "Train",
-          "value": 20.4
-        },
-        {
-          "name": "Bus",
-          "value": 14.1
-        },
-        {
-          "name": "Ferry",
-          "value": 2.4
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.1
         },
         {
-          "name": "Work from home",
+          "name": "Bus",
           "value": 0
         },
         {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.1
+        },
+        {
+          "name": "Walking",
+          "value": 2.9
+        },
+        {
+          "name": "Work from home",
+          "value": 23.9
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -28762,27 +28930,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 64.3,
-          "train": 10.1,
-          "bus": 11,
-          "active": 0.3,
-          "wfh": 0
+          "car": 77.4,
+          "train": 1.1,
+          "bus": 0.4,
+          "active": 4.7,
+          "wfh": 11.6
         },
         {
           "year": 2016,
-          "car": 67.1,
-          "train": 8.9,
-          "bus": 11.2,
-          "active": 0.4,
-          "wfh": 0
+          "car": 80.7,
+          "train": 0.5,
+          "bus": 0.2,
+          "active": 4.4,
+          "wfh": 10.2
         },
         {
           "year": 2021,
-          "car": 56.6,
-          "train": 20.4,
-          "bus": 14.1,
-          "active": 0.1,
-          "wfh": 0
+          "car": 69.6,
+          "train": 0.1,
+          "bus": 0,
+          "active": 2.9,
+          "wfh": 23.9
         }
       ],
       "ptPatronage": null,
@@ -29164,9 +29332,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_central_coast": {
     "demographics": {
-      "totalPopulation": 129524,
-      "malePopulation": 60559,
-      "femalePopulation": 68964,
+      "totalPopulation": 346596,
+      "malePopulation": 167980,
+      "femalePopulation": 178618,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -29431,39 +29599,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 49.3
+          "value": 59
         },
         {
           "name": "Car (passenger)",
-          "value": 0.6
+          "value": 3.9
         },
         {
           "name": "Train",
-          "value": 25.5
+          "value": 1.8
         },
         {
           "name": "Bus",
-          "value": 15.9
+          "value": 0.8
         },
         {
           "name": "Ferry",
-          "value": 1.3
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
+          "name": "Walking",
+          "value": 1.5
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 30.5
         },
         {
           "name": "Other",
-          "value": 0.7
+          "value": 2.3
         }
       ],
       "vehicleOwnership": [
@@ -29487,19 +29659,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 66.3,
-          "train": 5.1,
-          "bus": 10.7,
-          "active": 0.3,
-          "wfh": 0
+          "car": 79.1,
+          "train": 8.5,
+          "bus": 1.4,
+          "active": 2.2,
+          "wfh": 5.8
         },
         {
           "year": 2021,
-          "car": 49.9,
-          "train": 25.5,
-          "bus": 15.9,
-          "active": 0.2,
-          "wfh": 0
+          "car": 62.9,
+          "train": 1.8,
+          "bus": 0.8,
+          "active": 1.7,
+          "wfh": 30.5
         }
       ],
       "ptPatronage": null,
@@ -29881,9 +30053,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_wollongong": {
     "demographics": {
-      "totalPopulation": 91673,
-      "malePopulation": 43822,
-      "femalePopulation": 47854,
+      "totalPopulation": 214564,
+      "malePopulation": 105616,
+      "femalePopulation": 108948,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -30148,39 +30320,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 48.3
+          "value": 57.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.7
+          "value": 3.5
         },
         {
           "name": "Train",
-          "value": 26.6
+          "value": 1.4
         },
         {
           "name": "Bus",
-          "value": 15.5
+          "value": 1.1
         },
         {
           "name": "Ferry",
-          "value": 2
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 2.4
+        },
+        {
+          "name": "Work from home",
+          "value": 31.6
+        },
+        {
+          "name": "Other",
+          "value": 2.1
         }
       ],
       "vehicleOwnership": [
@@ -30204,27 +30380,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 66.2,
-          "train": 2.9,
-          "bus": 12,
-          "active": 0.9,
-          "wfh": 0
+          "car": 81.1,
+          "train": 5.6,
+          "bus": 2.3,
+          "active": 4.5,
+          "wfh": 3.3
         },
         {
           "year": 2016,
-          "car": 68.1,
-          "train": 3.5,
-          "bus": 10.9,
-          "active": 0.8,
-          "wfh": 0
+          "car": 80.7,
+          "train": 6.2,
+          "bus": 2.3,
+          "active": 4.1,
+          "wfh": 3.9
         },
         {
           "year": 2021,
-          "car": 49,
-          "train": 26.6,
-          "bus": 15.5,
-          "active": 0.5,
-          "wfh": 0
+          "car": 60.9,
+          "train": 1.4,
+          "bus": 1.1,
+          "active": 2.9,
+          "wfh": 31.6
         }
       ],
       "ptPatronage": null,
@@ -30663,9 +30839,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_shellharbour": {
     "demographics": {
-      "totalPopulation": 24536,
-      "malePopulation": 11209,
-      "femalePopulation": 13327,
+      "totalPopulation": 76271,
+      "malePopulation": 37265,
+      "femalePopulation": 39006,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -30930,39 +31106,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 57.5
+          "value": 68.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 3.9
         },
         {
           "name": "Train",
-          "value": 18.5
+          "value": 0.7
         },
         {
           "name": "Bus",
-          "value": 16.2
+          "value": 0.7
         },
         {
           "name": "Ferry",
-          "value": 0.9
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 1.1
+        },
+        {
+          "name": "Work from home",
+          "value": 22.2
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 2.4
         }
       ],
       "vehicleOwnership": [
@@ -30986,27 +31166,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 71.9,
-          "train": 2.2,
-          "bus": 11.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 88.8,
+          "train": 2,
+          "bus": 1.2,
+          "active": 2.2,
+          "wfh": 2.5
         },
         {
           "year": 2016,
-          "car": 74.3,
-          "train": 2.8,
-          "bus": 10.8,
-          "active": 0.3,
-          "wfh": 0
+          "car": 88.8,
+          "train": 2.4,
+          "bus": 1,
+          "active": 1.8,
+          "wfh": 3.2
         },
         {
           "year": 2021,
-          "car": 57.9,
-          "train": 18.5,
-          "bus": 16.2,
-          "active": 0.2,
-          "wfh": 0
+          "car": 72.8,
+          "train": 0.7,
+          "bus": 0.7,
+          "active": 1.3,
+          "wfh": 22.2
         }
       ],
       "ptPatronage": null,
@@ -31445,9 +31625,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_kiama": {
     "demographics": {
-      "totalPopulation": 10426,
-      "malePopulation": 4914,
-      "femalePopulation": 5511,
+      "totalPopulation": 23074,
+      "malePopulation": 11220,
+      "femalePopulation": 11851,
       "medianAge": 48,
       "ageDistribution": [
         {
@@ -31712,39 +31892,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 50.3
+          "value": 59.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 2.9
         },
         {
           "name": "Train",
-          "value": 27.4
+          "value": 0.5
         },
         {
           "name": "Bus",
-          "value": 14.6
+          "value": 0.1
         },
         {
           "name": "Ferry",
-          "value": 2.3
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
+          "name": "Walking",
+          "value": 2.8
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 32.2
         },
         {
           "name": "Other",
-          "value": 0.4
+          "value": 1.8
         }
       ],
       "vehicleOwnership": [
@@ -31768,27 +31952,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 65.8,
-          "train": 6.1,
-          "bus": 13.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 83.1,
+          "train": 2.3,
+          "bus": 0.6,
+          "active": 4.1,
+          "wfh": 7.1
         },
         {
           "year": 2016,
-          "car": 68.4,
-          "train": 7,
-          "bus": 12.2,
-          "active": 0.3,
-          "wfh": 0
+          "car": 82.7,
+          "train": 2.6,
+          "bus": 0.4,
+          "active": 3.7,
+          "wfh": 8.1
         },
         {
           "year": 2021,
-          "car": 50.4,
-          "train": 27.4,
-          "bus": 14.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 62,
+          "train": 0.5,
+          "bus": 0.1,
+          "active": 3.1,
+          "wfh": 32.2
         }
       ],
       "ptPatronage": null,
@@ -32227,9 +32411,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_shoalhaven": {
     "demographics": {
-      "totalPopulation": 36031,
-      "malePopulation": 16710,
-      "femalePopulation": 19315,
+      "totalPopulation": 108531,
+      "malePopulation": 53719,
+      "femalePopulation": 54813,
       "medianAge": 48,
       "ageDistribution": [
         {
@@ -32494,39 +32678,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.7
+          "value": 73
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 12.5
-        },
-        {
-          "name": "Bus",
-          "value": 11.9
-        },
-        {
-          "name": "Ferry",
-          "value": 2.8
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.5
+          "name": "Bus",
+          "value": 0.2
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.6
+        },
+        {
+          "name": "Walking",
+          "value": 3.2
+        },
+        {
+          "name": "Work from home",
+          "value": 14.4
+        },
+        {
+          "name": "Other",
+          "value": 3.3
         }
       ],
       "vehicleOwnership": [
@@ -32550,27 +32738,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 66,
-          "train": 5.4,
-          "bus": 12.5,
-          "active": 0.8,
-          "wfh": 0
+          "car": 83.3,
+          "train": 0.5,
+          "bus": 0.4,
+          "active": 5.1,
+          "wfh": 6.2
         },
         {
           "year": 2016,
-          "car": 68.8,
-          "train": 5.7,
-          "bus": 11.6,
-          "active": 0.8,
-          "wfh": 0
+          "car": 84.2,
+          "train": 0.6,
+          "bus": 0.4,
+          "active": 4.4,
+          "wfh": 6.6
         },
         {
           "year": 2021,
-          "car": 63.9,
-          "train": 12.5,
-          "bus": 11.9,
-          "active": 0.6,
-          "wfh": 0
+          "car": 78.2,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 3.7,
+          "wfh": 14.4
         }
       ],
       "ptPatronage": null,
@@ -33009,9 +33197,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_wingecarribee": {
     "demographics": {
-      "totalPopulation": 23240,
-      "malePopulation": 10724,
-      "femalePopulation": 12518,
+      "totalPopulation": 52709,
+      "malePopulation": 25313,
+      "femalePopulation": 27397,
       "medianAge": 48,
       "ageDistribution": [
         {
@@ -33276,39 +33464,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 54.5
+          "value": 61.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.5
         },
         {
           "name": "Train",
-          "value": 23.3
+          "value": 0.5
         },
         {
           "name": "Bus",
-          "value": 11.1
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 2.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.1
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 3.2
+        },
+        {
+          "name": "Work from home",
+          "value": 26.5
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 2.9
         }
       ],
       "vehicleOwnership": [
@@ -33332,27 +33524,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 64.4,
-          "train": 8.2,
-          "bus": 10.9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 78.7,
+          "train": 2.2,
+          "bus": 0.8,
+          "active": 4.7,
+          "wfh": 9.4
         },
         {
           "year": 2016,
-          "car": 65.9,
-          "train": 9.1,
-          "bus": 10.1,
-          "active": 0.4,
-          "wfh": 0
+          "car": 78.8,
+          "train": 2.6,
+          "bus": 0.6,
+          "active": 3.9,
+          "wfh": 10.2
         },
         {
           "year": 2021,
-          "car": 54.8,
-          "train": 23.3,
-          "bus": 11.1,
-          "active": 0.2,
-          "wfh": 0
+          "car": 66.3,
+          "train": 0.5,
+          "bus": 0.4,
+          "active": 3.3,
+          "wfh": 26.5
         }
       ],
       "ptPatronage": null,
@@ -33791,9 +33983,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_queanbeyan_palerang": {
     "demographics": {
-      "totalPopulation": 31513,
-      "malePopulation": 15273,
-      "femalePopulation": 16234,
+      "totalPopulation": 63304,
+      "malePopulation": 31861,
+      "femalePopulation": 31441,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -34058,39 +34250,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 68.4
+          "value": 76.1
         },
         {
           "name": "Car (passenger)",
-          "value": 0.8
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 10.4
-        },
-        {
-          "name": "Bus",
-          "value": 9.7
-        },
-        {
-          "name": "Ferry",
-          "value": 2
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.3
+          "name": "Bus",
+          "value": 1.3
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 2.2
+        },
+        {
+          "name": "Work from home",
+          "value": 11.5
+        },
+        {
+          "name": "Other",
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -34114,19 +34310,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 73.2,
-          "train": 3.7,
-          "bus": 9.1,
-          "active": 0.7,
-          "wfh": 0
+          "car": 86.9,
+          "train": 0.1,
+          "bus": 1.5,
+          "active": 3.4,
+          "wfh": 4.1
         },
         {
           "year": 2021,
-          "car": 69.2,
-          "train": 10.4,
-          "bus": 9.7,
-          "active": 0.5,
-          "wfh": 0
+          "car": 81.4,
+          "train": 0.1,
+          "bus": 1.3,
+          "active": 2.6,
+          "wfh": 11.5
         }
       ],
       "ptPatronage": null,
@@ -34447,9 +34643,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_snowy_monaro": {
     "demographics": {
-      "totalPopulation": 8868,
-      "malePopulation": 4202,
-      "femalePopulation": 4666,
+      "totalPopulation": 21666,
+      "malePopulation": 11169,
+      "femalePopulation": 10500,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -34714,39 +34910,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 59.6
+          "value": 67.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.6
         },
         {
           "name": "Train",
-          "value": 13.4
+          "value": 0.5
         },
         {
           "name": "Bus",
-          "value": 10.8
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 6.4
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.3
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 7.3
+        },
+        {
+          "name": "Work from home",
+          "value": 15.2
+        },
+        {
           "name": "Other",
-          "value": 0.8
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -34770,19 +34970,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 61.1,
-          "train": 8.2,
-          "bus": 10.5,
-          "active": 0.7,
-          "wfh": 0
+          "car": 75.2,
+          "train": 1.3,
+          "bus": 0.7,
+          "active": 9.2,
+          "wfh": 9.3
         },
         {
           "year": 2021,
-          "car": 59.8,
-          "train": 13.4,
-          "bus": 10.8,
-          "active": 0.4,
-          "wfh": 0
+          "car": 72.9,
+          "train": 0.5,
+          "bus": 0.4,
+          "active": 7.6,
+          "wfh": 15.2
         }
       ],
       "ptPatronage": null,
@@ -35164,9 +35364,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_eurobodalla": {
     "demographics": {
-      "totalPopulation": 14391,
-      "malePopulation": 6736,
-      "femalePopulation": 7657,
+      "totalPopulation": 40593,
+      "malePopulation": 19892,
+      "femalePopulation": 20696,
       "medianAge": 54,
       "ageDistribution": [
         {
@@ -35431,39 +35631,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.4
+          "value": 73.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 5.1
         },
         {
           "name": "Train",
-          "value": 11.7
-        },
-        {
-          "name": "Bus",
-          "value": 11.4
-        },
-        {
-          "name": "Ferry",
-          "value": 3
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
+          "name": "Bus",
           "value": 0.6
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.7
+        },
+        {
+          "name": "Walking",
+          "value": 3.4
+        },
+        {
+          "name": "Work from home",
+          "value": 13.4
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -35487,27 +35691,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 64.2,
-          "train": 6.6,
-          "bus": 12.3,
-          "active": 0.9,
-          "wfh": 0
+          "car": 81.2,
+          "train": 0.1,
+          "bus": 0.8,
+          "active": 5.8,
+          "wfh": 7.7
         },
         {
           "year": 2016,
-          "car": 67.6,
-          "train": 6.3,
-          "bus": 11.9,
-          "active": 0.7,
-          "wfh": 0
+          "car": 83,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 5,
+          "wfh": 7.2
         },
         {
           "year": 2021,
-          "car": 64.8,
-          "train": 11.7,
-          "bus": 11.4,
-          "active": 0.7,
-          "wfh": 0
+          "car": 78.6,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 4.1,
+          "wfh": 13.4
         }
       ],
       "ptPatronage": null,
@@ -35873,9 +36077,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_bega_valley": {
     "demographics": {
-      "totalPopulation": 13140,
-      "malePopulation": 5895,
-      "femalePopulation": 7243,
+      "totalPopulation": 35942,
+      "malePopulation": 17628,
+      "femalePopulation": 18307,
       "medianAge": 52,
       "ageDistribution": [
         {
@@ -36140,39 +36344,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63
+          "value": 71.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
-        },
-        {
-          "name": "Train",
-          "value": 12.6
-        },
-        {
-          "name": "Bus",
-          "value": 10.9
-        },
-        {
-          "name": "Ferry",
           "value": 4.6
         },
         {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
+          "name": "Train",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.4
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 5.3
+        },
+        {
+          "name": "Work from home",
+          "value": 14.3
+        },
+        {
           "name": "Other",
-          "value": 0.6
+          "value": 3.4
         }
       ],
       "vehicleOwnership": [
@@ -36196,27 +36404,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62.4,
-          "train": 7.9,
-          "bus": 12.1,
-          "active": 0.6,
-          "wfh": 0
+          "car": 77.9,
+          "train": 0.1,
+          "bus": 0.9,
+          "active": 7,
+          "wfh": 9.1
         },
         {
           "year": 2016,
-          "car": 65.5,
-          "train": 7.4,
-          "bus": 12.8,
-          "active": 0.5,
-          "wfh": 0
+          "car": 80.5,
+          "train": 0.2,
+          "bus": 0.6,
+          "active": 6.2,
+          "wfh": 8.6
         },
         {
           "year": 2021,
-          "car": 63.3,
-          "train": 12.6,
-          "bus": 10.9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 76.1,
+          "train": 0,
+          "bus": 0.4,
+          "active": 5.7,
+          "wfh": 14.3
         }
       ],
       "ptPatronage": null,
@@ -36598,9 +36806,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_goulburn_mulwaree": {
     "demographics": {
-      "totalPopulation": 10466,
-      "malePopulation": 4828,
-      "femalePopulation": 5637,
+      "totalPopulation": 32053,
+      "malePopulation": 16141,
+      "femalePopulation": 15909,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -36865,39 +37073,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 67.6
+          "value": 76.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 6.3
         },
         {
           "name": "Train",
-          "value": 9
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 10.6
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 3.1
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 3.5
+        },
+        {
+          "name": "Work from home",
+          "value": 10.1
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -36921,27 +37133,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.6,
-          "train": 4.1,
-          "bus": 11.2,
-          "active": 0.8,
-          "wfh": 0
+          "car": 85.7,
+          "train": 0.2,
+          "bus": 0.5,
+          "active": 5,
+          "wfh": 4.7
         },
         {
           "year": 2016,
-          "car": 70.4,
-          "train": 4.3,
-          "bus": 10.7,
-          "active": 0.5,
-          "wfh": 0
+          "car": 86.4,
+          "train": 0.4,
+          "bus": 0.7,
+          "active": 3.9,
+          "wfh": 4.9
         },
         {
           "year": 2021,
-          "car": 67.9,
-          "train": 9,
-          "bus": 10.6,
-          "active": 0.5,
-          "wfh": 0
+          "car": 82.5,
+          "train": 0.1,
+          "bus": 0.4,
+          "active": 3.8,
+          "wfh": 10.1
         }
       ],
       "ptPatronage": null,
@@ -37323,9 +37535,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_hilltops": {
     "demographics": {
-      "totalPopulation": 5515,
-      "malePopulation": 2381,
-      "femalePopulation": 3135,
+      "totalPopulation": 19254,
+      "malePopulation": 9469,
+      "femalePopulation": 9787,
       "medianAge": 45,
       "ageDistribution": [
         {
@@ -37590,23 +37802,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65.5
+          "value": 71.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 12.2
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.7
+          "value": 0.2
         },
         {
           "name": "Ferry",
-          "value": 4.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -37614,15 +37830,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.1
+          "value": 5.1
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 13.4
         },
         {
           "name": "Other",
-          "value": 0.9
+          "value": 3.9
         }
       ],
       "vehicleOwnership": [
@@ -37646,19 +37862,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 63.7,
-          "train": 9,
-          "bus": 10.1,
-          "active": 0.4,
-          "wfh": 0
+          "car": 77.4,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 6.5,
+          "wfh": 10.2
         },
         {
           "year": 2021,
-          "car": 65.6,
-          "train": 12.2,
-          "bus": 7.7,
-          "active": 0.2,
-          "wfh": 0
+          "car": 77.1,
+          "train": 0,
+          "bus": 0.2,
+          "active": 5.3,
+          "wfh": 13.4
         }
       ],
       "ptPatronage": null,
@@ -38040,9 +38256,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_yass_valley": {
     "demographics": {
-      "totalPopulation": 8010,
-      "malePopulation": 3721,
-      "femalePopulation": 4292,
+      "totalPopulation": 17281,
+      "malePopulation": 8500,
+      "femalePopulation": 8781,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -38307,39 +38523,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 62.2
+          "value": 69.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 4.5
         },
         {
           "name": "Train",
-          "value": 15.8
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 10.1
+          "value": 0.9
         },
         {
           "name": "Ferry",
-          "value": 3.1
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0.1
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
+          "name": "Walking",
+          "value": 3.5
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 17.7
         },
         {
           "name": "Other",
-          "value": 0.5
+          "value": 3.6
         }
       ],
       "vehicleOwnership": [
@@ -38363,27 +38583,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 63.4,
-          "train": 8,
-          "bus": 10.8,
-          "active": 0.2,
-          "wfh": 0
+          "car": 78.9,
+          "train": 0.1,
+          "bus": 1.8,
+          "active": 4.5,
+          "wfh": 9.1
         },
         {
           "year": 2016,
-          "car": 66,
-          "train": 7.9,
-          "bus": 11.5,
-          "active": 0.1,
-          "wfh": 0
+          "car": 80.9,
+          "train": 0,
+          "bus": 1.5,
+          "active": 3.8,
+          "wfh": 9.1
         },
         {
           "year": 2021,
-          "car": 62.8,
-          "train": 15.8,
-          "bus": 10.1,
-          "active": 0.2,
-          "wfh": 0
+          "car": 74,
+          "train": 0,
+          "bus": 0.9,
+          "active": 3.7,
+          "wfh": 17.7
         }
       ],
       "ptPatronage": null,
@@ -38765,9 +38985,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_upper_lachlan": {
     "demographics": {
-      "totalPopulation": 2888,
-      "malePopulation": 1269,
-      "femalePopulation": 1614,
+      "totalPopulation": 8514,
+      "malePopulation": 4314,
+      "femalePopulation": 4198,
       "medianAge": 49,
       "ageDistribution": [
         {
@@ -39032,39 +39252,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 56.1
+          "value": 62.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 3.6
         },
         {
           "name": "Train",
-          "value": 21.3
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 9.1
-        },
-        {
-          "name": "Ferry",
-          "value": 4.6
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 5.1
+        },
+        {
+          "name": "Work from home",
+          "value": 23.7
+        },
+        {
           "name": "Other",
-          "value": 0.7
+          "value": 5
         }
       ],
       "vehicleOwnership": [
@@ -39088,27 +39312,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 55.1,
-          "train": 16.5,
-          "bus": 9.6,
-          "active": 0.2,
-          "wfh": 0
+          "car": 67.9,
+          "train": 0.3,
+          "bus": 0.4,
+          "active": 5.6,
+          "wfh": 18.7
         },
         {
           "year": 2016,
-          "car": 56.3,
-          "train": 15.7,
-          "bus": 10.9,
-          "active": 0.3,
-          "wfh": 0
+          "car": 69.3,
+          "train": 0.2,
+          "bus": 0.2,
+          "active": 5.4,
+          "wfh": 18
         },
         {
           "year": 2021,
-          "car": 56.3,
-          "train": 21.3,
-          "bus": 9.1,
-          "active": 0.2,
-          "wfh": 0
+          "car": 65.9,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 5.2,
+          "wfh": 23.7
         }
       ],
       "ptPatronage": null,
@@ -39490,9 +39714,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_tamworth": {
     "demographics": {
-      "totalPopulation": 19978,
-      "malePopulation": 8818,
-      "femalePopulation": 11164,
+      "totalPopulation": 63070,
+      "malePopulation": 30906,
+      "femalePopulation": 32166,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -39757,39 +39981,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 61.9
+          "value": 71.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 6.1
         },
         {
           "name": "Train",
-          "value": 12.9
-        },
-        {
-          "name": "Bus",
-          "value": 13.1
-        },
-        {
-          "name": "Ferry",
-          "value": 2.5
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.4
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 2.9
+        },
+        {
+          "name": "Work from home",
+          "value": 14.9
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 3.6
         }
       ],
       "vehicleOwnership": [
@@ -39813,27 +40041,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.2,
-          "train": 6.2,
-          "bus": 10,
-          "active": 0.7,
-          "wfh": 0
+          "car": 83,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 4.6,
+          "wfh": 7
         },
         {
           "year": 2016,
-          "car": 71,
-          "train": 5.6,
-          "bus": 9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 84.8,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 4.1,
+          "wfh": 6.2
         },
         {
           "year": 2021,
-          "car": 62.1,
-          "train": 12.9,
-          "bus": 13.1,
-          "active": 0.4,
-          "wfh": 0
+          "car": 77.9,
+          "train": 0,
+          "bus": 0.4,
+          "active": 3.2,
+          "wfh": 14.9
         }
       ],
       "ptPatronage": null,
@@ -40215,9 +40443,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_armidale": {
     "demographics": {
-      "totalPopulation": 12505,
-      "malePopulation": 5734,
-      "femalePopulation": 6767,
+      "totalPopulation": 29124,
+      "malePopulation": 14005,
+      "femalePopulation": 15115,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -40482,39 +40710,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 50.2
+          "value": 59.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 22.6
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 14.5
+          "value": 0.6
         },
         {
           "name": "Ferry",
-          "value": 3.7
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.5
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.6
+        },
+        {
+          "name": "Walking",
+          "value": 4.3
+        },
+        {
+          "name": "Work from home",
+          "value": 26.7
+        },
+        {
+          "name": "Other",
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -40538,11 +40770,11 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2021,
-          "car": 50.6,
-          "train": 22.6,
-          "bus": 14.5,
-          "active": 0.7,
-          "wfh": 0
+          "car": 64.5,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 5,
+          "wfh": 26.7
         }
       ],
       "ptPatronage": null,
@@ -40924,9 +41156,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_uralla": {
     "demographics": {
-      "totalPopulation": 2159,
-      "malePopulation": 926,
-      "femalePopulation": 1229,
+      "totalPopulation": 5971,
+      "malePopulation": 2883,
+      "femalePopulation": 3086,
       "medianAge": 47,
       "ageDistribution": [
         {
@@ -41191,39 +41423,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 52.6
+          "value": 61.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0
-        },
-        {
-          "name": "Train",
-          "value": 22.7
-        },
-        {
-          "name": "Bus",
-          "value": 14.4
-        },
-        {
-          "name": "Ferry",
           "value": 3.2
         },
         {
-          "name": "Cycling",
+          "name": "Train",
           "value": 0
         },
         {
-          "name": "Walking",
+          "name": "Bus",
+          "value": 0
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.2
         },
         {
+          "name": "Walking",
+          "value": 3.8
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 26.7
         },
         {
           "name": "Other",
-          "value": 0.4
+          "value": 3.5
         }
       ],
       "vehicleOwnership": [
@@ -41247,27 +41483,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62,
-          "train": 11,
-          "bus": 9.7,
-          "active": 0.5,
-          "wfh": 0
+          "car": 75,
+          "train": 0,
+          "bus": 0.9,
+          "active": 6.1,
+          "wfh": 12.4
         },
         {
           "year": 2016,
-          "car": 65.7,
-          "train": 11,
-          "bus": 8.7,
-          "active": 0.3,
-          "wfh": 0
+          "car": 77.7,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 5,
+          "wfh": 12.2
         },
         {
           "year": 2021,
-          "car": 52.6,
-          "train": 22.7,
-          "bus": 14.4,
-          "active": 0.2,
-          "wfh": 0
+          "car": 65,
+          "train": 0,
+          "bus": 0,
+          "active": 4,
+          "wfh": 26.7
         }
       ],
       "ptPatronage": null,
@@ -41649,9 +41885,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_walcha": {
     "demographics": {
-      "totalPopulation": 954,
-      "malePopulation": 425,
-      "femalePopulation": 529,
+      "totalPopulation": 3016,
+      "malePopulation": 1516,
+      "femalePopulation": 1502,
       "medianAge": 50,
       "ageDistribution": [
         {
@@ -41908,39 +42144,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 48.2
+          "value": 52.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 4.2
         },
         {
           "name": "Train",
-          "value": 28.3
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.6
+          "value": 0
         },
         {
           "name": "Ferry",
-          "value": 6.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0.3
+          "value": 0
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 7.4
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 31
         },
         {
           "name": "Other",
-          "value": 0.9
+          "value": 4.2
         }
       ],
       "vehicleOwnership": [
@@ -41964,27 +42204,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 49.5,
-          "train": 23.8,
-          "bus": 7.3,
-          "active": 0.2,
-          "wfh": 0
+          "car": 59,
+          "train": 0,
+          "bus": 0,
+          "active": 9,
+          "wfh": 26.1
         },
         {
           "year": 2016,
-          "car": 51.1,
-          "train": 20.4,
-          "bus": 7.2,
-          "active": 0,
-          "wfh": 0
+          "car": 60.7,
+          "train": 0.2,
+          "bus": 0.2,
+          "active": 8,
+          "wfh": 22.5
         },
         {
           "year": 2021,
-          "car": 48.2,
-          "train": 28.3,
-          "bus": 7.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 57,
+          "train": 0,
+          "bus": 0,
+          "active": 7.4,
+          "wfh": 31
         }
       ],
       "ptPatronage": null,
@@ -42366,9 +42606,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_gunnedah": {
     "demographics": {
-      "totalPopulation": 3613,
-      "malePopulation": 1571,
-      "femalePopulation": 2045,
+      "totalPopulation": 12929,
+      "malePopulation": 6438,
+      "femalePopulation": 6495,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -42633,39 +42873,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.5
+          "value": 72.6
         },
         {
           "name": "Car (passenger)",
-          "value": 2.3
+          "value": 6.4
         },
         {
           "name": "Train",
-          "value": 10.1
-        },
-        {
-          "name": "Bus",
-          "value": 10.4
-        },
-        {
-          "name": "Ferry",
-          "value": 3
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 2.9
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 3.4
+        },
+        {
+          "name": "Work from home",
+          "value": 11.4
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -42689,27 +42933,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62.5,
-          "train": 9.1,
-          "bus": 9.3,
-          "active": 0.5,
-          "wfh": 0
+          "car": 77.7,
+          "train": 0,
+          "bus": 0.4,
+          "active": 6.2,
+          "wfh": 10.2
         },
         {
           "year": 2016,
-          "car": 66.7,
-          "train": 7.8,
-          "bus": 9.3,
-          "active": 0.6,
-          "wfh": 0
+          "car": 80.1,
+          "train": 0.1,
+          "bus": 2.3,
+          "active": 4.7,
+          "wfh": 8.7
         },
         {
           "year": 2021,
-          "car": 66.9,
-          "train": 10.1,
-          "bus": 10.4,
-          "active": 0.3,
-          "wfh": 0
+          "car": 79,
+          "train": 0,
+          "bus": 2.9,
+          "active": 3.6,
+          "wfh": 11.4
         }
       ],
       "ptPatronage": null,
@@ -43091,9 +43335,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_narrabri": {
     "demographics": {
-      "totalPopulation": 3572,
-      "malePopulation": 1599,
-      "femalePopulation": 1974,
+      "totalPopulation": 12703,
+      "malePopulation": 6397,
+      "femalePopulation": 6307,
       "medianAge": 40,
       "ageDistribution": [
         {
@@ -43342,39 +43586,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65.2
+          "value": 72.3
         },
         {
           "name": "Car (passenger)",
-          "value": 1.7
+          "value": 5.1
         },
         {
           "name": "Train",
-          "value": 10.9
-        },
-        {
-          "name": "Bus",
-          "value": 9.1
-        },
-        {
-          "name": "Ferry",
-          "value": 4
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.4
+          "name": "Bus",
+          "value": 2.5
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
+          "value": 0.1
+        },
+        {
+          "name": "Light rail",
           "value": 0
         },
         {
+          "name": "Cycling",
+          "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 4.5
+        },
+        {
+          "name": "Work from home",
+          "value": 12.1
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 2.9
         }
       ],
       "vehicleOwnership": [
@@ -43398,27 +43646,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 63.4,
-          "train": 9.4,
-          "bus": 8.2,
-          "active": 0.6,
-          "wfh": 0
+          "car": 76.7,
+          "train": 0.1,
+          "bus": 0.8,
+          "active": 6.5,
+          "wfh": 10.5
         },
         {
           "year": 2016,
-          "car": 66.2,
-          "train": 8.6,
-          "bus": 9.4,
-          "active": 0.3,
-          "wfh": 0
+          "car": 78.7,
+          "train": 0.1,
+          "bus": 1.4,
+          "active": 6,
+          "wfh": 9.6
         },
         {
           "year": 2021,
-          "car": 66.9,
-          "train": 10.9,
-          "bus": 9.1,
-          "active": 0.5,
-          "wfh": 0
+          "car": 77.4,
+          "train": 0.1,
+          "bus": 2.5,
+          "active": 5,
+          "wfh": 12.1
         }
       ],
       "ptPatronage": null,
@@ -43800,9 +44048,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_moree_plains": {
     "demographics": {
-      "totalPopulation": 3472,
-      "malePopulation": 1504,
-      "femalePopulation": 1966,
+      "totalPopulation": 12751,
+      "malePopulation": 6376,
+      "femalePopulation": 6369,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -43925,39 +44173,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 67.2
+          "value": 73
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 6.1
         },
         {
           "name": "Train",
-          "value": 10.2
-        },
-        {
-          "name": "Bus",
-          "value": 6.8
-        },
-        {
-          "name": "Ferry",
-          "value": 4.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.3
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.5
+        },
+        {
+          "name": "Ferry",
+          "value": 0.1
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 5.3
+        },
+        {
+          "name": "Work from home",
+          "value": 11.1
+        },
+        {
           "name": "Other",
-          "value": 0.7
+          "value": 3.7
         }
       ],
       "vehicleOwnership": [
@@ -43981,27 +44233,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62.7,
-          "train": 8.5,
-          "bus": 7.9,
-          "active": 0.7,
-          "wfh": 0
+          "car": 76.2,
+          "train": 0.1,
+          "bus": 0.4,
+          "active": 7.8,
+          "wfh": 9.5
         },
         {
           "year": 2016,
-          "car": 67.2,
-          "train": 8.2,
-          "bus": 7.6,
-          "active": 0.5,
-          "wfh": 0
+          "car": 79.2,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 7,
+          "wfh": 9
         },
         {
           "year": 2021,
-          "car": 67.6,
-          "train": 10.2,
-          "bus": 6.8,
-          "active": 0.5,
-          "wfh": 0
+          "car": 79.1,
+          "train": 0,
+          "bus": 0.5,
+          "active": 5.6,
+          "wfh": 11.1
         }
       ],
       "ptPatronage": null,
@@ -44383,9 +44635,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_inverell": {
     "demographics": {
-      "totalPopulation": 4936,
-      "malePopulation": 2152,
-      "femalePopulation": 2785,
+      "totalPopulation": 17853,
+      "malePopulation": 8780,
+      "femalePopulation": 9072,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -44650,23 +44902,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.7
+          "value": 71.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 6.6
         },
         {
           "name": "Train",
-          "value": 11.9
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9
+          "value": 0.2
         },
         {
           "name": "Ferry",
-          "value": 3.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -44674,15 +44930,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 4.1
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 13.3
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 3.9
         }
       ],
       "vehicleOwnership": [
@@ -44706,11 +44962,11 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2021,
-          "car": 64.9,
-          "train": 11.9,
-          "bus": 9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 78.5,
+          "train": 0,
+          "bus": 0.2,
+          "active": 4.3,
+          "wfh": 13.3
         }
       ],
       "ptPatronage": null,
@@ -45092,9 +45348,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_glen_innes_severn": {
     "demographics": {
-      "totalPopulation": 2487,
-      "malePopulation": 1081,
-      "femalePopulation": 1396,
+      "totalPopulation": 8931,
+      "malePopulation": 4409,
+      "femalePopulation": 4518,
       "medianAge": 50,
       "ageDistribution": [
         {
@@ -45359,23 +45615,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 59.2
+          "value": 65.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 6.1
         },
         {
           "name": "Train",
-          "value": 14.9
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.5
+          "value": 0.2
         },
         {
           "name": "Ferry",
-          "value": 5.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -45383,15 +45643,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.3
+          "value": 6.2
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 16.5
         },
         {
           "name": "Other",
-          "value": 0.8
+          "value": 5.1
         }
       ],
       "vehicleOwnership": [
@@ -45415,27 +45675,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 57.1,
-          "train": 11.2,
-          "bus": 9.7,
-          "active": 1,
-          "wfh": 0
+          "car": 71,
+          "train": 0,
+          "bus": 0.1,
+          "active": 10.2,
+          "wfh": 12.7
         },
         {
           "year": 2016,
-          "car": 59.7,
-          "train": 11.1,
-          "bus": 9.7,
-          "active": 0.7,
-          "wfh": 0
+          "car": 73.5,
+          "train": 0.2,
+          "bus": 0.4,
+          "active": 8.1,
+          "wfh": 12.6
         },
         {
           "year": 2021,
-          "car": 59.4,
-          "train": 14.9,
-          "bus": 8.5,
-          "active": 0.6,
-          "wfh": 0
+          "car": 71.7,
+          "train": 0,
+          "bus": 0.2,
+          "active": 6.5,
+          "wfh": 16.5
         }
       ],
       "ptPatronage": null,
@@ -45817,9 +46077,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_tenterfield": {
     "demographics": {
-      "totalPopulation": 1998,
-      "malePopulation": 921,
-      "femalePopulation": 1075,
+      "totalPopulation": 6810,
+      "malePopulation": 3334,
+      "femalePopulation": 3482,
       "medianAge": 55,
       "ageDistribution": [
         {
@@ -46084,39 +46344,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 58
+          "value": 64.3
         },
         {
           "name": "Car (passenger)",
-          "value": 0.7
-        },
-        {
-          "name": "Train",
-          "value": 18.2
-        },
-        {
-          "name": "Bus",
-          "value": 7.9
-        },
-        {
-          "name": "Ferry",
           "value": 4.8
         },
         {
-          "name": "Cycling",
+          "name": "Train",
           "value": 0
         },
         {
-          "name": "Walking",
+          "name": "Bus",
+          "value": 1
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.5
         },
         {
+          "name": "Walking",
+          "value": 5.3
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 20.1
         },
         {
           "name": "Other",
-          "value": 0.9
+          "value": 4.3
         }
       ],
       "vehicleOwnership": [
@@ -46140,27 +46404,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 54.9,
-          "train": 12.9,
-          "bus": 9.9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 68.5,
+          "train": 0.1,
+          "bus": 1.1,
+          "active": 8.9,
+          "wfh": 14.6
         },
         {
           "year": 2016,
-          "car": 56.4,
-          "train": 16,
-          "bus": 9.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 67.3,
+          "train": 0,
+          "bus": 1,
+          "active": 6.8,
+          "wfh": 18.2
         },
         {
           "year": 2021,
-          "car": 58.7,
-          "train": 18.2,
-          "bus": 7.9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 69,
+          "train": 0,
+          "bus": 1,
+          "active": 5.8,
+          "wfh": 20.1
         }
       ],
       "ptPatronage": null,
@@ -46542,9 +46806,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_liverpool_plains": {
     "demographics": {
-      "totalPopulation": 1908,
-      "malePopulation": 846,
-      "femalePopulation": 1057,
+      "totalPopulation": 7551,
+      "malePopulation": 3789,
+      "femalePopulation": 3761,
       "medianAge": 47,
       "ageDistribution": [
         {
@@ -46809,39 +47073,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 59.3
+          "value": 67.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 3.3
         },
         {
           "name": "Train",
-          "value": 16.2
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 11.7
+          "value": 0.5
         },
         {
           "name": "Ferry",
-          "value": 5.2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
+          "name": "Walking",
+          "value": 5.9
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 18.5
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 3.6
         }
       ],
       "vehicleOwnership": [
@@ -46865,27 +47133,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 57,
-          "train": 13,
-          "bus": 10,
-          "active": 0.2,
-          "wfh": 0
+          "car": 69.3,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 9.2,
+          "wfh": 14.8
         },
         {
           "year": 2016,
-          "car": 61.1,
-          "train": 12.8,
-          "bus": 9.9,
-          "active": 0.1,
-          "wfh": 0
+          "car": 73,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 7.5,
+          "wfh": 14.5
         },
         {
           "year": 2021,
-          "car": 59.8,
-          "train": 16.2,
-          "bus": 11.7,
-          "active": 0.2,
-          "wfh": 0
+          "car": 71.1,
+          "train": 0,
+          "bus": 0.5,
+          "active": 6.1,
+          "wfh": 18.5
         }
       ],
       "ptPatronage": null,
@@ -47267,9 +47535,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_gwydir": {
     "demographics": {
-      "totalPopulation": 1309,
-      "malePopulation": 571,
-      "femalePopulation": 741,
+      "totalPopulation": 4910,
+      "malePopulation": 2447,
+      "femalePopulation": 2465,
       "medianAge": 50,
       "ageDistribution": [
         {
@@ -47526,39 +47794,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 54.5
+          "value": 59.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 4.1
         },
         {
           "name": "Train",
-          "value": 21.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.6
+          "value": 0.5
         },
         {
           "name": "Ferry",
-          "value": 6.3
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
+          "name": "Walking",
+          "value": 6.8
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 23.7
         },
         {
           "name": "Other",
-          "value": 1.6
+          "value": 5.1
         }
       ],
       "vehicleOwnership": [
@@ -47582,27 +47854,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 50.1,
-          "train": 18.5,
-          "bus": 8.3,
-          "active": 0.4,
-          "wfh": 0
+          "car": 59.4,
+          "train": 0,
+          "bus": 0.7,
+          "active": 10.2,
+          "wfh": 20.7
         },
         {
           "year": 2016,
-          "car": 54.7,
-          "train": 18.6,
-          "bus": 8.1,
-          "active": 0.3,
-          "wfh": 0
+          "car": 63,
+          "train": 0,
+          "bus": 0.5,
+          "active": 9,
+          "wfh": 20.5
         },
         {
           "year": 2021,
-          "car": 54.6,
-          "train": 21.7,
-          "bus": 7.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 63.6,
+          "train": 0,
+          "bus": 0.5,
+          "active": 7.1,
+          "wfh": 23.7
         }
       ],
       "ptPatronage": null,
@@ -47984,9 +48256,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_tweed": {
     "demographics": {
-      "totalPopulation": 36176,
-      "malePopulation": 16634,
-      "femalePopulation": 19539,
+      "totalPopulation": 97392,
+      "malePopulation": 46804,
+      "femalePopulation": 50586,
       "medianAge": 47,
       "ageDistribution": [
         {
@@ -48251,39 +48523,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 62.2
+          "value": 71.3
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 4.6
         },
         {
           "name": "Train",
-          "value": 14.5
-        },
-        {
-          "name": "Bus",
-          "value": 12
-        },
-        {
-          "name": "Ferry",
-          "value": 2.6
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.8
+          "name": "Bus",
+          "value": 0.7
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.9
+        },
+        {
+          "name": "Walking",
+          "value": 3
+        },
+        {
+          "name": "Work from home",
+          "value": 16.6
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 2.8
         }
       ],
       "vehicleOwnership": [
@@ -48307,27 +48583,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.1,
-          "train": 5.7,
-          "bus": 11.5,
-          "active": 0.9,
-          "wfh": 0
+          "car": 82.5,
+          "train": 0.5,
+          "bus": 1.3,
+          "active": 4.7,
+          "wfh": 6.6
         },
         {
           "year": 2016,
-          "car": 69.5,
-          "train": 6.6,
-          "bus": 10.7,
-          "active": 0.9,
-          "wfh": 0
+          "car": 83,
+          "train": 0.4,
+          "bus": 1.3,
+          "active": 4.1,
+          "wfh": 7.5
         },
         {
           "year": 2021,
-          "car": 62.6,
-          "train": 14.5,
-          "bus": 12,
-          "active": 0.8,
-          "wfh": 0
+          "car": 75.9,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 3.8,
+          "wfh": 16.6
         }
       ],
       "ptPatronage": null,
@@ -48709,9 +48985,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_byron": {
     "demographics": {
-      "totalPopulation": 18165,
-      "malePopulation": 8288,
-      "femalePopulation": 9874,
+      "totalPopulation": 36116,
+      "malePopulation": 17313,
+      "femalePopulation": 18800,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -48976,39 +49252,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 47.9
+          "value": 56.1
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 2.9
         },
         {
           "name": "Train",
-          "value": 26.5
-        },
-        {
-          "name": "Bus",
-          "value": 13.8
-        },
-        {
-          "name": "Ferry",
-          "value": 3.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.3
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 2.4
+        },
+        {
+          "name": "Walking",
+          "value": 4.5
+        },
+        {
+          "name": "Work from home",
+          "value": 31
+        },
+        {
           "name": "Other",
-          "value": 0.6
+          "value": 2.7
         }
       ],
       "vehicleOwnership": [
@@ -49032,27 +49312,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 58.5,
-          "train": 12.4,
-          "bus": 11.5,
-          "active": 3.1,
-          "wfh": 0
+          "car": 71.6,
+          "train": 0.2,
+          "bus": 0.9,
+          "active": 8.7,
+          "wfh": 14.3
         },
         {
           "year": 2016,
-          "car": 59.9,
-          "train": 13.4,
-          "bus": 11,
-          "active": 2.6,
-          "wfh": 0
+          "car": 72,
+          "train": 0.2,
+          "bus": 0.8,
+          "active": 7.7,
+          "wfh": 15.4
         },
         {
           "year": 2021,
-          "car": 48.1,
-          "train": 26.5,
-          "bus": 13.8,
-          "active": 2.1,
-          "wfh": 0
+          "car": 59.1,
+          "train": 0,
+          "bus": 0.3,
+          "active": 6.9,
+          "wfh": 31
         }
       ],
       "ptPatronage": null,
@@ -49434,9 +49714,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_ballina": {
     "demographics": {
-      "totalPopulation": 18513,
-      "malePopulation": 8494,
-      "femalePopulation": 10015,
+      "totalPopulation": 46296,
+      "malePopulation": 22271,
+      "femalePopulation": 24019,
       "medianAge": 48,
       "ageDistribution": [
         {
@@ -49701,39 +49981,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 59
+          "value": 68.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.1
         },
         {
           "name": "Train",
-          "value": 16.7
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 13.6
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 2.8
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 1.3
         },
         {
           "name": "Walking",
-          "value": 1.1
+          "value": 3.2
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 19.4
         },
         {
           "name": "Other",
-          "value": 0.4
+          "value": 2.7
         }
       ],
       "vehicleOwnership": [
@@ -49757,27 +50041,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 65.7,
-          "train": 6.8,
-          "bus": 11.4,
-          "active": 1.6,
-          "wfh": 0
+          "car": 80.7,
+          "train": 0.1,
+          "bus": 0.8,
+          "active": 6.4,
+          "wfh": 7.8
         },
         {
           "year": 2016,
-          "car": 69,
-          "train": 7.5,
-          "bus": 9.9,
-          "active": 1.3,
-          "wfh": 0
+          "car": 82.1,
+          "train": 0.2,
+          "bus": 0.8,
+          "active": 4.9,
+          "wfh": 8.4
         },
         {
           "year": 2021,
-          "car": 59.3,
-          "train": 16.7,
-          "bus": 13.6,
-          "active": 1.1,
-          "wfh": 0
+          "car": 72.9,
+          "train": 0.1,
+          "bus": 0.4,
+          "active": 4.5,
+          "wfh": 19.4
         }
       ],
       "ptPatronage": null,
@@ -50159,9 +50443,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_lismore": {
     "demographics": {
-      "totalPopulation": 16749,
-      "malePopulation": 7802,
-      "femalePopulation": 8952,
+      "totalPopulation": 44334,
+      "malePopulation": 21758,
+      "femalePopulation": 22573,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -50426,39 +50710,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 61
+          "value": 71
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 14.3
-        },
-        {
-          "name": "Bus",
-          "value": 13.5
-        },
-        {
-          "name": "Ferry",
-          "value": 2.7
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Bus",
           "value": 0.4
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 3.2
+        },
+        {
+          "name": "Work from home",
+          "value": 16.6
+        },
+        {
+          "name": "Other",
+          "value": 3
         }
       ],
       "vehicleOwnership": [
@@ -50482,27 +50770,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 66.5,
-          "train": 5.9,
-          "bus": 11,
-          "active": 0.8,
-          "wfh": 0
+          "car": 82.4,
+          "train": 0.1,
+          "bus": 0.8,
+          "active": 5.1,
+          "wfh": 6.8
         },
         {
           "year": 2016,
-          "car": 70.1,
-          "train": 6.1,
-          "bus": 9.8,
-          "active": 0.7,
-          "wfh": 0
+          "car": 84.1,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 4.5,
+          "wfh": 6.9
         },
         {
           "year": 2021,
-          "car": 61.3,
-          "train": 14.3,
-          "bus": 13.5,
-          "active": 0.5,
-          "wfh": 0
+          "car": 76.3,
+          "train": 0,
+          "bus": 0.4,
+          "active": 3.7,
+          "wfh": 16.6
         }
       ],
       "ptPatronage": null,
@@ -50941,9 +51229,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_richmond_valley": {
     "demographics": {
-      "totalPopulation": 5847,
-      "malePopulation": 2554,
-      "femalePopulation": 3294,
+      "totalPopulation": 23565,
+      "malePopulation": 11631,
+      "femalePopulation": 11941,
       "medianAge": 46,
       "ageDistribution": [
         {
@@ -51208,39 +51496,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.3
+          "value": 74.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 5.8
         },
         {
           "name": "Train",
-          "value": 9.7
-        },
-        {
-          "name": "Bus",
-          "value": 12.9
-        },
-        {
-          "name": "Ferry",
-          "value": 3.2
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.6
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.3
+        },
+        {
+          "name": "Ferry",
+          "value": 0.1
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.8
+        },
+        {
+          "name": "Walking",
+          "value": 3.7
+        },
+        {
+          "name": "Work from home",
+          "value": 11.3
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 3.7
         }
       ],
       "vehicleOwnership": [
@@ -51264,27 +51556,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 65.9,
-          "train": 6.2,
-          "bus": 10.4,
-          "active": 1.3,
-          "wfh": 0
+          "car": 81.2,
+          "train": 0,
+          "bus": 0.6,
+          "active": 6.4,
+          "wfh": 7.1
         },
         {
           "year": 2016,
-          "car": 68.3,
-          "train": 5.6,
-          "bus": 10.5,
-          "active": 0.8,
-          "wfh": 0
+          "car": 83.6,
+          "train": 0,
+          "bus": 0.5,
+          "active": 5.5,
+          "wfh": 6.4
         },
         {
           "year": 2021,
-          "car": 64.4,
-          "train": 9.7,
-          "bus": 12.9,
-          "active": 0.7,
-          "wfh": 0
+          "car": 80.3,
+          "train": 0,
+          "bus": 0.3,
+          "active": 4.4,
+          "wfh": 11.3
         }
       ],
       "ptPatronage": null,
@@ -51666,9 +51958,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_kyogle": {
     "demographics": {
-      "totalPopulation": 2797,
-      "malePopulation": 1258,
-      "femalePopulation": 1540,
+      "totalPopulation": 9359,
+      "malePopulation": 4648,
+      "femalePopulation": 4708,
       "medianAge": 52,
       "ageDistribution": [
         {
@@ -51933,39 +52225,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 56.9
+          "value": 63.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.6
+          "value": 4.6
         },
         {
           "name": "Train",
-          "value": 18.3
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9.4
+          "value": 0.8
         },
         {
           "name": "Ferry",
-          "value": 5.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 0.3
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 6.4
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 20.5
         },
         {
           "name": "Other",
-          "value": 0.5
+          "value": 3.5
         }
       ],
       "vehicleOwnership": [
@@ -51989,27 +52285,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 57.2,
-          "train": 14.5,
-          "bus": 9.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 70.1,
+          "train": 0,
+          "bus": 0.4,
+          "active": 8.1,
+          "wfh": 16.4
         },
         {
           "year": 2016,
-          "car": 60,
-          "train": 13.2,
-          "bus": 10.1,
-          "active": 0.2,
-          "wfh": 0
+          "car": 72.1,
+          "train": 0.2,
+          "bus": 0.8,
+          "active": 6.7,
+          "wfh": 15
         },
         {
           "year": 2021,
-          "car": 57.5,
-          "train": 18.3,
-          "bus": 9.4,
-          "active": 0.2,
-          "wfh": 0
+          "car": 68.4,
+          "train": 0,
+          "bus": 0.8,
+          "active": 6.7,
+          "wfh": 20.5
         }
       ],
       "ptPatronage": null,
@@ -52391,9 +52687,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_coffs_harbour": {
     "demographics": {
-      "totalPopulation": 28367,
-      "malePopulation": 13010,
-      "femalePopulation": 15358,
+      "totalPopulation": 78759,
+      "malePopulation": 38010,
+      "femalePopulation": 40746,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -52658,39 +52954,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 66
+          "value": 74.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.6
+          "value": 6.2
         },
         {
           "name": "Train",
-          "value": 10.7
-        },
-        {
-          "name": "Bus",
-          "value": 10.9
-        },
-        {
-          "name": "Ferry",
-          "value": 2.3
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.6
+          "name": "Bus",
+          "value": 0.8
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.7
+        },
+        {
+          "name": "Walking",
+          "value": 2.6
+        },
+        {
+          "name": "Work from home",
+          "value": 12.1
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 2.8
         }
       ],
       "vehicleOwnership": [
@@ -52714,27 +53014,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 66.2,
-          "train": 5.1,
-          "bus": 11.5,
-          "active": 1.2,
-          "wfh": 0
+          "car": 83.6,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 5.3,
+          "wfh": 5.9
         },
         {
           "year": 2016,
-          "car": 70.6,
-          "train": 5.2,
-          "bus": 9.8,
-          "active": 0.9,
-          "wfh": 0
+          "car": 85.6,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 4.1,
+          "wfh": 5.8
         },
         {
           "year": 2021,
-          "car": 66.6,
-          "train": 10.7,
-          "bus": 10.9,
-          "active": 0.7,
-          "wfh": 0
+          "car": 80.8,
+          "train": 0.1,
+          "bus": 0.8,
+          "active": 3.3,
+          "wfh": 12.1
         }
       ],
       "ptPatronage": null,
@@ -53116,9 +53416,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_bellingen": {
     "demographics": {
-      "totalPopulation": 5057,
-      "malePopulation": 2202,
-      "femalePopulation": 2858,
+      "totalPopulation": 13253,
+      "malePopulation": 6423,
+      "femalePopulation": 6827,
       "medianAge": 50,
       "ageDistribution": [
         {
@@ -53383,39 +53683,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 58
+          "value": 65.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 4.2
         },
         {
           "name": "Train",
-          "value": 18.2
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 10.8
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 4.5
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 0.8
         },
         {
           "name": "Walking",
-          "value": 0.7
+          "value": 5.1
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 20.6
         },
         {
           "name": "Other",
-          "value": 0.4
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -53439,27 +53743,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 58.9,
-          "train": 11.3,
-          "bus": 11.4,
-          "active": 0.8,
-          "wfh": 0
+          "car": 73.1,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 8.1,
+          "wfh": 13
         },
         {
           "year": 2016,
-          "car": 62.1,
-          "train": 10.6,
-          "bus": 12.1,
-          "active": 0.6,
-          "wfh": 0
+          "car": 76.6,
+          "train": 0.2,
+          "bus": 0.3,
+          "active": 6.6,
+          "wfh": 12.2
         },
         {
           "year": 2021,
-          "car": 58.2,
-          "train": 18.2,
-          "bus": 10.8,
-          "active": 0.7,
-          "wfh": 0
+          "car": 69.8,
+          "train": 0,
+          "bus": 0.3,
+          "active": 5.9,
+          "wfh": 20.6
         }
       ],
       "ptPatronage": null,
@@ -53841,9 +54145,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_nambucca_valley": {
     "demographics": {
-      "totalPopulation": 6022,
-      "malePopulation": 2709,
-      "femalePopulation": 3312,
+      "totalPopulation": 20407,
+      "malePopulation": 9937,
+      "femalePopulation": 10463,
       "medianAge": 52,
       "ageDistribution": [
         {
@@ -54108,39 +54412,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.2
+          "value": 72.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 12.4
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 10.5
-        },
-        {
-          "name": "Ferry",
-          "value": 3
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 3.4
+        },
+        {
+          "name": "Work from home",
+          "value": 14.1
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 3.4
         }
       ],
       "vehicleOwnership": [
@@ -54164,27 +54472,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 63,
-          "train": 8.2,
-          "bus": 11.3,
-          "active": 0.5,
-          "wfh": 0
+          "car": 78,
+          "train": 0.1,
+          "bus": 1.1,
+          "active": 5.7,
+          "wfh": 9.4
         },
         {
           "year": 2016,
-          "car": 67.2,
-          "train": 7.6,
-          "bus": 11.3,
-          "active": 0.4,
-          "wfh": 0
+          "car": 81.6,
+          "train": 0.3,
+          "bus": 0.7,
+          "active": 4.2,
+          "wfh": 8.7
         },
         {
           "year": 2021,
-          "car": 64.4,
-          "train": 12.4,
-          "bus": 10.5,
-          "active": 0.3,
-          "wfh": 0
+          "car": 78.3,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 3.8,
+          "wfh": 14.1
         }
       ],
       "ptPatronage": null,
@@ -54566,9 +54874,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_kempsey": {
     "demographics": {
-      "totalPopulation": 7976,
-      "malePopulation": 3639,
-      "femalePopulation": 4340,
+      "totalPopulation": 30688,
+      "malePopulation": 15426,
+      "femalePopulation": 15262,
       "medianAge": 48,
       "ageDistribution": [
         {
@@ -54833,39 +55141,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65.8
+          "value": 74.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.9
         },
         {
           "name": "Train",
-          "value": 9.4
-        },
-        {
-          "name": "Bus",
-          "value": 10.8
-        },
-        {
-          "name": "Ferry",
-          "value": 3.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Bus",
+          "value": 0.5
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 4.3
+        },
+        {
+          "name": "Work from home",
+          "value": 10.7
+        },
+        {
+          "name": "Other",
+          "value": 3.4
         }
       ],
       "vehicleOwnership": [
@@ -54889,27 +55201,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 63.2,
-          "train": 6.9,
-          "bus": 12.4,
-          "active": 0.8,
-          "wfh": 0
+          "car": 80.3,
+          "train": 0,
+          "bus": 0.7,
+          "active": 6,
+          "wfh": 8.1
         },
         {
           "year": 2016,
-          "car": 67.1,
-          "train": 5.8,
-          "bus": 11.4,
-          "active": 0.5,
-          "wfh": 0
+          "car": 83.7,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 5.1,
+          "wfh": 6.7
         },
         {
           "year": 2021,
-          "car": 66.2,
-          "train": 9.4,
-          "bus": 10.8,
-          "active": 0.5,
-          "wfh": 0
+          "car": 80.6,
+          "train": 0,
+          "bus": 0.5,
+          "active": 4.7,
+          "wfh": 10.7
         }
       ],
       "ptPatronage": null,
@@ -55291,9 +55603,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_port_macquarie_hastings": {
     "demographics": {
-      "totalPopulation": 31032,
-      "malePopulation": 14101,
-      "femalePopulation": 16933,
+      "totalPopulation": 86762,
+      "malePopulation": 41576,
+      "femalePopulation": 45188,
       "medianAge": 49,
       "ageDistribution": [
         {
@@ -55558,39 +55870,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65.3
+          "value": 73.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 5.4
         },
         {
           "name": "Train",
-          "value": 12.4
-        },
-        {
-          "name": "Bus",
-          "value": 11
-        },
-        {
-          "name": "Ferry",
-          "value": 2.5
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.4
+          "name": "Bus",
+          "value": 0.5
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 2.8
+        },
+        {
+          "name": "Work from home",
+          "value": 14
+        },
+        {
           "name": "Other",
-          "value": 0.3
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -55614,27 +55930,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67,
-          "train": 5.7,
-          "bus": 11.5,
-          "active": 0.7,
-          "wfh": 0
+          "car": 83.6,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 4.7,
+          "wfh": 6.5
         },
         {
           "year": 2016,
-          "car": 70.7,
-          "train": 5.6,
-          "bus": 10.3,
-          "active": 0.7,
-          "wfh": 0
+          "car": 85.1,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 4,
+          "wfh": 6.3
         },
         {
           "year": 2021,
-          "car": 65.7,
-          "train": 12.4,
-          "bus": 11,
-          "active": 0.5,
-          "wfh": 0
+          "car": 79.2,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 3.2,
+          "wfh": 14
         }
       ],
       "ptPatronage": null,
@@ -55955,9 +56271,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_mid_coast": {
     "demographics": {
-      "totalPopulation": 27533,
-      "malePopulation": 12783,
-      "femalePopulation": 14752,
+      "totalPopulation": 96579,
+      "malePopulation": 47086,
+      "femalePopulation": 49495,
       "medianAge": 54,
       "ageDistribution": [
         {
@@ -56222,39 +56538,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.8
+          "value": 72.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.4
         },
         {
           "name": "Train",
-          "value": 11.9
-        },
-        {
-          "name": "Bus",
-          "value": 11.2
-        },
-        {
-          "name": "Ferry",
-          "value": 3.6
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.3
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Bus",
           "value": 0.4
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 4.1
+        },
+        {
+          "name": "Work from home",
+          "value": 13.6
+        },
+        {
+          "name": "Other",
+          "value": 3.3
         }
       ],
       "vehicleOwnership": [
@@ -56278,19 +56598,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 66.9,
-          "train": 6.5,
-          "bus": 12,
-          "active": 0.6,
-          "wfh": 0
+          "car": 82.6,
+          "train": 0.2,
+          "bus": 0.7,
+          "active": 5,
+          "wfh": 7.5
         },
         {
           "year": 2021,
-          "car": 64.1,
-          "train": 11.9,
-          "bus": 11.2,
-          "active": 0.4,
-          "wfh": 0
+          "car": 78.1,
+          "train": 0,
+          "bus": 0.4,
+          "active": 4.4,
+          "wfh": 13.6
         }
       ],
       "ptPatronage": null,
@@ -56611,9 +56931,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_clarence_valley": {
     "demographics": {
-      "totalPopulation": 15362,
-      "malePopulation": 7012,
-      "femalePopulation": 8346,
+      "totalPopulation": 54115,
+      "malePopulation": 27064,
+      "femalePopulation": 27059,
       "medianAge": 49,
       "ageDistribution": [
         {
@@ -56878,39 +57198,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.9
+          "value": 73.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 10.6
-        },
-        {
-          "name": "Bus",
-          "value": 11
-        },
-        {
-          "name": "Ferry",
-          "value": 3.9
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.8
+          "name": "Bus",
+          "value": 0.4
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 1
+        },
+        {
+          "name": "Walking",
+          "value": 4.4
+        },
+        {
+          "name": "Work from home",
+          "value": 12
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 3.3
         }
       ],
       "vehicleOwnership": [
@@ -56934,27 +57258,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62.6,
-          "train": 6.6,
-          "bus": 11.8,
-          "active": 1.6,
-          "wfh": 0
+          "car": 78.9,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 7.7,
+          "wfh": 7.7
         },
         {
           "year": 2016,
-          "car": 67,
-          "train": 6.3,
-          "bus": 11.2,
-          "active": 1.2,
-          "wfh": 0
+          "car": 81.8,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 6.3,
+          "wfh": 7.2
         },
         {
           "year": 2021,
-          "car": 65.2,
-          "train": 10.6,
-          "bus": 11,
-          "active": 0.9,
-          "wfh": 0
+          "car": 79,
+          "train": 0.1,
+          "bus": 0.4,
+          "active": 5.3,
+          "wfh": 12
         }
       ],
       "ptPatronage": null,
@@ -57336,9 +57660,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_dubbo": {
     "demographics": {
-      "totalPopulation": 18133,
-      "malePopulation": 8014,
-      "femalePopulation": 10120,
+      "totalPopulation": 54922,
+      "malePopulation": 27139,
+      "femalePopulation": 27784,
       "medianAge": 36,
       "ageDistribution": [
         {
@@ -57603,39 +57927,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 69
+          "value": 76.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 6.9
         },
         {
           "name": "Train",
-          "value": 8.8
-        },
-        {
-          "name": "Bus",
-          "value": 9.2
-        },
-        {
-          "name": "Ferry",
-          "value": 2.4
-        },
-        {
-          "name": "Cycling",
-          "value": 0.3
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Bus",
+          "value": 0.6
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 2.7
+        },
+        {
+          "name": "Work from home",
+          "value": 9.8
+        },
+        {
+          "name": "Other",
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -57659,11 +57987,11 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2021,
-          "car": 69.4,
-          "train": 8.8,
-          "bus": 9.2,
-          "active": 0.6,
-          "wfh": 0
+          "car": 83.4,
+          "train": 0,
+          "bus": 0.6,
+          "active": 3.1,
+          "wfh": 9.8
         }
       ],
       "ptPatronage": null,
@@ -58045,9 +58373,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_orange": {
     "demographics": {
-      "totalPopulation": 15881,
-      "malePopulation": 7088,
-      "femalePopulation": 8795,
+      "totalPopulation": 43512,
+      "malePopulation": 21178,
+      "femalePopulation": 22333,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -58312,39 +58640,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 67.6
+          "value": 75.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 6.4
         },
         {
           "name": "Train",
-          "value": 10.4
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 10
+          "value": 0.6
         },
         {
           "name": "Ferry",
-          "value": 2.5
-        },
-        {
-          "name": "Cycling",
-          "value": 0.3
-        },
-        {
-          "name": "Walking",
-          "value": 0.3
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 2.8
+        },
+        {
+          "name": "Work from home",
+          "value": 11.6
+        },
+        {
+          "name": "Other",
+          "value": 2.5
         }
       ],
       "vehicleOwnership": [
@@ -58368,27 +58700,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 68.5,
-          "train": 3.1,
-          "bus": 10.8,
-          "active": 0.9,
-          "wfh": 0
+          "car": 86,
+          "train": 0.1,
+          "bus": 1.4,
+          "active": 5.3,
+          "wfh": 3.5
         },
         {
           "year": 2016,
-          "car": 72.5,
-          "train": 3.8,
-          "bus": 10,
-          "active": 0.8,
-          "wfh": 0
+          "car": 87.9,
+          "train": 0.2,
+          "bus": 0.5,
+          "active": 4.2,
+          "wfh": 4.3
         },
         {
           "year": 2021,
-          "car": 68,
-          "train": 10.4,
-          "bus": 10,
-          "active": 0.7,
-          "wfh": 0
+          "car": 82,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 3.2,
+          "wfh": 11.6
         }
       ],
       "ptPatronage": null,
@@ -58770,9 +59102,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_bathurst": {
     "demographics": {
-      "totalPopulation": 16347,
-      "malePopulation": 7380,
-      "femalePopulation": 8963,
+      "totalPopulation": 43567,
+      "malePopulation": 21857,
+      "femalePopulation": 21705,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -59037,23 +59369,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65.5
+          "value": 73.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 6.1
         },
         {
           "name": "Train",
-          "value": 11.7
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 10.7
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 3.2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -59061,15 +59397,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 3.6
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 13.2
         },
         {
           "name": "Other",
-          "value": 0.3
+          "value": 2.7
         }
       ],
       "vehicleOwnership": [
@@ -59093,27 +59429,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.8,
-          "train": 4.4,
-          "bus": 11.1,
-          "active": 0.9,
-          "wfh": 0
+          "car": 84.4,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 6,
+          "wfh": 5
         },
         {
           "year": 2016,
-          "car": 70.9,
-          "train": 4.6,
-          "bus": 10.7,
-          "active": 0.7,
-          "wfh": 0
+          "car": 86.2,
+          "train": 0.3,
+          "bus": 0.4,
+          "active": 4.8,
+          "wfh": 5.2
         },
         {
           "year": 2021,
-          "car": 65.8,
-          "train": 11.7,
-          "bus": 10.7,
-          "active": 0.5,
-          "wfh": 0
+          "car": 79.8,
+          "train": 0.1,
+          "bus": 0.4,
+          "active": 3.8,
+          "wfh": 13.2
         }
       ],
       "ptPatronage": null,
@@ -59495,9 +59831,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_lithgow": {
     "demographics": {
-      "totalPopulation": 5919,
-      "malePopulation": 2630,
-      "femalePopulation": 3289,
+      "totalPopulation": 20842,
+      "malePopulation": 10529,
+      "femalePopulation": 10313,
       "medianAge": 46,
       "ageDistribution": [
         {
@@ -59762,39 +60098,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.3
+          "value": 73.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 4.5
         },
         {
           "name": "Train",
-          "value": 12.5
+          "value": 0.4
         },
         {
           "name": "Bus",
-          "value": 12.9
-        },
-        {
-          "name": "Ferry",
-          "value": 3.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 4.4
+        },
+        {
+          "name": "Work from home",
+          "value": 14.5
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 2.6
         }
       ],
       "vehicleOwnership": [
@@ -59818,27 +60158,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 67.8,
-          "train": 4,
-          "bus": 12.2,
-          "active": 0.8,
-          "wfh": 0
+          "car": 84.5,
+          "train": 1.2,
+          "bus": 0.6,
+          "active": 5.3,
+          "wfh": 4.7
         },
         {
           "year": 2016,
-          "car": 69.2,
-          "train": 4.6,
-          "bus": 11.6,
-          "active": 0.6,
-          "wfh": 0
+          "car": 84.1,
+          "train": 1.3,
+          "bus": 0.4,
+          "active": 5.7,
+          "wfh": 5.2
         },
         {
           "year": 2021,
-          "car": 63.4,
-          "train": 12.5,
-          "bus": 12.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 77.8,
+          "train": 0.4,
+          "bus": 0.2,
+          "active": 4.7,
+          "wfh": 14.5
         }
       ],
       "ptPatronage": null,
@@ -60220,9 +60560,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_cabonne": {
     "demographics": {
-      "totalPopulation": 4508,
-      "malePopulation": 1971,
-      "femalePopulation": 2537,
+      "totalPopulation": 13766,
+      "malePopulation": 6851,
+      "femalePopulation": 6915,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -60487,39 +60827,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.3
+          "value": 70.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 3.7
         },
         {
           "name": "Train",
-          "value": 15.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.1
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 3.8
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.1
         },
         {
+          "name": "Walking",
+          "value": 4.2
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 17.3
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 3.7
         }
       ],
       "vehicleOwnership": [
@@ -60543,27 +60887,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 63.1,
-          "train": 11.8,
-          "bus": 9.3,
-          "active": 0.3,
-          "wfh": 0
+          "car": 75.7,
+          "train": 0,
+          "bus": 0.5,
+          "active": 5.4,
+          "wfh": 13.3
         },
         {
           "year": 2016,
-          "car": 65.5,
-          "train": 10.7,
-          "bus": 9.8,
-          "active": 0.1,
-          "wfh": 0
+          "car": 78.3,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 5,
+          "wfh": 12.1
         },
         {
           "year": 2021,
-          "car": 64.5,
-          "train": 15.7,
-          "bus": 8.1,
-          "active": 0.1,
-          "wfh": 0
+          "car": 74.3,
+          "train": 0,
+          "bus": 0.3,
+          "active": 4.3,
+          "wfh": 17.3
         }
       ],
       "ptPatronage": null,
@@ -60945,9 +61289,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_blayney": {
     "demographics": {
-      "totalPopulation": 2382,
-      "malePopulation": 1015,
-      "femalePopulation": 1365,
+      "totalPopulation": 7497,
+      "malePopulation": 3721,
+      "femalePopulation": 3778,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -61212,39 +61556,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.7
+          "value": 71.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 4.1
         },
         {
           "name": "Train",
-          "value": 14.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9.8
+          "value": 0.6
         },
         {
           "name": "Ferry",
-          "value": 3.5
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
+          "name": "Walking",
+          "value": 3.9
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 16.4
         },
         {
           "name": "Other",
-          "value": 0.5
+          "value": 3.4
         }
       ],
       "vehicleOwnership": [
@@ -61268,27 +61616,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 64.7,
-          "train": 9.9,
-          "bus": 11.3,
-          "active": 0.1,
-          "wfh": 0
+          "car": 78.7,
+          "train": 0,
+          "bus": 0.7,
+          "active": 4,
+          "wfh": 11.4
         },
         {
           "year": 2016,
-          "car": 67.6,
-          "train": 9.2,
-          "bus": 10.3,
-          "active": 0.1,
-          "wfh": 0
+          "car": 79.9,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 4.9,
+          "wfh": 10.4
         },
         {
           "year": 2021,
-          "car": 64.2,
-          "train": 14.7,
-          "bus": 9.8,
-          "active": 0.2,
-          "wfh": 0
+          "car": 75.3,
+          "train": 0,
+          "bus": 0.6,
+          "active": 4.1,
+          "wfh": 16.4
         }
       ],
       "ptPatronage": null,
@@ -61670,9 +62018,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_oberon": {
     "demographics": {
-      "totalPopulation": 1632,
-      "malePopulation": 745,
-      "femalePopulation": 887,
+      "totalPopulation": 5580,
+      "malePopulation": 2915,
+      "femalePopulation": 2662,
       "medianAge": 47,
       "ageDistribution": [
         {
@@ -61937,39 +62285,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65
+          "value": 72.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 4.4
         },
         {
           "name": "Train",
-          "value": 12.8
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9.6
+          "value": 0.5
         },
         {
           "name": "Ferry",
-          "value": 4
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.1
         },
         {
+          "name": "Walking",
+          "value": 4.4
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 14.4
         },
         {
           "name": "Other",
-          "value": 0.5
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -61993,27 +62345,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 62.9,
-          "train": 9.3,
-          "bus": 10.7,
-          "active": 0.6,
-          "wfh": 0
+          "car": 77.5,
+          "train": 0.2,
+          "bus": 0.6,
+          "active": 5.8,
+          "wfh": 10.6
         },
         {
           "year": 2016,
-          "car": 67,
-          "train": 9.2,
-          "bus": 9.4,
-          "active": 0.2,
-          "wfh": 0
+          "car": 79.4,
+          "train": 0.3,
+          "bus": 0.4,
+          "active": 5,
+          "wfh": 10.3
         },
         {
           "year": 2021,
-          "car": 65.2,
-          "train": 12.8,
-          "bus": 9.6,
-          "active": 0.1,
-          "wfh": 0
+          "car": 77.3,
+          "train": 0,
+          "bus": 0.5,
+          "active": 4.6,
+          "wfh": 14.4
         }
       ],
       "ptPatronage": null,
@@ -62379,9 +62731,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_mid_western": {
     "demographics": {
-      "totalPopulation": 7878,
-      "malePopulation": 3436,
-      "femalePopulation": 4442,
+      "totalPopulation": 25713,
+      "malePopulation": 12945,
+      "femalePopulation": 12766,
       "medianAge": 42,
       "ageDistribution": [
         {
@@ -62646,39 +62998,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.6
+          "value": 74.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 5.6
         },
         {
           "name": "Train",
-          "value": 10.5
-        },
-        {
-          "name": "Bus",
-          "value": 12.2
-        },
-        {
-          "name": "Ferry",
-          "value": 3.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.3
+        },
+        {
+          "name": "Ferry",
+          "value": 0.1
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 4.4
+        },
+        {
+          "name": "Work from home",
+          "value": 12.1
+        },
+        {
           "name": "Other",
-          "value": 0.4
+          "value": 3.3
         }
       ],
       "vehicleOwnership": [
@@ -62702,27 +63058,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61.7,
-          "train": 7.8,
-          "bus": 11.8,
-          "active": 0.7,
-          "wfh": 0
+          "car": 78.9,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 6.2,
+          "wfh": 9
         },
         {
           "year": 2016,
-          "car": 65.9,
-          "train": 7.4,
-          "bus": 10.9,
-          "active": 0.4,
-          "wfh": 0
+          "car": 81.7,
+          "train": 0.2,
+          "bus": 0.2,
+          "active": 5.3,
+          "wfh": 8.4
         },
         {
           "year": 2021,
-          "car": 64.8,
-          "train": 10.5,
-          "bus": 12.2,
-          "active": 0.4,
-          "wfh": 0
+          "car": 79.7,
+          "train": 0,
+          "bus": 0.3,
+          "active": 4.7,
+          "wfh": 12.1
         }
       ],
       "ptPatronage": null,
@@ -63043,9 +63399,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_warrumbungle": {
     "demographics": {
-      "totalPopulation": 2470,
-      "malePopulation": 1070,
-      "femalePopulation": 1404,
+      "totalPopulation": 9225,
+      "malePopulation": 4616,
+      "femalePopulation": 4612,
       "medianAge": 50,
       "ageDistribution": [
         {
@@ -63310,39 +63666,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 55.7
+          "value": 61.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 4.5
         },
         {
           "name": "Train",
-          "value": 17.8
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.3
+          "value": 0.6
         },
         {
           "name": "Ferry",
-          "value": 7.5
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 0.3
         },
         {
           "name": "Walking",
-          "value": 0.2
+          "value": 8.3
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 19.6
         },
         {
           "name": "Other",
-          "value": 0.8
+          "value": 5.1
         }
       ],
       "vehicleOwnership": [
@@ -63366,27 +63726,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 50.8,
-          "train": 15.1,
-          "bus": 9.4,
-          "active": 0.2,
-          "wfh": 0
+          "car": 63.2,
+          "train": 0.1,
+          "bus": 0.4,
+          "active": 11.4,
+          "wfh": 17.2
         },
         {
           "year": 2016,
-          "car": 56,
-          "train": 14.8,
-          "bus": 8.8,
-          "active": 0.1,
-          "wfh": 0
+          "car": 66.5,
+          "train": 0,
+          "bus": 0.6,
+          "active": 9.9,
+          "wfh": 16.6
         },
         {
           "year": 2021,
-          "car": 56.1,
-          "train": 17.8,
-          "bus": 8.3,
-          "active": 0.2,
-          "wfh": 0
+          "car": 66,
+          "train": 0,
+          "bus": 0.6,
+          "active": 8.6,
+          "wfh": 19.6
         }
       ],
       "ptPatronage": null,
@@ -63768,9 +64128,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_gilgandra": {
     "demographics": {
-      "totalPopulation": 1058,
-      "malePopulation": 429,
-      "femalePopulation": 627,
+      "totalPopulation": 4295,
+      "malePopulation": 2122,
+      "femalePopulation": 2174,
       "medianAge": 46,
       "ageDistribution": [
         {
@@ -64035,39 +64395,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 56.4
+          "value": 63
         },
         {
           "name": "Car (passenger)",
-          "value": 0.9
+          "value": 4.2
         },
         {
           "name": "Train",
-          "value": 17.6
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9.2
+          "value": 1
         },
         {
           "name": "Ferry",
-          "value": 6.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.4
         },
         {
+          "name": "Walking",
+          "value": 7.4
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 19.7
         },
         {
           "name": "Other",
-          "value": 1.2
+          "value": 4.7
         }
       ],
       "vehicleOwnership": [
@@ -64091,27 +64455,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 54.2,
-          "train": 17.1,
-          "bus": 9.6,
-          "active": 0.4,
-          "wfh": 0
+          "car": 65.6,
+          "train": 0,
+          "bus": 0.9,
+          "active": 7.7,
+          "wfh": 19.3
         },
         {
           "year": 2016,
-          "car": 57.9,
-          "train": 14.7,
-          "bus": 9.7,
-          "active": 0.2,
-          "wfh": 0
+          "car": 69.7,
+          "train": 0,
+          "bus": 0.2,
+          "active": 8.4,
+          "wfh": 16.6
         },
         {
           "year": 2021,
-          "car": 57.3,
-          "train": 17.6,
-          "bus": 9.2,
-          "active": 0.4,
-          "wfh": 0
+          "car": 67.1,
+          "train": 0,
+          "bus": 1,
+          "active": 7.9,
+          "wfh": 19.7
         }
       ],
       "ptPatronage": null,
@@ -64493,9 +64857,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_coonamble": {
     "demographics": {
-      "totalPopulation": 925,
-      "malePopulation": 362,
-      "femalePopulation": 564,
+      "totalPopulation": 3732,
+      "malePopulation": 1865,
+      "femalePopulation": 1861,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -64760,23 +65124,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.2
+          "value": 69
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 5
         },
         {
           "name": "Train",
-          "value": 12.6
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.2
+          "value": 0.2
         },
         {
           "name": "Ferry",
-          "value": 7.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -64784,15 +65152,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 8.3
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 13.8
         },
         {
           "name": "Other",
-          "value": 1.2
+          "value": 3.5
         }
       ],
       "vehicleOwnership": [
@@ -64816,27 +65184,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 53.4,
-          "train": 14.3,
-          "bus": 8,
-          "active": 0.2,
-          "wfh": 0
+          "car": 67.8,
+          "train": 0.2,
+          "bus": 0.2,
+          "active": 8.6,
+          "wfh": 16
         },
         {
           "year": 2016,
-          "car": 59.8,
-          "train": 14.8,
-          "bus": 6.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 69.9,
+          "train": 0,
+          "bus": 0.8,
+          "active": 8.5,
+          "wfh": 16.2
         },
         {
           "year": 2021,
-          "car": 63.4,
-          "train": 12.6,
-          "bus": 7.2,
-          "active": 0,
-          "wfh": 0
+          "car": 74,
+          "train": 0,
+          "bus": 0.2,
+          "active": 8.3,
+          "wfh": 13.8
         }
       ],
       "ptPatronage": null,
@@ -65218,9 +65586,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_narromine": {
     "demographics": {
-      "totalPopulation": 1731,
-      "malePopulation": 717,
-      "femalePopulation": 1014,
+      "totalPopulation": 6360,
+      "malePopulation": 3218,
+      "femalePopulation": 3144,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -65477,39 +65845,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65
+          "value": 70.3
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.4
         },
         {
           "name": "Train",
-          "value": 13
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 6.3
-        },
-        {
-          "name": "Ferry",
-          "value": 5.8
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 6.3
+        },
+        {
+          "name": "Work from home",
+          "value": 14.1
+        },
+        {
           "name": "Other",
-          "value": 0.8
+          "value": 4.2
         }
       ],
       "vehicleOwnership": [
@@ -65533,27 +65905,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 59.5,
-          "train": 11.8,
-          "bus": 9.7,
-          "active": 0.6,
-          "wfh": 0
+          "car": 71.9,
+          "train": 0,
+          "bus": 0.6,
+          "active": 7.9,
+          "wfh": 13.3
         },
         {
           "year": 2016,
-          "car": 63.8,
-          "train": 11.6,
-          "bus": 7.6,
-          "active": 0.6,
-          "wfh": 0
+          "car": 74.5,
+          "train": 0,
+          "bus": 0.4,
+          "active": 7.4,
+          "wfh": 12.8
         },
         {
           "year": 2021,
-          "car": 65.2,
-          "train": 13,
-          "bus": 6.3,
-          "active": 0.3,
-          "wfh": 0
+          "car": 74.8,
+          "train": 0,
+          "bus": 0.3,
+          "active": 6.7,
+          "wfh": 14.1
         }
       ],
       "ptPatronage": null,
@@ -65935,9 +66307,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_parkes": {
     "demographics": {
-      "totalPopulation": 4074,
-      "malePopulation": 1811,
-      "femalePopulation": 2268,
+      "totalPopulation": 14361,
+      "malePopulation": 7154,
+      "femalePopulation": 7208,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -66202,23 +66574,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 66.4
+          "value": 73.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 5.9
         },
         {
           "name": "Train",
-          "value": 10.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9
+          "value": 0.4
         },
         {
           "name": "Ferry",
-          "value": 4.5
+          "value": 0.1
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -66226,15 +66602,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.3
+          "value": 5
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 11.8
         },
         {
           "name": "Other",
-          "value": 0.4
+          "value": 2.9
         }
       ],
       "vehicleOwnership": [
@@ -66258,27 +66634,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 60.7,
-          "train": 8.2,
-          "bus": 11.3,
-          "active": 0.9,
-          "wfh": 0
+          "car": 76.4,
+          "train": 0.1,
+          "bus": 1.3,
+          "active": 7.7,
+          "wfh": 9.5
         },
         {
           "year": 2016,
-          "car": 64.9,
-          "train": 8,
-          "bus": 10.2,
-          "active": 0.8,
-          "wfh": 0
+          "car": 79.7,
+          "train": 0,
+          "bus": 0.4,
+          "active": 6.8,
+          "wfh": 9
         },
         {
           "year": 2021,
-          "car": 66.8,
-          "train": 10.7,
-          "bus": 9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 79.3,
+          "train": 0,
+          "bus": 0.4,
+          "active": 5.3,
+          "wfh": 11.8
         }
       ],
       "ptPatronage": null,
@@ -66660,9 +67036,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_forbes": {
     "demographics": {
-      "totalPopulation": 2719,
-      "malePopulation": 1191,
-      "femalePopulation": 1526,
+      "totalPopulation": 9319,
+      "malePopulation": 4597,
+      "femalePopulation": 4716,
       "medianAge": 42,
       "ageDistribution": [
         {
@@ -66919,39 +67295,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 66.7
+          "value": 73.3
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 5.2
         },
         {
           "name": "Train",
-          "value": 10.9
-        },
-        {
-          "name": "Bus",
-          "value": 7.7
-        },
-        {
-          "name": "Ferry",
-          "value": 4.3
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.3
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.5
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 4.7
+        },
+        {
+          "name": "Work from home",
+          "value": 12
+        },
+        {
           "name": "Other",
-          "value": 0.7
+          "value": 3.6
         }
       ],
       "vehicleOwnership": [
@@ -66975,27 +67355,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61.8,
-          "train": 9.6,
-          "bus": 10.2,
-          "active": 0.6,
-          "wfh": 0
+          "car": 76.3,
+          "train": 0,
+          "bus": 1.1,
+          "active": 6.6,
+          "wfh": 10.9
         },
         {
           "year": 2016,
-          "car": 66.5,
-          "train": 9.5,
-          "bus": 8.5,
-          "active": 0.6,
-          "wfh": 0
+          "car": 78.9,
+          "train": 0,
+          "bus": 0.7,
+          "active": 5.4,
+          "wfh": 10.6
         },
         {
           "year": 2021,
-          "car": 67.1,
-          "train": 10.9,
-          "bus": 7.7,
-          "active": 0.5,
-          "wfh": 0
+          "car": 78.5,
+          "train": 0,
+          "bus": 0.5,
+          "active": 5.1,
+          "wfh": 12
         }
       ],
       "ptPatronage": null,
@@ -67377,9 +67757,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_lachlan": {
     "demographics": {
-      "totalPopulation": 1667,
-      "malePopulation": 717,
-      "femalePopulation": 955,
+      "totalPopulation": 6094,
+      "malePopulation": 3046,
+      "femalePopulation": 3048,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -67636,39 +68016,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 62.9
+          "value": 67.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.7
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 13
-        },
-        {
-          "name": "Bus",
-          "value": 6.3
-        },
-        {
-          "name": "Ferry",
-          "value": 6.3
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.8
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 6.8
+        },
+        {
+          "name": "Work from home",
+          "value": 14
+        },
+        {
           "name": "Other",
-          "value": 1.1
+          "value": 4.7
         }
       ],
       "vehicleOwnership": [
@@ -67692,27 +68076,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 54.7,
-          "train": 14.7,
-          "bus": 7.2,
-          "active": 0.5,
-          "wfh": 0
+          "car": 66,
+          "train": 0,
+          "bus": 2.1,
+          "active": 9.9,
+          "wfh": 16.3
         },
         {
           "year": 2016,
-          "car": 61,
-          "train": 10.4,
-          "bus": 7.8,
-          "active": 0.2,
-          "wfh": 0
+          "car": 72,
+          "train": 0,
+          "bus": 1.2,
+          "active": 9.5,
+          "wfh": 11.4
         },
         {
           "year": 2021,
-          "car": 63.6,
-          "train": 13,
-          "bus": 6.3,
-          "active": 0.4,
-          "wfh": 0
+          "car": 73,
+          "train": 0,
+          "bus": 0.8,
+          "active": 7,
+          "wfh": 14
         }
       ],
       "ptPatronage": null,
@@ -68094,9 +68478,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_weddin": {
     "demographics": {
-      "totalPopulation": 1029,
-      "malePopulation": 470,
-      "femalePopulation": 563,
+      "totalPopulation": 3608,
+      "malePopulation": 1847,
+      "femalePopulation": 1762,
       "medianAge": 52,
       "ageDistribution": [
         {
@@ -68353,39 +68737,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 54
+          "value": 60
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 4.9
         },
         {
           "name": "Train",
-          "value": 19.4
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.9
+          "value": 0
         },
         {
           "name": "Ferry",
-          "value": 7.4
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 0.6
         },
         {
           "name": "Walking",
-          "value": 0.5
+          "value": 8.2
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 21.6
         },
         {
           "name": "Other",
-          "value": 1.3
+          "value": 5
         }
       ],
       "vehicleOwnership": [
@@ -68409,27 +68797,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 50.9,
-          "train": 21.1,
-          "bus": 8.1,
-          "active": 0.5,
-          "wfh": 0
+          "car": 60.5,
+          "train": 0,
+          "bus": 0.8,
+          "active": 8.5,
+          "wfh": 23.4
         },
         {
           "year": 2016,
-          "car": 54,
-          "train": 20.3,
-          "bus": 8.6,
-          "active": 0.4,
-          "wfh": 0
+          "car": 64.1,
+          "train": 0,
+          "bus": 0.8,
+          "active": 8.7,
+          "wfh": 22.7
         },
         {
           "year": 2021,
-          "car": 54,
-          "train": 19.4,
-          "bus": 8.9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 64.8,
+          "train": 0,
+          "bus": 0,
+          "active": 8.8,
+          "wfh": 21.6
         }
       ],
       "ptPatronage": null,
@@ -68811,9 +69199,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_cowra": {
     "demographics": {
-      "totalPopulation": 3427,
-      "malePopulation": 1506,
-      "femalePopulation": 1918,
+      "totalPopulation": 12724,
+      "malePopulation": 6316,
+      "femalePopulation": 6409,
       "medianAge": 47,
       "ageDistribution": [
         {
@@ -69078,39 +69466,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 66
+          "value": 73.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 5.3
         },
         {
           "name": "Train",
-          "value": 11
-        },
-        {
-          "name": "Bus",
-          "value": 8.8
-        },
-        {
-          "name": "Ferry",
-          "value": 4.6
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.2
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.2
+        },
+        {
+          "name": "Ferry",
+          "value": 0.1
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 5.1
+        },
+        {
+          "name": "Work from home",
+          "value": 12.1
+        },
+        {
           "name": "Other",
-          "value": 0.8
+          "value": 3.9
         }
       ],
       "vehicleOwnership": [
@@ -69134,27 +69526,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61.9,
-          "train": 9.2,
-          "bus": 10.4,
-          "active": 0.5,
-          "wfh": 0
+          "car": 77.9,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 6,
+          "wfh": 10.6
         },
         {
           "year": 2016,
-          "car": 65.2,
-          "train": 8.9,
-          "bus": 9.5,
-          "active": 0.4,
-          "wfh": 0
+          "car": 79.5,
+          "train": 0,
+          "bus": 0.1,
+          "active": 5.9,
+          "wfh": 10
         },
         {
           "year": 2021,
-          "car": 66.2,
-          "train": 11,
-          "bus": 8.8,
-          "active": 0.3,
-          "wfh": 0
+          "car": 78.5,
+          "train": 0,
+          "bus": 0.2,
+          "active": 5.3,
+          "wfh": 12.1
         }
       ],
       "ptPatronage": null,
@@ -69536,9 +69928,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_bland": {
     "demographics": {
-      "totalPopulation": 1471,
-      "malePopulation": 610,
-      "femalePopulation": 862,
+      "totalPopulation": 5547,
+      "malePopulation": 2790,
+      "femalePopulation": 2758,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -69803,39 +70195,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 54.3
+          "value": 60.1
         },
         {
           "name": "Car (passenger)",
-          "value": 4
+          "value": 6.7
         },
         {
           "name": "Train",
-          "value": 15.2
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.4
+          "value": 4.9
         },
         {
           "name": "Ferry",
-          "value": 6.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.1
         },
         {
+          "name": "Walking",
+          "value": 7.3
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 16.9
         },
         {
           "name": "Other",
-          "value": 1.2
+          "value": 3.9
         }
       ],
       "vehicleOwnership": [
@@ -69859,27 +70255,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 51.9,
-          "train": 16,
-          "bus": 9.8,
-          "active": 0.9,
-          "wfh": 0
+          "car": 63.3,
+          "train": 0,
+          "bus": 3,
+          "active": 9.4,
+          "wfh": 18.2
         },
         {
           "year": 2016,
-          "car": 55.5,
-          "train": 15.3,
-          "bus": 9.4,
-          "active": 0.5,
-          "wfh": 0
+          "car": 66.7,
+          "train": 0.1,
+          "bus": 3.4,
+          "active": 7.4,
+          "wfh": 17.2
         },
         {
           "year": 2021,
-          "car": 58.3,
-          "train": 15.2,
-          "bus": 8.4,
-          "active": 0.1,
-          "wfh": 0
+          "car": 66.8,
+          "train": 0,
+          "bus": 4.9,
+          "active": 7.4,
+          "wfh": 16.9
         }
       ],
       "ptPatronage": null,
@@ -70261,9 +70657,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_bogan": {
     "demographics": {
-      "totalPopulation": 685,
-      "malePopulation": 288,
-      "femalePopulation": 399,
+      "totalPopulation": 2467,
+      "malePopulation": 1240,
+      "femalePopulation": 1225,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -70528,39 +70924,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 54.7
+          "value": 61.1
         },
         {
           "name": "Car (passenger)",
-          "value": 4.4
+          "value": 7
         },
         {
           "name": "Train",
-          "value": 12.6
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.3
+          "value": 5.7
         },
         {
           "name": "Ferry",
-          "value": 6.5
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
+          "name": "Walking",
+          "value": 7.3
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 14.1
         },
         {
           "name": "Other",
-          "value": 1
+          "value": 4.7
         }
       ],
       "vehicleOwnership": [
@@ -70584,27 +70984,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 53.5,
-          "train": 12.3,
-          "bus": 9.1,
-          "active": 0.7,
-          "wfh": 0
+          "car": 62.1,
+          "train": 0,
+          "bus": 6.2,
+          "active": 12.3,
+          "wfh": 14.1
         },
         {
           "year": 2016,
-          "car": 61.5,
-          "train": 11.1,
-          "bus": 7.3,
-          "active": 0.9,
-          "wfh": 0
+          "car": 68.1,
+          "train": 0,
+          "bus": 5.2,
+          "active": 10.2,
+          "wfh": 12.2
         },
         {
           "year": 2021,
-          "car": 59.1,
-          "train": 12.6,
-          "bus": 8.3,
-          "active": 0.3,
-          "wfh": 0
+          "car": 68.1,
+          "train": 0,
+          "bus": 5.7,
+          "active": 7.5,
+          "wfh": 14.1
         }
       ],
       "ptPatronage": null,
@@ -70986,9 +71386,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_cobar": {
     "demographics": {
-      "totalPopulation": 1010,
-      "malePopulation": 432,
-      "femalePopulation": 585,
+      "totalPopulation": 4059,
+      "malePopulation": 2062,
+      "femalePopulation": 1993,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -71253,39 +71653,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.6
+          "value": 72.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.8
+          "value": 4.4
         },
         {
           "name": "Train",
-          "value": 8.7
-        },
-        {
-          "name": "Bus",
-          "value": 11.9
-        },
-        {
-          "name": "Ferry",
-          "value": 6.5
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.5
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.9
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.6
+        },
+        {
+          "name": "Walking",
+          "value": 7.4
+        },
+        {
+          "name": "Work from home",
+          "value": 9.9
+        },
+        {
           "name": "Other",
-          "value": 0.2
+          "value": 2.6
         }
       ],
       "vehicleOwnership": [
@@ -71309,27 +71713,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 60.4,
-          "train": 6.2,
-          "bus": 12.5,
-          "active": 1.2,
-          "wfh": 0
+          "car": 75.3,
+          "train": 0,
+          "bus": 2.8,
+          "active": 10.4,
+          "wfh": 7.2
         },
         {
           "year": 2016,
-          "car": 61.5,
-          "train": 6.6,
-          "bus": 12.5,
-          "active": 1,
-          "wfh": 0
+          "car": 77.9,
+          "train": 0,
+          "bus": 0.5,
+          "active": 8.4,
+          "wfh": 7.7
         },
         {
           "year": 2021,
-          "car": 64.4,
-          "train": 8.7,
-          "bus": 11.9,
-          "active": 0.7,
-          "wfh": 0
+          "car": 77,
+          "train": 0,
+          "bus": 0.9,
+          "active": 8,
+          "wfh": 9.9
         }
       ],
       "ptPatronage": null,
@@ -71711,9 +72115,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_wagga_wagga": {
     "demographics": {
-      "totalPopulation": 25626,
-      "malePopulation": 11578,
-      "femalePopulation": 14046,
+      "totalPopulation": 67609,
+      "malePopulation": 32883,
+      "femalePopulation": 34728,
       "medianAge": 35,
       "ageDistribution": [
         {
@@ -71978,39 +72382,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 69
+          "value": 76.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 6
         },
         {
           "name": "Train",
-          "value": 8.4
-        },
-        {
-          "name": "Bus",
-          "value": 9
-        },
-        {
-          "name": "Ferry",
-          "value": 3.9
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.7
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 4.4
+        },
+        {
+          "name": "Work from home",
+          "value": 9.2
+        },
+        {
           "name": "Other",
-          "value": 0.8
+          "value": 3
         }
       ],
       "vehicleOwnership": [
@@ -72034,27 +72442,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 68.6,
-          "train": 3.9,
-          "bus": 9.9,
-          "active": 1.2,
-          "wfh": 0
+          "car": 84.2,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 6.7,
+          "wfh": 4.4
         },
         {
           "year": 2016,
-          "car": 71.9,
-          "train": 4,
-          "bus": 9.1,
-          "active": 0.9,
-          "wfh": 0
+          "car": 85.9,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 5.7,
+          "wfh": 4.4
         },
         {
           "year": 2021,
-          "car": 69.5,
-          "train": 8.4,
-          "bus": 9,
-          "active": 0.6,
-          "wfh": 0
+          "car": 82.2,
+          "train": 0,
+          "bus": 0.7,
+          "active": 4.8,
+          "wfh": 9.2
         }
       ],
       "ptPatronage": null,
@@ -72436,9 +72844,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_albury": {
     "demographics": {
-      "totalPopulation": 20904,
-      "malePopulation": 9419,
-      "femalePopulation": 11482,
+      "totalPopulation": 56093,
+      "malePopulation": 27087,
+      "femalePopulation": 29007,
       "medianAge": 39,
       "ageDistribution": [
         {
@@ -72703,39 +73111,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 70.2
+          "value": 78.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.1
         },
         {
           "name": "Train",
-          "value": 9.1
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 9.7
+          "value": 0.5
         },
         {
           "name": "Ferry",
-          "value": 2.7
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.8
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.9
+        },
+        {
+          "name": "Walking",
+          "value": 3
+        },
+        {
+          "name": "Work from home",
+          "value": 10.1
+        },
+        {
           "name": "Other",
-          "value": 0.3
+          "value": 2.1
         }
       ],
       "vehicleOwnership": [
@@ -72759,27 +73171,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 71.2,
-          "train": 3,
-          "bus": 10.7,
-          "active": 1.5,
-          "wfh": 0
+          "car": 87.2,
+          "train": 0.1,
+          "bus": 0.8,
+          "active": 5.5,
+          "wfh": 3.4
         },
         {
           "year": 2016,
-          "car": 74.7,
-          "train": 3.2,
-          "bus": 9.6,
-          "active": 1.1,
-          "wfh": 0
+          "car": 88.2,
+          "train": 0.2,
+          "bus": 0.7,
+          "active": 4.8,
+          "wfh": 3.5
         },
         {
           "year": 2021,
-          "car": 70.6,
-          "train": 9.1,
-          "bus": 9.7,
-          "active": 1,
-          "wfh": 0
+          "car": 83.3,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 3.9,
+          "wfh": 10.1
         }
       ],
       "ptPatronage": null,
@@ -73161,9 +73573,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_griffith": {
     "demographics": {
-      "totalPopulation": 8877,
-      "malePopulation": 4184,
-      "femalePopulation": 4694,
+      "totalPopulation": 27086,
+      "malePopulation": 13591,
+      "femalePopulation": 13494,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -73428,23 +73840,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 72.5
+          "value": 78.3
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 9.6
         },
         {
           "name": "Train",
-          "value": 5.3
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 6.6
+          "value": 0.2
         },
         {
           "name": "Ferry",
-          "value": 2.8
+          "value": 0.1
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -73452,15 +73868,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0.3
+          "value": 3
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 5.7
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 2.7
         }
       ],
       "vehicleOwnership": [
@@ -73484,27 +73900,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 68.9,
-          "train": 4.7,
-          "bus": 8.8,
-          "active": 0.8,
-          "wfh": 0
+          "car": 85.3,
+          "train": 0,
+          "bus": 0.3,
+          "active": 5.3,
+          "wfh": 5.2
         },
         {
           "year": 2016,
-          "car": 73.3,
-          "train": 4,
-          "bus": 7.3,
-          "active": 0.6,
-          "wfh": 0
+          "car": 88.9,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 3.6,
+          "wfh": 4.3
         },
         {
           "year": 2021,
-          "car": 72.7,
-          "train": 5.3,
-          "bus": 6.6,
-          "active": 0.6,
-          "wfh": 0
+          "car": 87.9,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 3.3,
+          "wfh": 5.7
         }
       ],
       "ptPatronage": null,
@@ -73886,9 +74302,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_leeton": {
     "demographics": {
-      "totalPopulation": 2961,
-      "malePopulation": 1292,
-      "femalePopulation": 1670,
+      "totalPopulation": 11452,
+      "malePopulation": 5643,
+      "femalePopulation": 5808,
       "medianAge": 38,
       "ageDistribution": [
         {
@@ -74153,39 +74569,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 71.4
+          "value": 77.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 7.3
         },
         {
           "name": "Train",
-          "value": 7.1
+          "value": 0.2
         },
         {
           "name": "Bus",
-          "value": 7
-        },
-        {
-          "name": "Ferry",
-          "value": 3.6
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.5
-        },
-        {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 3.9
+        },
+        {
+          "name": "Work from home",
+          "value": 7.6
+        },
+        {
           "name": "Other",
-          "value": 0.6
+          "value": 3.1
         }
       ],
       "vehicleOwnership": [
@@ -74209,27 +74629,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 66.9,
-          "train": 5.4,
-          "bus": 9.7,
-          "active": 1,
-          "wfh": 0
+          "car": 83.3,
+          "train": 0,
+          "bus": 0.3,
+          "active": 6.8,
+          "wfh": 6.1
         },
         {
           "year": 2016,
-          "car": 72.5,
-          "train": 5.2,
-          "bus": 7.8,
-          "active": 0.8,
-          "wfh": 0
+          "car": 86.2,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 5.7,
+          "wfh": 5.7
         },
         {
           "year": 2021,
-          "car": 71.5,
-          "train": 7.1,
-          "bus": 7,
-          "active": 0.6,
-          "wfh": 0
+          "car": 84.7,
+          "train": 0.2,
+          "bus": 0.1,
+          "active": 4.5,
+          "wfh": 7.6
         }
       ],
       "ptPatronage": null,
@@ -74611,9 +75031,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_narrandera": {
     "demographics": {
-      "totalPopulation": 1451,
-      "malePopulation": 636,
-      "femalePopulation": 811,
+      "totalPopulation": 5698,
+      "malePopulation": 2823,
+      "femalePopulation": 2873,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -74878,23 +75298,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 66.7
+          "value": 72.9
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.6
         },
         {
           "name": "Train",
-          "value": 10.9
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.8
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 5.9
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -74902,15 +75326,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 6.4
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 11.9
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 2.8
         }
       ],
       "vehicleOwnership": [
@@ -74934,27 +75358,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 59.3,
-          "train": 10.6,
-          "bus": 10.2,
-          "active": 0.8,
-          "wfh": 0
+          "car": 74,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 8.6,
+          "wfh": 12.1
         },
         {
           "year": 2016,
-          "car": 65.1,
-          "train": 9.2,
-          "bus": 8.4,
-          "active": 0.2,
-          "wfh": 0
+          "car": 76.9,
+          "train": 0,
+          "bus": 0.3,
+          "active": 8,
+          "wfh": 10.3
         },
         {
           "year": 2021,
-          "car": 67,
-          "train": 10.9,
-          "bus": 7.8,
-          "active": 0,
-          "wfh": 0
+          "car": 78.5,
+          "train": 0,
+          "bus": 0.3,
+          "active": 6.4,
+          "wfh": 11.9
         }
       ],
       "ptPatronage": null,
@@ -75336,9 +75760,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_murrumbidgee": {
     "demographics": {
-      "totalPopulation": 948,
-      "malePopulation": 409,
-      "femalePopulation": 542,
+      "totalPopulation": 3353,
+      "malePopulation": 1751,
+      "femalePopulation": 1601,
       "medianAge": 45,
       "ageDistribution": [
         {
@@ -75603,39 +76027,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 60.3
+          "value": 65.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.3
         },
         {
           "name": "Train",
-          "value": 15.1
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 6.9
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 7.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 0.6
         },
         {
           "name": "Walking",
-          "value": 0.5
+          "value": 8.4
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 16.3
         },
         {
           "name": "Other",
-          "value": 1.5
+          "value": 5.3
         }
       ],
       "vehicleOwnership": [
@@ -75659,19 +76087,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 61.4,
-          "train": 12.6,
-          "bus": 7.9,
-          "active": 0.3,
-          "wfh": 0
+          "car": 71.9,
+          "train": 0,
+          "bus": 0.2,
+          "active": 9.4,
+          "wfh": 14
         },
         {
           "year": 2021,
-          "car": 60.6,
-          "train": 15.1,
-          "bus": 6.9,
-          "active": 0.5,
-          "wfh": 0
+          "car": 69.5,
+          "train": 0,
+          "bus": 0.3,
+          "active": 8.9,
+          "wfh": 16.3
         }
       ],
       "ptPatronage": null,
@@ -76053,9 +76481,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_coolamon": {
     "demographics": {
-      "totalPopulation": 1167,
-      "malePopulation": 496,
-      "femalePopulation": 670,
+      "totalPopulation": 4385,
+      "malePopulation": 2166,
+      "femalePopulation": 2227,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -76312,39 +76740,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.5
+          "value": 69.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 5.6
         },
         {
           "name": "Train",
-          "value": 13.5
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.9
+          "value": 0.7
         },
         {
           "name": "Ferry",
-          "value": 5.3
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
+          "name": "Walking",
+          "value": 5.8
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 14.9
         },
         {
           "name": "Other",
-          "value": 0.9
+          "value": 3.7
         }
       ],
       "vehicleOwnership": [
@@ -76368,27 +76800,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 58.9,
-          "train": 12.5,
-          "bus": 10.4,
-          "active": 0.4,
-          "wfh": 0
+          "car": 72.8,
+          "train": 0.2,
+          "bus": 0.5,
+          "active": 7.3,
+          "wfh": 14.2
         },
         {
           "year": 2016,
-          "car": 63.5,
-          "train": 11.2,
-          "bus": 10.1,
-          "active": 0,
-          "wfh": 0
+          "car": 76.9,
+          "train": 0,
+          "bus": 0.3,
+          "active": 5.5,
+          "wfh": 12.7
         },
         {
           "year": 2021,
-          "car": 64,
-          "train": 13.5,
-          "bus": 7.9,
-          "active": 0.2,
-          "wfh": 0
+          "car": 75.4,
+          "train": 0,
+          "bus": 0.7,
+          "active": 6,
+          "wfh": 14.9
         }
       ],
       "ptPatronage": null,
@@ -76770,9 +77202,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_temora": {
     "demographics": {
-      "totalPopulation": 1645,
-      "malePopulation": 701,
-      "femalePopulation": 945,
+      "totalPopulation": 6034,
+      "malePopulation": 2948,
+      "femalePopulation": 3085,
       "medianAge": 47,
       "ageDistribution": [
         {
@@ -77037,39 +77469,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.7
+          "value": 70.4
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.6
         },
         {
           "name": "Train",
-          "value": 11.6
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9.1
-        },
-        {
-          "name": "Ferry",
-          "value": 6.9
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.4
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
           "value": 0.5
+        },
+        {
+          "name": "Walking",
+          "value": 7.6
+        },
+        {
+          "name": "Work from home",
+          "value": 12.9
+        },
+        {
+          "name": "Other",
+          "value": 3.5
         }
       ],
       "vehicleOwnership": [
@@ -77093,27 +77529,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 58,
-          "train": 11.9,
-          "bus": 9.8,
-          "active": 0.8,
-          "wfh": 0
+          "car": 71,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 9.1,
+          "wfh": 13.5
         },
         {
           "year": 2016,
-          "car": 62.5,
-          "train": 10.9,
-          "bus": 9,
-          "active": 0.8,
-          "wfh": 0
+          "car": 74,
+          "train": 0,
+          "bus": 0.6,
+          "active": 8.8,
+          "wfh": 12.2
         },
         {
           "year": 2021,
-          "car": 64,
-          "train": 11.6,
-          "bus": 9.1,
-          "active": 0.4,
-          "wfh": 0
+          "car": 75,
+          "train": 0,
+          "bus": 0.4,
+          "active": 8.1,
+          "wfh": 12.9
         }
       ],
       "ptPatronage": null,
@@ -77495,9 +77931,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_junee": {
     "demographics": {
-      "totalPopulation": 1596,
-      "malePopulation": 711,
-      "femalePopulation": 885,
+      "totalPopulation": 6415,
+      "malePopulation": 3664,
+      "femalePopulation": 2756,
       "medianAge": 41,
       "ageDistribution": [
         {
@@ -77762,23 +78198,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.4
+          "value": 70.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 7.7
         },
         {
           "name": "Train",
-          "value": 12.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.3
+          "value": 0.6
         },
         {
           "name": "Ferry",
-          "value": 3.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -77786,15 +78226,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 3.9
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 14
         },
         {
           "name": "Other",
-          "value": 0.7
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -77818,27 +78258,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 61.7,
-          "train": 10.7,
-          "bus": 10.5,
-          "active": 0.2,
-          "wfh": 0
+          "car": 77.2,
+          "train": 0.2,
+          "bus": 0.3,
+          "active": 6.1,
+          "wfh": 12.1
         },
         {
           "year": 2016,
-          "car": 63.2,
-          "train": 10.6,
-          "bus": 9.7,
-          "active": 0.2,
-          "wfh": 0
+          "car": 79.1,
+          "train": 0.3,
+          "bus": 0.3,
+          "active": 5,
+          "wfh": 12
         },
         {
           "year": 2021,
-          "car": 64.7,
-          "train": 12.7,
-          "bus": 8.3,
-          "active": 0,
-          "wfh": 0
+          "car": 78.5,
+          "train": 0,
+          "bus": 0.6,
+          "active": 3.9,
+          "wfh": 14
         }
       ],
       "ptPatronage": null,
@@ -78220,9 +78660,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_cootamundra_gundagai": {
     "demographics": {
-      "totalPopulation": 3169,
-      "malePopulation": 1415,
-      "femalePopulation": 1755,
+      "totalPopulation": 11403,
+      "malePopulation": 5672,
+      "femalePopulation": 5732,
       "medianAge": 49,
       "ageDistribution": [
         {
@@ -78479,39 +78919,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 64.9
+          "value": 72
         },
         {
           "name": "Car (passenger)",
-          "value": 0.8
+          "value": 6.4
         },
         {
           "name": "Train",
-          "value": 10.4
+          "value": 0.1
         },
         {
           "name": "Bus",
-          "value": 8.7
+          "value": 0.9
         },
         {
           "name": "Ferry",
-          "value": 4.8
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
+          "name": "Walking",
+          "value": 5.4
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 11.5
         },
         {
           "name": "Other",
-          "value": 0.6
+          "value": 3.3
         }
       ],
       "vehicleOwnership": [
@@ -78535,11 +78979,11 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2021,
-          "car": 65.8,
-          "train": 10.4,
-          "bus": 8.7,
-          "active": 0.3,
-          "wfh": 0
+          "car": 78.4,
+          "train": 0.1,
+          "bus": 0.9,
+          "active": 5.7,
+          "wfh": 11.5
         }
       ],
       "ptPatronage": null,
@@ -78860,9 +79304,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_snowy_valleys": {
     "demographics": {
-      "totalPopulation": 4243,
-      "malePopulation": 1867,
-      "femalePopulation": 2380,
+      "totalPopulation": 14891,
+      "malePopulation": 7504,
+      "femalePopulation": 7391,
       "medianAge": 45,
       "ageDistribution": [
         {
@@ -79127,39 +79571,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65.2
+          "value": 73
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.6
         },
         {
           "name": "Train",
-          "value": 10.6
-        },
-        {
-          "name": "Bus",
-          "value": 9.9
-        },
-        {
-          "name": "Ferry",
-          "value": 4.8
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.2
+          "name": "Bus",
+          "value": 0.3
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.2
+        },
+        {
+          "name": "Walking",
+          "value": 5.4
+        },
+        {
+          "name": "Work from home",
+          "value": 11.9
+        },
+        {
           "name": "Other",
-          "value": 0.6
+          "value": 3.4
         }
       ],
       "vehicleOwnership": [
@@ -79183,19 +79631,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 66.9,
-          "train": 8,
-          "bus": 9.7,
-          "active": 0.3,
-          "wfh": 0
+          "car": 81.3,
+          "train": 0.2,
+          "bus": 0.2,
+          "active": 5.7,
+          "wfh": 9.1
         },
         {
           "year": 2021,
-          "car": 65.5,
-          "train": 10.6,
-          "bus": 9.9,
-          "active": 0.3,
-          "wfh": 0
+          "car": 78.6,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 5.6,
+          "wfh": 11.9
         }
       ],
       "ptPatronage": null,
@@ -79577,9 +80025,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_federation": {
     "demographics": {
-      "totalPopulation": 3517,
-      "malePopulation": 1491,
-      "femalePopulation": 2028,
+      "totalPopulation": 12899,
+      "malePopulation": 6429,
+      "femalePopulation": 6471,
       "medianAge": 51,
       "ageDistribution": [
         {
@@ -79844,39 +80292,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 67.3
+          "value": 75.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 4.5
         },
         {
           "name": "Train",
-          "value": 9.4
-        },
-        {
-          "name": "Bus",
-          "value": 10.1
-        },
-        {
-          "name": "Ferry",
-          "value": 4.2
-        },
-        {
-          "name": "Cycling",
           "value": 0.1
         },
         {
-          "name": "Walking",
-          "value": 0.6
+          "name": "Bus",
+          "value": 0.1
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.7
+        },
+        {
+          "name": "Walking",
+          "value": 4.8
+        },
+        {
+          "name": "Work from home",
+          "value": 10.6
+        },
+        {
           "name": "Other",
-          "value": 0.6
+          "value": 3.4
         }
       ],
       "vehicleOwnership": [
@@ -79900,19 +80352,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 66.8,
-          "train": 7.4,
-          "bus": 11.8,
-          "active": 0.6,
-          "wfh": 0
+          "car": 82.3,
+          "train": 0.1,
+          "bus": 0.2,
+          "active": 5.6,
+          "wfh": 8.6
         },
         {
           "year": 2021,
-          "car": 67.4,
-          "train": 9.4,
-          "bus": 10.1,
-          "active": 0.7,
-          "wfh": 0
+          "car": 80.3,
+          "train": 0.1,
+          "bus": 0.1,
+          "active": 5.5,
+          "wfh": 10.6
         }
       ],
       "ptPatronage": null,
@@ -80294,9 +80746,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_greater_hume": {
     "demographics": {
-      "totalPopulation": 3274,
-      "malePopulation": 1380,
-      "femalePopulation": 1886,
+      "totalPopulation": 11157,
+      "malePopulation": 5657,
+      "femalePopulation": 5492,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -80561,39 +81013,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 62.3
+          "value": 69.1
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 3.8
         },
         {
           "name": "Train",
-          "value": 15.8
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 8.6
-        },
-        {
-          "name": "Ferry",
-          "value": 4.5
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.3
+        },
+        {
+          "name": "Walking",
+          "value": 5
+        },
+        {
+          "name": "Work from home",
+          "value": 17.5
+        },
+        {
           "name": "Other",
-          "value": 0.6
+          "value": 3.8
         }
       ],
       "vehicleOwnership": [
@@ -80617,27 +81073,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 59.4,
-          "train": 14.7,
-          "bus": 9.7,
-          "active": 0.7,
-          "wfh": 0
+          "car": 71,
+          "train": 0,
+          "bus": 0.5,
+          "active": 6.7,
+          "wfh": 16.6
         },
         {
           "year": 2016,
-          "car": 63,
-          "train": 12.9,
-          "bus": 10.3,
-          "active": 0.3,
-          "wfh": 0
+          "car": 74.5,
+          "train": 0.2,
+          "bus": 0.5,
+          "active": 5.7,
+          "wfh": 14.6
         },
         {
           "year": 2021,
-          "car": 62.6,
-          "train": 15.8,
-          "bus": 8.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 72.9,
+          "train": 0,
+          "bus": 0.3,
+          "active": 5.3,
+          "wfh": 17.5
         }
       ],
       "ptPatronage": null,
@@ -81019,9 +81475,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_berrigan": {
     "demographics": {
-      "totalPopulation": 2323,
-      "malePopulation": 997,
-      "femalePopulation": 1327,
+      "totalPopulation": 8665,
+      "malePopulation": 4261,
+      "femalePopulation": 4402,
       "medianAge": 52,
       "ageDistribution": [
         {
@@ -81286,39 +81742,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 65.3
+          "value": 72.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0.2
+          "value": 4.7
         },
         {
           "name": "Train",
-          "value": 11.3
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 9.4
+          "value": 0.2
         },
         {
           "name": "Ferry",
-          "value": 4.9
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
+          "value": 0.5
         },
         {
           "name": "Walking",
-          "value": 0.5
+          "value": 5.5
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 12.6
         },
         {
           "name": "Other",
-          "value": 0.5
+          "value": 3.6
         }
       ],
       "vehicleOwnership": [
@@ -81342,27 +81802,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 60.7,
-          "train": 10.7,
-          "bus": 10.9,
-          "active": 0.8,
-          "wfh": 0
+          "car": 73,
+          "train": 0.1,
+          "bus": 0.5,
+          "active": 9.1,
+          "wfh": 12.2
         },
         {
           "year": 2016,
-          "car": 63.5,
-          "train": 9.9,
-          "bus": 10.3,
-          "active": 0.8,
-          "wfh": 0
+          "car": 76.1,
+          "train": 0.1,
+          "bus": 0.3,
+          "active": 8.1,
+          "wfh": 11.2
         },
         {
           "year": 2021,
-          "car": 65.5,
-          "train": 11.3,
-          "bus": 9.4,
-          "active": 0.5,
-          "wfh": 0
+          "car": 77.6,
+          "train": 0,
+          "bus": 0.2,
+          "active": 6,
+          "wfh": 12.6
         }
       ],
       "ptPatronage": null,
@@ -81744,9 +82204,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_edward_river": {
     "demographics": {
-      "totalPopulation": 2445,
-      "malePopulation": 1018,
-      "femalePopulation": 1425,
+      "totalPopulation": 8456,
+      "malePopulation": 4170,
+      "femalePopulation": 4286,
       "medianAge": 46,
       "ageDistribution": [
         {
@@ -82011,39 +82471,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 67.8
+          "value": 74.6
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 4.6
         },
         {
           "name": "Train",
-          "value": 11.2
-        },
-        {
-          "name": "Bus",
-          "value": 8
-        },
-        {
-          "name": "Ferry",
-          "value": 4.4
-        },
-        {
-          "name": "Cycling",
-          "value": 0.1
-        },
-        {
-          "name": "Walking",
-          "value": 0.7
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.2
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.8
+        },
+        {
+          "name": "Walking",
+          "value": 4.9
+        },
+        {
+          "name": "Work from home",
+          "value": 12.3
+        },
+        {
           "name": "Other",
-          "value": 0.5
+          "value": 3.2
         }
       ],
       "vehicleOwnership": [
@@ -82067,19 +82531,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 67.8,
-          "train": 7.3,
-          "bus": 9.5,
-          "active": 0.8,
-          "wfh": 0
+          "car": 81.1,
+          "train": 0,
+          "bus": 0.1,
+          "active": 7.1,
+          "wfh": 8.2
         },
         {
           "year": 2021,
-          "car": 67.9,
-          "train": 11.2,
-          "bus": 8,
-          "active": 0.8,
-          "wfh": 0
+          "car": 79.3,
+          "train": 0,
+          "bus": 0.2,
+          "active": 5.7,
+          "wfh": 12.3
         }
       ],
       "ptPatronage": null,
@@ -82461,9 +82925,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_murray_river": {
     "demographics": {
-      "totalPopulation": 3763,
-      "malePopulation": 1602,
-      "femalePopulation": 2155,
+      "totalPopulation": 12850,
+      "malePopulation": 6409,
+      "femalePopulation": 6441,
       "medianAge": 49,
       "ageDistribution": [
         {
@@ -82720,39 +83184,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.5
+          "value": 71.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.5
         },
         {
           "name": "Train",
-          "value": 13.4
-        },
-        {
-          "name": "Bus",
-          "value": 9.9
-        },
-        {
-          "name": "Ferry",
-          "value": 4
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.7
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
-          "name": "Other",
+          "name": "Bus",
           "value": 0.5
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.7
+        },
+        {
+          "name": "Walking",
+          "value": 4.5
+        },
+        {
+          "name": "Work from home",
+          "value": 15
+        },
+        {
+          "name": "Other",
+          "value": 3.3
         }
       ],
       "vehicleOwnership": [
@@ -82776,19 +83244,19 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2016,
-          "car": 65.2,
-          "train": 10.5,
-          "bus": 9.9,
-          "active": 0.6,
-          "wfh": 0
+          "car": 77.3,
+          "train": 0.1,
+          "bus": 0.6,
+          "active": 6.4,
+          "wfh": 11.8
         },
         {
           "year": 2021,
-          "car": 63.8,
-          "train": 13.4,
-          "bus": 9.9,
-          "active": 0.9,
-          "wfh": 0
+          "car": 76.1,
+          "train": 0,
+          "bus": 0.5,
+          "active": 5.3,
+          "wfh": 15
         }
       ],
       "ptPatronage": null,
@@ -83170,9 +83638,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_hay": {
     "demographics": {
-      "totalPopulation": 840,
-      "malePopulation": 372,
-      "femalePopulation": 465,
+      "totalPopulation": 2882,
+      "malePopulation": 1448,
+      "femalePopulation": 1436,
       "medianAge": 48,
       "ageDistribution": [
         {
@@ -83429,39 +83897,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 63.8
+          "value": 68.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 5.9
         },
         {
           "name": "Train",
-          "value": 10.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 5.7
+          "value": 0
         },
         {
           "name": "Ferry",
-          "value": 8.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.9
         },
         {
+          "name": "Walking",
+          "value": 9.4
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 11.6
         },
         {
           "name": "Other",
-          "value": 1
+          "value": 3.4
         }
       ],
       "vehicleOwnership": [
@@ -83485,27 +83957,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 56,
-          "train": 7.5,
-          "bus": 10.9,
-          "active": 1.3,
-          "wfh": 0
+          "car": 70.7,
+          "train": 0,
+          "bus": 0.3,
+          "active": 13.3,
+          "wfh": 8.7
         },
         {
           "year": 2016,
-          "car": 59.1,
-          "train": 8.1,
-          "bus": 10,
-          "active": 0.6,
-          "wfh": 0
+          "car": 73.6,
+          "train": 0,
+          "bus": 0,
+          "active": 9.8,
+          "wfh": 9.2
         },
         {
           "year": 2021,
-          "car": 63.8,
-          "train": 10.7,
-          "bus": 5.7,
-          "active": 0.9,
-          "wfh": 0
+          "car": 74.6,
+          "train": 0,
+          "bus": 0,
+          "active": 10.3,
+          "wfh": 11.6
         }
       ],
       "ptPatronage": null,
@@ -83887,9 +84359,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_carrathool": {
     "demographics": {
-      "totalPopulation": 858,
-      "malePopulation": 388,
-      "femalePopulation": 468,
+      "totalPopulation": 2866,
+      "malePopulation": 1527,
+      "femalePopulation": 1343,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -84146,39 +84618,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 57.2
+          "value": 61.2
         },
         {
           "name": "Car (passenger)",
-          "value": 1.7
+          "value": 7.3
         },
         {
           "name": "Train",
-          "value": 14.4
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 5.8
+          "value": 1.8
         },
         {
           "name": "Ferry",
-          "value": 7.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
+          "name": "Walking",
+          "value": 8.2
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 15.5
         },
         {
           "name": "Other",
-          "value": 1.3
+          "value": 4.4
         }
       ],
       "vehicleOwnership": [
@@ -84202,27 +84678,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 52.3,
-          "train": 15,
-          "bus": 10.4,
-          "active": 0.8,
-          "wfh": 0
+          "car": 64.3,
+          "train": 0,
+          "bus": 0.7,
+          "active": 11.7,
+          "wfh": 17.1
         },
         {
           "year": 2016,
-          "car": 57.4,
-          "train": 13.1,
-          "bus": 7.2,
-          "active": 0.4,
-          "wfh": 0
+          "car": 68.6,
+          "train": 0,
+          "bus": 1.4,
+          "active": 9.3,
+          "wfh": 14.5
         },
         {
           "year": 2021,
-          "car": 58.9,
-          "train": 14.4,
-          "bus": 5.8,
-          "active": 0.3,
-          "wfh": 0
+          "car": 68.4,
+          "train": 0,
+          "bus": 1.8,
+          "active": 8.5,
+          "wfh": 15.5
         }
       ],
       "ptPatronage": null,
@@ -84588,9 +85064,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_lockhart": {
     "demographics": {
-      "totalPopulation": 889,
-      "malePopulation": 364,
-      "femalePopulation": 522,
+      "totalPopulation": 3319,
+      "malePopulation": 1649,
+      "femalePopulation": 1669,
       "medianAge": 46,
       "ageDistribution": [
         {
@@ -84847,39 +85323,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 59.4
+          "value": 64.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.5
+          "value": 3.3
         },
         {
           "name": "Train",
-          "value": 16.9
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.3
+          "value": 0.5
         },
         {
           "name": "Ferry",
-          "value": 7.2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.2
         },
         {
+          "name": "Walking",
+          "value": 7.8
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 18.4
         },
         {
           "name": "Other",
-          "value": 0.9
+          "value": 4.2
         }
       ],
       "vehicleOwnership": [
@@ -84903,27 +85383,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 51,
-          "train": 18,
-          "bus": 10.1,
-          "active": 0,
-          "wfh": 0
+          "car": 61.7,
+          "train": 0,
+          "bus": 0.9,
+          "active": 9.5,
+          "wfh": 20.5
         },
         {
           "year": 2016,
-          "car": 57.8,
-          "train": 15.8,
-          "bus": 9.4,
-          "active": 0.2,
-          "wfh": 0
+          "car": 67.8,
+          "train": 0,
+          "bus": 0.3,
+          "active": 9.3,
+          "wfh": 17.7
         },
         {
           "year": 2021,
-          "car": 59.9,
-          "train": 16.9,
-          "bus": 7.3,
-          "active": 0.2,
-          "wfh": 0
+          "car": 68,
+          "train": 0,
+          "bus": 0.5,
+          "active": 8,
+          "wfh": 18.4
         }
       ],
       "ptPatronage": null,
@@ -85305,9 +85785,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_broken_hill": {
     "demographics": {
-      "totalPopulation": 4145,
-      "malePopulation": 1837,
-      "femalePopulation": 2310,
+      "totalPopulation": 17588,
+      "malePopulation": 8565,
+      "femalePopulation": 9020,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -85564,39 +86044,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 70.2
+          "value": 80.1
         },
         {
           "name": "Car (passenger)",
-          "value": 0.1
+          "value": 7.5
         },
         {
           "name": "Train",
-          "value": 4.2
-        },
-        {
-          "name": "Bus",
-          "value": 11.7
-        },
-        {
-          "name": "Ferry",
-          "value": 3.7
-        },
-        {
-          "name": "Cycling",
-          "value": 0.2
-        },
-        {
-          "name": "Walking",
-          "value": 0.4
-        },
-        {
-          "name": "Work from home",
           "value": 0
         },
         {
+          "name": "Bus",
+          "value": 0.2
+        },
+        {
+          "name": "Ferry",
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 4.2
+        },
+        {
+          "name": "Work from home",
+          "value": 4.7
+        },
+        {
           "name": "Other",
-          "value": 0.3
+          "value": 2.4
         }
       ],
       "vehicleOwnership": [
@@ -85620,27 +86104,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 66.5,
-          "train": 2.3,
-          "bus": 11.4,
-          "active": 1.2,
-          "wfh": 0
+          "car": 85.2,
+          "train": 0,
+          "bus": 0.6,
+          "active": 7.4,
+          "wfh": 2.7
         },
         {
           "year": 2016,
-          "car": 70.5,
-          "train": 2.4,
-          "bus": 12.2,
-          "active": 0.6,
-          "wfh": 0
+          "car": 88,
+          "train": 0.1,
+          "bus": 0.7,
+          "active": 6,
+          "wfh": 2.7
         },
         {
           "year": 2021,
-          "car": 70.4,
-          "train": 4.2,
-          "bus": 11.7,
-          "active": 0.6,
-          "wfh": 0
+          "car": 87.6,
+          "train": 0,
+          "bus": 0.2,
+          "active": 4.7,
+          "wfh": 4.7
         }
       ],
       "ptPatronage": null,
@@ -86022,9 +86506,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_wentworth": {
     "demographics": {
-      "totalPopulation": 2011,
-      "malePopulation": 876,
-      "femalePopulation": 1137,
+      "totalPopulation": 7453,
+      "malePopulation": 3869,
+      "femalePopulation": 3584,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -86289,39 +86773,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 66.1
+          "value": 72.3
         },
         {
           "name": "Car (passenger)",
-          "value": 0.8
+          "value": 5.1
         },
         {
           "name": "Train",
-          "value": 12.5
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.6
+          "value": 0.9
         },
         {
           "name": "Ferry",
-          "value": 4.6
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.3
         },
         {
+          "name": "Walking",
+          "value": 5
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 13.7
         },
         {
           "name": "Other",
-          "value": 0.7
+          "value": 2.4
         }
       ],
       "vehicleOwnership": [
@@ -86345,27 +86833,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 64.3,
-          "train": 10.5,
-          "bus": 8.6,
-          "active": 0.2,
-          "wfh": 0
+          "car": 76.4,
+          "train": 0,
+          "bus": 1.3,
+          "active": 7.5,
+          "wfh": 11.7
         },
         {
           "year": 2016,
-          "car": 65.9,
-          "train": 9.8,
-          "bus": 8.8,
-          "active": 0.3,
-          "wfh": 0
+          "car": 78.4,
+          "train": 0,
+          "bus": 0.8,
+          "active": 6.1,
+          "wfh": 11.1
         },
         {
           "year": 2021,
-          "car": 66.9,
-          "train": 12.5,
-          "bus": 7.6,
-          "active": 0.3,
-          "wfh": 0
+          "car": 77.4,
+          "train": 0,
+          "bus": 0.9,
+          "active": 5.4,
+          "wfh": 13.7
         }
       ],
       "ptPatronage": null,
@@ -86747,9 +87235,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_balranald": {
     "demographics": {
-      "totalPopulation": 578,
-      "malePopulation": 247,
-      "femalePopulation": 329,
+      "totalPopulation": 2208,
+      "malePopulation": 1116,
+      "femalePopulation": 1098,
       "medianAge": 43,
       "ageDistribution": [
         {
@@ -86998,39 +87486,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 61.5
+          "value": 65.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.4
+          "value": 5.9
         },
         {
           "name": "Train",
-          "value": 12
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 6.5
-        },
-        {
-          "name": "Ferry",
-          "value": 9.7
-        },
-        {
-          "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.4
         },
         {
-          "name": "Work from home",
+          "name": "Ferry",
           "value": 0
         },
         {
+          "name": "Light rail",
+          "value": 0
+        },
+        {
+          "name": "Cycling",
+          "value": 0.4
+        },
+        {
+          "name": "Walking",
+          "value": 10.3
+        },
+        {
+          "name": "Work from home",
+          "value": 12.9
+        },
+        {
           "name": "Other",
-          "value": 1.3
+          "value": 3.8
         }
       ],
       "vehicleOwnership": [
@@ -87054,27 +87546,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 54.9,
-          "train": 11.4,
-          "bus": 9.7,
-          "active": 1.1,
-          "wfh": 0
+          "car": 69.3,
+          "train": 0.3,
+          "bus": 1.1,
+          "active": 11.9,
+          "wfh": 13
         },
         {
           "year": 2016,
-          "car": 61.5,
-          "train": 9.9,
-          "bus": 7,
-          "active": 0.6,
-          "wfh": 0
+          "car": 72.4,
+          "train": 0,
+          "bus": 0.3,
+          "active": 12.3,
+          "wfh": 10.8
         },
         {
           "year": 2021,
-          "car": 61.9,
-          "train": 12,
-          "bus": 6.5,
-          "active": 0.4,
-          "wfh": 0
+          "car": 71.6,
+          "train": 0,
+          "bus": 0.4,
+          "active": 10.8,
+          "wfh": 12.9
         }
       ],
       "ptPatronage": null,
@@ -87456,9 +87948,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_central_darling": {
     "demographics": {
-      "totalPopulation": 321,
-      "malePopulation": 143,
-      "femalePopulation": 178,
+      "totalPopulation": 1725,
+      "malePopulation": 876,
+      "femalePopulation": 846,
       "medianAge": 42,
       "ageDistribution": [
         {
@@ -87715,23 +88207,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 42.4
+          "value": 45.8
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 5.5
         },
         {
           "name": "Train",
-          "value": 23.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 5.3
+          "value": 0
         },
         {
           "name": "Ferry",
-          "value": 16.7
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -87739,15 +88235,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 18
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 25.6
         },
         {
           "name": "Other",
-          "value": 2.5
+          "value": 5.9
         }
       ],
       "vehicleOwnership": [
@@ -87771,27 +88267,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 38.5,
-          "train": 17.1,
-          "bus": 6.3,
-          "active": 1.3,
-          "wfh": 0
+          "car": 48,
+          "train": 0,
+          "bus": 0.8,
+          "active": 25.3,
+          "wfh": 18.7
         },
         {
           "year": 2016,
-          "car": 41,
-          "train": 17,
-          "bus": 4.3,
-          "active": 0.5,
-          "wfh": 0
+          "car": 50.5,
+          "train": 0,
+          "bus": 0.6,
+          "active": 22,
+          "wfh": 18.5
         },
         {
           "year": 2021,
-          "car": 42.4,
-          "train": 23.7,
-          "bus": 5.3,
-          "active": 0,
-          "wfh": 0
+          "car": 51.3,
+          "train": 0,
+          "bus": 0,
+          "active": 18,
+          "wfh": 25.6
         }
       ],
       "ptPatronage": null,
@@ -88173,9 +88669,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_bourke": {
     "demographics": {
-      "totalPopulation": 633,
-      "malePopulation": 271,
-      "femalePopulation": 362,
+      "totalPopulation": 2340,
+      "malePopulation": 1164,
+      "femalePopulation": 1178,
       "medianAge": 37,
       "ageDistribution": [
         {
@@ -88432,23 +88928,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 53.3
+          "value": 58.5
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 7
         },
         {
           "name": "Train",
-          "value": 12.8
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.7
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 11.3
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -88456,15 +88956,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 12.4
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 14
         },
         {
           "name": "Other",
-          "value": 1.8
+          "value": 7
         }
       ],
       "vehicleOwnership": [
@@ -88488,27 +88988,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 50.2,
-          "train": 9.7,
-          "bus": 7.4,
-          "active": 1.6,
-          "wfh": 0
+          "car": 63.1,
+          "train": 0,
+          "bus": 0.6,
+          "active": 20.7,
+          "wfh": 10.7
         },
         {
           "year": 2016,
-          "car": 55.7,
-          "train": 8.2,
-          "bus": 6.1,
-          "active": 1.3,
-          "wfh": 0
+          "car": 67.5,
+          "train": 0,
+          "bus": 0.3,
+          "active": 18.1,
+          "wfh": 8.9
         },
         {
           "year": 2021,
-          "car": 53.3,
-          "train": 12.8,
-          "bus": 7.7,
-          "active": 0,
-          "wfh": 0
+          "car": 65.5,
+          "train": 0,
+          "bus": 0.3,
+          "active": 12.4,
+          "wfh": 14
         }
       ],
       "ptPatronage": null,
@@ -88890,9 +89390,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_brewarrina": {
     "demographics": {
-      "totalPopulation": 291,
-      "malePopulation": 135,
-      "femalePopulation": 153,
+      "totalPopulation": 1356,
+      "malePopulation": 676,
+      "femalePopulation": 679,
       "medianAge": 36,
       "ageDistribution": [
         {
@@ -89149,23 +89649,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 47.5
+          "value": 52.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0
+          "value": 5.7
         },
         {
           "name": "Train",
-          "value": 11.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.2
+          "value": 0
         },
         {
           "name": "Ferry",
-          "value": 20.2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -89173,15 +89677,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 22.2
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 12.8
         },
         {
           "name": "Other",
-          "value": 1.8
+          "value": 5.9
         }
       ],
       "vehicleOwnership": [
@@ -89205,27 +89709,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 41.5,
-          "train": 10.5,
-          "bus": 6.1,
-          "active": 1,
-          "wfh": 0
+          "car": 52.8,
+          "train": 0,
+          "bus": 1.4,
+          "active": 29.9,
+          "wfh": 11.7
         },
         {
           "year": 2016,
-          "car": 46.8,
-          "train": 8.8,
-          "bus": 4.4,
-          "active": 0.8,
-          "wfh": 0
+          "car": 56.9,
+          "train": 0,
+          "bus": 1.5,
+          "active": 24.7,
+          "wfh": 9.5
         },
         {
           "year": 2021,
-          "car": 47.5,
-          "train": 11.7,
-          "bus": 7.2,
-          "active": 0,
-          "wfh": 0
+          "car": 57.9,
+          "train": 0,
+          "bus": 0,
+          "active": 22.2,
+          "wfh": 12.8
         }
       ],
       "ptPatronage": null,
@@ -89607,9 +90111,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_walgett": {
     "demographics": {
-      "totalPopulation": 1261,
-      "malePopulation": 589,
-      "femalePopulation": 670,
+      "totalPopulation": 5253,
+      "malePopulation": 2663,
+      "femalePopulation": 2592,
       "medianAge": 44,
       "ageDistribution": [
         {
@@ -89874,39 +90378,43 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 57.5
+          "value": 62.7
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 5.1
         },
         {
           "name": "Train",
-          "value": 13.6
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 7.3
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 10.2
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
-          "value": 0
-        },
-        {
-          "name": "Walking",
           "value": 0.7
         },
         {
+          "name": "Walking",
+          "value": 11.1
+        },
+        {
           "name": "Work from home",
-          "value": 0
+          "value": 14.8
         },
         {
           "name": "Other",
-          "value": 1.7
+          "value": 4.4
         }
       ],
       "vehicleOwnership": [
@@ -89930,27 +90438,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 50.8,
-          "train": 13.1,
-          "bus": 7.5,
-          "active": 0.8,
-          "wfh": 0
+          "car": 62.2,
+          "train": 0,
+          "bus": 0.5,
+          "active": 16.1,
+          "wfh": 14.6
         },
         {
           "year": 2016,
-          "car": 55.5,
-          "train": 12.5,
-          "bus": 6.5,
-          "active": 0.6,
-          "wfh": 0
+          "car": 66.4,
+          "train": 0.2,
+          "bus": 0.4,
+          "active": 13.5,
+          "wfh": 13.6
         },
         {
           "year": 2021,
-          "car": 57.8,
-          "train": 13.6,
-          "bus": 7.3,
-          "active": 0.7,
-          "wfh": 0
+          "car": 67.8,
+          "train": 0,
+          "bus": 0.3,
+          "active": 11.8,
+          "wfh": 14.8
         }
       ],
       "ptPatronage": null,
@@ -90332,9 +90840,9 @@ export const OFFICIAL_FALLBACKS = {
   },
   "lga_warren": {
     "demographics": {
-      "totalPopulation": 808,
-      "malePopulation": 356,
-      "femalePopulation": 455,
+      "totalPopulation": 2550,
+      "malePopulation": 1266,
+      "femalePopulation": 1279,
       "medianAge": 45,
       "ageDistribution": [
         {
@@ -90599,23 +91107,27 @@ export const OFFICIAL_FALLBACKS = {
       "journeyToWork": [
         {
           "name": "Car (driver)",
-          "value": 61.2
+          "value": 65.2
         },
         {
           "name": "Car (passenger)",
-          "value": 0.3
+          "value": 4.1
         },
         {
           "name": "Train",
-          "value": 16.7
+          "value": 0
         },
         {
           "name": "Bus",
-          "value": 4.4
+          "value": 0.3
         },
         {
           "name": "Ferry",
-          "value": 6.8
+          "value": 0
+        },
+        {
+          "name": "Light rail",
+          "value": 0
         },
         {
           "name": "Cycling",
@@ -90623,15 +91135,15 @@ export const OFFICIAL_FALLBACKS = {
         },
         {
           "name": "Walking",
-          "value": 0
+          "value": 7.2
         },
         {
           "name": "Work from home",
-          "value": 0
+          "value": 17.8
         },
         {
           "name": "Other",
-          "value": 1
+          "value": 3.8
         }
       ],
       "vehicleOwnership": [
@@ -90655,27 +91167,27 @@ export const OFFICIAL_FALLBACKS = {
       "modeShareTrend": [
         {
           "year": 2011,
-          "car": 57.1,
-          "train": 15.8,
-          "bus": 7.1,
-          "active": 0.4,
-          "wfh": 0
+          "car": 68.3,
+          "train": 0,
+          "bus": 0.3,
+          "active": 8.3,
+          "wfh": 17.5
         },
         {
           "year": 2016,
-          "car": 59.1,
-          "train": 15.5,
-          "bus": 7.4,
-          "active": 0.3,
-          "wfh": 0
+          "car": 68.8,
+          "train": 0,
+          "bus": 0,
+          "active": 8,
+          "wfh": 17
         },
         {
           "year": 2021,
-          "car": 61.5,
-          "train": 16.7,
-          "bus": 4.4,
-          "active": 0,
-          "wfh": 0
+          "car": 69.3,
+          "train": 0,
+          "bus": 0.3,
+          "active": 7.2,
+          "wfh": 17.8
         }
       ],
       "ptPatronage": null,

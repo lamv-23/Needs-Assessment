@@ -353,6 +353,46 @@ export async function getLiveDemographicsData(areaId: string, year: number): Pro
 
 // ─── Transport ────────────────────────────────────────────────────────────────
 
+const shareOf = (count: number, base: number) => Math.round((count / base) * 1000) / 10;
+
+/** Journey-to-work mode shares (%) from Census counts — shared by live data and bundled fallbacks. */
+export function journeyToWorkShares(jtw: JourneyToWorkData): TransportData['journeyToWork'] {
+  const t = journeyToWorkBase(jtw);
+  return [
+    { name: 'Car (driver)', value: shareOf(jtw.car_driver, t) },
+    { name: 'Car (passenger)', value: shareOf(jtw.car_passenger, t) },
+    { name: 'Train', value: shareOf(jtw.train, t) },
+    { name: 'Bus', value: shareOf(jtw.bus, t) },
+    { name: 'Ferry', value: shareOf(jtw.ferry, t) },
+    { name: 'Light rail', value: shareOf(jtw.tram, t) },
+    { name: 'Cycling', value: shareOf(jtw.bicycle, t) },
+    { name: 'Walking', value: shareOf(jtw.walked, t) },
+    { name: 'Work from home', value: shareOf(jtw.worked_home, t) },
+    { name: 'Other', value: shareOf(jtw.other, t) },
+  ];
+}
+
+/** Mode share trend across Census years; years with no data are skipped. */
+export function modeShareTrendPoints(
+  byYear: Record<number, JourneyToWorkData | null>,
+): TransportData['modeShareTrend'] {
+  return Object.entries(byYear)
+    .map(([year, jtw]) => ({ year: Number(year), jtw }))
+    .filter((e): e is { year: number; jtw: JourneyToWorkData } => !!e.jtw && journeyToWorkBase(e.jtw) > 0)
+    .sort((a, b) => a.year - b.year)
+    .map(({ year, jtw }) => {
+      const t = journeyToWorkBase(jtw);
+      return {
+        year,
+        car:    shareOf(jtw.car_driver + jtw.car_passenger, t),
+        train:  shareOf(jtw.train, t),
+        bus:    shareOf(jtw.bus, t),
+        active: shareOf(jtw.bicycle + jtw.walked, t),
+        wfh:    shareOf(jtw.worked_home, t),
+      };
+    });
+}
+
 export async function getLiveTransportData(areaId: string, year: number): Promise<LiveTransportResult> {
   const sample = getTransportData(areaId, year);
   const lgaCode = getLGACode(areaId);
@@ -367,20 +407,8 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
   if (lgaCode) {
     const jtw = await getABS<JourneyToWorkData>(lgaCode, 'G62');
     const jtwMeta = await getABSMeta(lgaCode, 'G62');
-    const t = jtw ? journeyToWorkBase(jtw) : 0;
-    if (jtw && t > 0) {
-      journeyToWork = [
-        { name: 'Car (driver)', value: Math.round((jtw.car_driver / t) * 1000) / 10 },
-        { name: 'Car (passenger)', value: Math.round((jtw.car_passenger / t) * 1000) / 10 },
-        { name: 'Train', value: Math.round((jtw.train / t) * 1000) / 10 },
-        { name: 'Bus', value: Math.round((jtw.bus / t) * 1000) / 10 },
-        { name: 'Ferry', value: Math.round((jtw.ferry / t) * 1000) / 10 },
-        { name: 'Light rail', value: Math.round((jtw.tram / t) * 1000) / 10 },
-        { name: 'Cycling', value: Math.round((jtw.bicycle / t) * 1000) / 10 },
-        { name: 'Walking', value: Math.round((jtw.walked / t) * 1000) / 10 },
-        { name: 'Work from home', value: Math.round((jtw.worked_home / t) * 1000) / 10 },
-        { name: 'Other', value: Math.round((jtw.other / t) * 1000) / 10 },
-      ];
+    if (jtw && journeyToWorkBase(jtw) > 0) {
+      journeyToWork = journeyToWorkShares(jtw);
       liveFields.push('journeyToWork');
       sources.push('ABS Census 2021');
       fetchedAt = jtwMeta?.fetchedAt ?? null;
@@ -404,24 +432,7 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     const g59 = await getABS<JourneyToWorkData>(lgaCode, 'G59');  // 2016 JTW
     const b46 = await getABS<JourneyToWorkData>(lgaCode, 'B46');  // 2011 JTW
 
-    const toPoint = (jtw: JourneyToWorkData, yr: number) => {
-      const t = journeyToWorkBase(jtw);
-      if (!t) return null;
-      return {
-        year: yr,
-        car:    Math.round(((jtw.car_driver + jtw.car_passenger) / t) * 1000) / 10,
-        train:  Math.round((jtw.train   / t) * 1000) / 10,
-        bus:    Math.round((jtw.bus     / t) * 1000) / 10,
-        active: Math.round(((jtw.bicycle + jtw.walked) / t) * 1000) / 10,
-        wfh:    Math.round((jtw.worked_home / t) * 1000) / 10,
-      };
-    };
-
-    const trendPoints = [
-      b46 ? toPoint(b46, 2011) : null,
-      g59 ? toPoint(g59, 2016) : null,
-      g62 ? toPoint(g62, 2021) : null,
-    ].filter(Boolean) as typeof modeShareTrend;
+    const trendPoints = modeShareTrendPoints({ 2011: b46, 2016: g59, 2021: g62 });
 
     if (trendPoints.length > 0) {
       modeShareTrend = trendPoints;

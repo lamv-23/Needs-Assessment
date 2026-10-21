@@ -380,49 +380,34 @@ export async function fetchG01(lgaCode: string): Promise<G01Data | null> {
 
   const data = parseSdmxXml(xml);
 
-  // Total population: SEXP=3 (Persons), PCHAR=S_1 (total), REGION=lgaCode
-  const totalPop = lookupValue(data, { SEXP: '3', PCHAR: 'S_1', REGION: lgaCode }, '2021');
-  if (totalPop === null) {
-    // LGA not found in this dataset
-    return null;
-  }
+  return decodeG01((pchar, sexp) => lookupValue(data, { SEXP: sexp, PCHAR: pchar, REGION: lgaCode }, '2021'));
+}
 
-  const malePop = lookupValue(data, { SEXP: '1', PCHAR: 'S_1', REGION: lgaCode }, '2021') ?? 0;
-  const femalePop = lookupValue(data, { SEXP: '2', PCHAR: 'S_1', REGION: lgaCode }, '2021') ?? 0;
+/**
+ * Map G01 PCHAR cells (codelist CL_C21_PCHAR01) to G01Data. `get(pchar, sexp)`
+ * returns the cell for SEXP 1 = male, 2 = female, 3 = persons.
+ * P_1 = total persons (S_1 is Year 12 completion, not a total);
+ * A_T = Aboriginal and/or Torres Strait Islander persons, total.
+ */
+export function decodeG01(get: (pchar: string, sexp: string) => number | null): G01Data | null {
+  const totalPop = get('P_1', '3');
+  if (totalPop === null) return null; // LGA not found in this dataset
 
-  // Age groups: SEXP=3, PCHAR=<age code>
   const ageGroups: Record<string, number> = {};
   for (const ageCode of AGE_PCHAR_CODES) {
-    const v = lookupValue(data, { SEXP: '3', PCHAR: ageCode, REGION: lgaCode }, '2021');
+    const v = get(ageCode, '3');
     if (v !== null) ageGroups[ageCode] = v;
   }
 
-  // Country of birth
-  // B_11 = Born in Australia, B_O = Born overseas (other)
-  const bornAustralia = lookupValue(data, { SEXP: '3', PCHAR: 'B_11', REGION: lgaCode }, '2021') ?? 0;
-  const bornOverseas = lookupValue(data, { SEXP: '3', PCHAR: 'B_O', REGION: lgaCode }, '2021') ?? 0;
-
-  // Language: L_1201 = Speaks English only
-  const speaksEnglishOnly = lookupValue(data, { SEXP: '3', PCHAR: 'L_1201', REGION: lgaCode }, '2021') ?? 0;
-
-  // Indigenous: I_1 = Aboriginal, I_2 = Torres Strait Islander, I_3 = Both, sum them
-  const indig = sumValues(data, { SEXP: '3', REGION: lgaCode }, '2021');
-  // Use a simpler approach - I_T for total indigenous if available
-  const indigenousTotal =
-    (lookupValue(data, { SEXP: '3', PCHAR: 'I_1', REGION: lgaCode }, '2021') ?? 0) +
-    (lookupValue(data, { SEXP: '3', PCHAR: 'I_2', REGION: lgaCode }, '2021') ?? 0) +
-    (lookupValue(data, { SEXP: '3', PCHAR: 'I_3', REGION: lgaCode }, '2021') ?? 0);
-  void indig; // suppress unused warning
-
   return {
     totalPopulation: Math.round(totalPop),
-    malePopulation: Math.round(malePop),
-    femalePopulation: Math.round(femalePop),
+    malePopulation: Math.round(get('P_1', '1') ?? 0),
+    femalePopulation: Math.round(get('P_1', '2') ?? 0),
     ageGroups,
-    bornOverseas: Math.round(bornOverseas),
-    bornAustralia: Math.round(bornAustralia),
-    speaksEnglishOnly: Math.round(speaksEnglishOnly),
-    indigenousPopulation: Math.round(indigenousTotal),
+    bornOverseas: Math.round(get('B_O', '3') ?? 0),
+    bornAustralia: Math.round(get('B_11', '3') ?? 0),
+    speaksEnglishOnly: Math.round(get('L_1201', '3') ?? 0),
+    indigenousPopulation: Math.round(get('A_T', '3') ?? 0),
   };
 }
 

@@ -5,16 +5,11 @@ import Header from '@/components/layout/Header';
 import ChartWrapper from '@/components/charts/ChartWrapper';
 import NeedsBarChart from '@/components/charts/BarChart';
 import { useAppStore } from '@/store';
-import { SAMPLE_AREAS, GREATER_SYDNEY_BENCHMARK } from '@/lib/data/sample-areas';
-import {
-  getDemographicsData,
-  getTransportData,
-  getEconomyData,
-} from '@/lib/data/sample-data';
+import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 import { getProjectionsForArea } from '@/lib/data/nsw-projections-data';
 import { formatNumber, formatPercent, formatCurrency, CHART_COLORS } from '@/lib/utils';
 import { getCarModeShare, getPTModeShare, getModeValue } from '@/lib/data/transport-helpers';
-import { TRANSPORT_DATA_NOTE } from '@/lib/data/tfnsw-transport';
+import { GREATER_SYDNEY_BENCHMARK_DATA as GSY } from '@/lib/data/greater-sydney-benchmark';
 import { Plus, X, ArrowUpRight, ArrowDownRight, Minus, Search } from 'lucide-react';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import { useMultiAreaData } from '@/hooks/useMultiAreaData';
@@ -92,21 +87,27 @@ export default function ComparePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAreas, selectedYear, multiData]);
 
-  const benchmarkData = useMemo(() => ({
-    demographics: getDemographicsData(GREATER_SYDNEY_BENCHMARK.id, selectedYear),
-    transport: getTransportData(GREATER_SYDNEY_BENCHMARK.id, selectedYear),
-    economy: getEconomyData(GREATER_SYDNEY_BENCHMARK.id, selectedYear),
-  }), [selectedYear]);
+  // Greater Sydney benchmark: exact sums of its LGAs' Census counts. Medians, SEIFA and
+  // unemployment are not additive, so they have no benchmark (shown as —).
+  const benchmark = {
+    totalPopulation: GSY.totalPopulation,
+    medianAge: GSY.medianAge ?? 0,
+    seifaScore: GSY.seifaScore ?? 0,
+    carDriverShare: getCarModeShare(GSY.journeyToWork),
+    ptShare: getPTModeShare(GSY.journeyToWork),
+    unemploymentRate: GSY.unemploymentRate ?? 0,
+    medianWeeklyIncome: GSY.medianWeeklyIncome ?? 0,
+  };
 
   const indicators = [
-    { label: 'Total Population (2021)', getValue: (d: typeof areasData[0]) => d.growth.pop2021 ?? d.demographics?.totalPopulation ?? 0, format: formatNumber, benchmark: benchmarkData.demographics.totalPopulation },
+    { label: 'Total Population (2021)', getValue: (d: typeof areasData[0]) => d.growth.pop2021 ?? d.demographics?.totalPopulation ?? 0, format: formatNumber, benchmark: benchmark.totalPopulation },
     { label: 'Projected Population (2041)', getValue: (d: typeof areasData[0]) => d.growth.pop2041 ?? 0, format: formatNumber, benchmark: 0 },
-    { label: 'Median Age', getValue: (d: typeof areasData[0]) => d.demographics?.medianAge ?? 0, format: (v: number) => v.toFixed(1), benchmark: benchmarkData.demographics.medianAge },
-    { label: 'SEIFA Score', getValue: (d: typeof areasData[0]) => d.demographics?.seifaScore ?? 0, format: (v: number) => v.toString(), benchmark: benchmarkData.demographics.seifaScore },
-    { label: 'Car Mode Share (%)', getValue: (d: typeof areasData[0]) => getCarModeShare(d.transport?.journeyToWork ?? []), format: (v: number) => formatPercent(v), benchmark: getCarModeShare(benchmarkData.transport.journeyToWork) },
-    { label: 'PT Mode Share (%)', getValue: (d: typeof areasData[0]) => getPTModeShare(d.transport?.journeyToWork ?? []), format: (v: number) => formatPercent(v), benchmark: getPTModeShare(benchmarkData.transport.journeyToWork) },
-    { label: 'Unemployment (%)', getValue: (d: typeof areasData[0]) => d.economy?.unemploymentRate ?? 0, format: (v: number) => formatPercent(v), benchmark: benchmarkData.economy.unemploymentRate },
-    { label: 'Median Income ($/wk)', getValue: (d: typeof areasData[0]) => d.economy?.medianWeeklyIncome ?? 0, format: (v: number) => formatCurrency(v), benchmark: benchmarkData.economy.medianWeeklyIncome },
+    { label: 'Median Age', getValue: (d: typeof areasData[0]) => d.demographics?.medianAge ?? 0, format: (v: number) => v.toFixed(1), benchmark: benchmark.medianAge },
+    { label: 'SEIFA Score', getValue: (d: typeof areasData[0]) => d.demographics?.seifaScore ?? 0, format: (v: number) => v.toString(), benchmark: benchmark.seifaScore },
+    { label: 'Car (driver) Mode Share (%)', getValue: (d: typeof areasData[0]) => getCarModeShare(d.transport?.journeyToWork ?? []), format: (v: number) => formatPercent(v), benchmark: benchmark.carDriverShare },
+    { label: 'PT Mode Share (%)', getValue: (d: typeof areasData[0]) => getPTModeShare(d.transport?.journeyToWork ?? []), format: (v: number) => formatPercent(v), benchmark: benchmark.ptShare },
+    { label: 'Unemployment (%)', getValue: (d: typeof areasData[0]) => d.economy?.unemploymentRate ?? 0, format: (v: number) => formatPercent(v), benchmark: benchmark.unemploymentRate },
+    { label: 'Median Income ($/wk)', getValue: (d: typeof areasData[0]) => d.economy?.medianWeeklyIncome ?? 0, format: (v: number) => formatCurrency(v), benchmark: benchmark.medianWeeklyIncome },
     { label: 'Median Rent ($/wk)', getValue: (d: typeof areasData[0]) => d.housing?.medianWeeklyRent ?? 0, format: (v: number) => formatCurrency(v), benchmark: 0 },
     { label: 'Projected Growth Rate (%/yr)', getValue: (d: typeof areasData[0]) => d.growth.projectedGrowthRate, format: (v: number) => formatPercent(v), benchmark: 0 },
   ];
@@ -184,11 +185,11 @@ export default function ComparePage() {
 
   const compareMeta = {
     source: anyLive
-      ? `ABS Census (${liveAreaNames.join(', ')}); Transport: ${TRANSPORT_DATA_NOTE}`
-      : `NSW DPE Population Projections; Transport: ${TRANSPORT_DATA_NOTE}; Demographics/economy: sample data`,
+      ? `ABS Census 2021 incl. journey to work (${liveAreaNames.join(', ')}); NSW DPE Population Projections`
+      : 'Bundled ABS Census 2021 snapshot; NSW DPE Population Projections',
     lastRefreshed: multiData[0]?.demographics.meta.lastRefreshed ?? null,
-    liveFields: anyLive ? ['population', 'medianAge', 'SEIFA', 'income', 'unemployment', 'rent'] : [],
-    sampleFields: anyLive ? ['transport mode share', 'commute time'] : ['all'],
+    liveFields: anyLive ? ['population', 'medianAge', 'SEIFA', 'income', 'unemployment', 'rent', 'journeyToWork'] : [],
+    sampleFields: anyLive ? [] : ['all'],
     hasLiveData: anyLive,
     hasPartialLive: anyLive,
   };
@@ -287,7 +288,9 @@ export default function ComparePage() {
                         )}
                       </th>
                     ))}
-                    <th className="text-right text-sm font-semibold text-gray-400 px-4 py-3">Benchmark</th>
+                    <th className="text-right text-sm font-semibold text-gray-400 px-4 py-3" title={GSY.definition}>
+                      Greater Sydney
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -317,7 +320,7 @@ export default function ComparePage() {
             {/* Mode Share Comparison Chart */}
             <ChartWrapper
               title="Journey to Work Mode Share Comparison"
-              subtitle={`Census ${selectedYear}`}
+              subtitle="ABS Census 2021, taken during the August 2021 COVID-19 lockdowns, so work-from-home is unusually high"
               data={modeShareComparison}
               dataKeys={['Car', 'Train', 'Bus', 'Active', 'WFH']}
             >
