@@ -19,6 +19,7 @@ import PageNav from '@/components/ui/PageNav';
 import { StatCardSkeleton } from '@/components/ui/Skeleton';
 import ServiceFrequencyPanel from '@/components/transport/ServiceFrequencyPanel';
 import TravelSurveyPanel from '@/components/transport/TravelSurveyPanel';
+import CommuteFlowsPanel from '@/components/transport/CommuteFlowsPanel';
 
 export default function TransportPage() {
   const { selectedArea, selectedYear } = useAppStore();
@@ -538,9 +539,10 @@ export default function TransportPage() {
                 </div>
               </ChartWrapper>
 
-              {/* Visual 4b/4c: GTFS peak service frequency + HTS all-purpose travel */}
+              {/* Visual 4b–4d: GTFS peak service frequency, HTS all-purpose travel, Census commuting flows */}
               <ServiceFrequencyPanel areaName={area.name} ptFrequency={data.ptFrequency} />
               <TravelSurveyPanel areaName={area.name} travelSurvey={data.travelSurvey} />
+              <CommuteFlowsPanel areaName={area.name} commuteFlows={data.commuteFlows} />
 
               {/* Visual 5: Traffic Volume vs Population Growth Index */}
               <ChartWrapper

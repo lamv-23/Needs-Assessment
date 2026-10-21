@@ -180,6 +180,8 @@ export default function DataTablesPage() {
               ['Share of stops frequent', transport.ptFrequency ? formatPercent(transport.ptFrequency.frequentStopShare) : 'N/A'],
               ['AM-peak departures per 1,000 residents', transport.ptFrequency?.departuresPer1000Residents ?? 'N/A'],
               ['HTS trips per resident per weekday', transport.travelSurvey?.tripsPerPerson ?? 'N/A'],
+              ['Residents who work in the LGA (Census)', transport.commuteFlows ? formatPercent(transport.commuteFlows.selfContainment) : 'N/A'],
+              ['Local jobs held by residents (Census)', transport.commuteFlows ? formatPercent(transport.commuteFlows.selfSufficiency) : 'N/A'],
             ].filter(Boolean) as [string, string | number][]}
           />
           <SimpleTable

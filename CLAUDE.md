@@ -44,6 +44,7 @@ npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.t
 | TfNSW transport static | **Modelled** mode share / commute / patronage trends 2019–2026 (not official — see header of `src/lib/data/tfnsw-transport.ts`) | `npm run seed:static` |
 | TfNSW GTFS schedule | Stops/routes per LGA + weekday 7–9am departures per stop (frequent = ≥8, i.e. ≥4/hr; school buses excluded) | `npm run seed:gtfs` — keyless complete bundle from Open Data (~300 MB, ~1 min), or per-feed API if `TFNSW_API_KEY` is set; `-- --zip <path>` to reuse a download |
 | TfNSW Household Travel Survey (all trips) | Mode share of all weekday trips, trip purpose, trips per resident — 45 Sydney GMA LGAs | `npm run parse:hts` regenerates bundled `src/lib/data/hts-lga-data.ts` |
+| ABS Census JTW flows (TableBuilder) | LGA of residence × LGA of workplace: self-containment, self-sufficiency, top destinations/origins. No open 2021 LGA→LGA file exists, so it needs a TableBuilder CSV export (spec in `scripts/parse-jtw-flows.ts`) | `npm run parse:jtw-flows -- <export.csv>` regenerates bundled `src/lib/data/jtw-flows-data.ts` (ships empty) |
 
 ### ABS LGA Codes (key ones)
 `lga_sydney→17200` `lga_parramatta→16260` `lga_blacktown→10750` `lga_penrith→16350`

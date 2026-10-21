@@ -16,6 +16,7 @@
     "parse:population": "node scripts/parse-projections.js",
     "parse:employment": "node scripts/parse-employment.js",
     "parse:hts": "tsx scripts/parse-hts.ts",
+    "parse:jtw-flows": "tsx scripts/parse-jtw-flows.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "seed:gtfs": "tsx scripts/seed-gtfs.ts",
