@@ -110,6 +110,45 @@ function splitCsvLine(line: string): string[] {
 }
 
 /**
+ * Line-at-a-time AM-peak departure counter for stop_times.txt, so very large
+ * feeds can be streamed. Feed it the header line first, then each data line.
+ * Trips missing from `tripService` (e.g. filtered-out school buses) are ignored.
+ */
+export function createPeakDepartureCounter(
+  tripService: Map<string, string>,
+  activeServices: Set<string>,
+): { addLine: (line: string) => void; counts: Map<string, number> } {
+  const counts = new Map<string, number>();
+  let tripIdx = -1;
+  let stopIdx = -1;
+  let depIdx = -1;
+  let headerSeen = false;
+
+  const addLine = (rawLine: string) => {
+    const line = rawLine.replace(/\r$/, '');
+    if (!headerSeen) {
+      const headers = splitCsvLine(line.replace(/^﻿/, '')).map(h => h.trim());
+      tripIdx = headers.indexOf('trip_id');
+      stopIdx = headers.indexOf('stop_id');
+      depIdx = headers.indexOf('departure_time');
+      headerSeen = true;
+      return;
+    }
+    if (!line || tripIdx < 0 || stopIdx < 0 || depIdx < 0) return;
+    const cols = splitCsvLine(line);
+    const serviceId = tripService.get(cols[tripIdx]?.trim());
+    if (!serviceId || !activeServices.has(serviceId)) return;
+    const t = parseGtfsTime(cols[depIdx]?.trim() ?? '');
+    if (!(t >= AM_PEAK_START_SECONDS && t < AM_PEAK_END_SECONDS)) return;
+    const stopId = cols[stopIdx]?.trim();
+    if (!stopId) return;
+    counts.set(stopId, (counts.get(stopId) ?? 0) + 1);
+  };
+
+  return { addLine, counts };
+}
+
+/**
  * stop_id → number of departures in the AM-peak window, counting only trips
  * whose service runs on the chosen date.
  */
@@ -118,27 +157,9 @@ export function countPeakDepartures(
   tripService: Map<string, string>,
   activeServices: Set<string>,
 ): Map<string, number> {
-  const counts = new Map<string, number>();
-  const lines = stopTimesText.replace(/^﻿/, '').split(/\r?\n/);
-  const headers = splitCsvLine(lines[0]).map(h => h.trim());
-  const tripIdx = headers.indexOf('trip_id');
-  const stopIdx = headers.indexOf('stop_id');
-  const depIdx = headers.indexOf('departure_time');
-  if (tripIdx < 0 || stopIdx < 0 || depIdx < 0) return counts;
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line) continue;
-    const cols = splitCsvLine(line);
-    const serviceId = tripService.get(cols[tripIdx]?.trim());
-    if (!serviceId || !activeServices.has(serviceId)) continue;
-    const t = parseGtfsTime(cols[depIdx]?.trim() ?? '');
-    if (!(t >= AM_PEAK_START_SECONDS && t < AM_PEAK_END_SECONDS)) continue;
-    const stopId = cols[stopIdx]?.trim();
-    if (!stopId) continue;
-    counts.set(stopId, (counts.get(stopId) ?? 0) + 1);
-  }
-  return counts;
+  const counter = createPeakDepartureCounter(tripService, activeServices);
+  for (const line of stopTimesText.split('\n')) counter.addLine(line);
+  return counter.counts;
 }
 
 /** Summarise AM-peak service for one LGA's stops. */

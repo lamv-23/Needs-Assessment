@@ -42,7 +42,8 @@ npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.t
 | NSW DPE bundled data | Population projections 2021–2041 by LGA | `npm run seed:static` (or `parse:population` then `seed:static`) |
 | TfNSW TZP24 bundled data | Employment projections 2021–2066 by LGA | `npm run seed:static` (or `parse:employment` then `seed:static`) |
 | TfNSW transport static | **Modelled** mode share / commute / patronage trends 2019–2026 (not official — see header of `src/lib/data/tfnsw-transport.ts`) | `npm run seed:static` |
-| TfNSW GTFS schedule | Stops/routes per LGA + weekday 7–9am departures per stop (frequent = ≥8, i.e. ≥4/hr) | `npm run seed:gtfs` (needs `TFNSW_API_KEY`) |
+| TfNSW GTFS schedule | Stops/routes per LGA + weekday 7–9am departures per stop (frequent = ≥8, i.e. ≥4/hr; school buses excluded) | `npm run seed:gtfs` — keyless complete bundle from Open Data (~300 MB, ~1 min), or per-feed API if `TFNSW_API_KEY` is set; `-- --zip <path>` to reuse a download |
+| TfNSW Household Travel Survey (all trips) | Mode share of all weekday trips, trip purpose, trips per resident — 45 Sydney GMA LGAs | `npm run parse:hts` regenerates bundled `src/lib/data/hts-lga-data.ts` |
 
 ### ABS LGA Codes (key ones)
 `lga_sydney→17200` `lga_parramatta→16260` `lga_blacktown→10750` `lga_penrith→16350`

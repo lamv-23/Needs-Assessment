@@ -7,18 +7,25 @@
  * Stored dataset keys: 'GTFS_COVERAGE' (GTFSCoverageData, see interface below)
  *                      'GTFS_FREQUENCY' (GTFSFrequencyData, see src/lib/gtfs-frequency.ts)
  *
- * Run:  npm run seed:gtfs
+ * Run:  npm run seed:gtfs                       # per-feed API if TFNSW_API_KEY is set,
+ *                                                # else the keyless complete bundle (~300 MB)
+ *       npm run seed:gtfs -- --zip <path.zip>   # use an already-downloaded complete bundle
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import AdmZip from 'adm-zip';
+import { execFileSync, spawn } from 'child_process';
+import { createInterface } from 'readline';
+import * as os from 'os';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point as turfPoint } from '@turf/helpers';
 import { upsertTfNSWCache, upsertGtfsStopsBatch, clearGtfsStops, setConfigValue } from '../src/lib/db';
 import type { GtfsStop } from '../src/lib/db';
 import { LGA_CODE_MAP } from '../src/lib/abs-fetchers';
-import { pickServiceDate, activeServiceIds, countPeakDepartures, summariseFrequency } from '../src/lib/gtfs-frequency';
+import { pickServiceDate, activeServiceIds, createPeakDepartureCounter, summariseFrequency } from '../src/lib/gtfs-frequency';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +51,7 @@ export interface GTFSCoverageData {
 // Extended codes: https://developers.google.com/transit/gtfs/reference/extended-route-types
 // TfNSW uses: 2=rail, 900=tram/lightrail, 700+=bus, 401=metro
 function routeTypeToMode(routeType: number, feedDefault: string): string {
+  if (routeType >= 200 && routeType <= 299) return 'busStops'; // coach services
   if (routeType === 2 || (routeType >= 100 && routeType <= 399)) return 'trainStops';
   if (routeType === 1 || (routeType >= 400 && routeType <= 599)) return 'metroStops';
   if (routeType === 3 || (routeType >= 700 && routeType <= 799)) return 'busStops';
@@ -141,12 +149,48 @@ async function downloadFeed(feedId: string): Promise<Buffer | null> {
   return buf;
 }
 
+// Keyless alternative to the per-feed API: the complete NSW GTFS bundle
+// (~300 MB zip, all operators incl. regional) from TfNSW Open Data.
+const COMPLETE_GTFS_PACKAGE_URL =
+  'https://opendata.transport.nsw.gov.au/data/api/3/action/package_show?id=timetables-complete-gtfs';
+
+async function downloadCompleteBundle(): Promise<string> {
+  const pkg = await fetch(COMPLETE_GTFS_PACKAGE_URL);
+  if (!pkg.ok) throw new Error(`CKAN package_show failed: HTTP ${pkg.status}`);
+  const { result } = await pkg.json() as { result: { resources: { url: string; format: string }[] } };
+  const resource = result.resources.find(r => /zip/i.test(r.format) || /\.zip$/i.test(r.url));
+  if (!resource) throw new Error('No GTFS zip resource in timetables-complete-gtfs');
+
+  const dest = path.join(os.tmpdir(), 'tfnsw_complete_gtfs.zip');
+  console.log(`  Downloading ${resource.url}\n  → ${dest} (~300 MB)...`);
+  const res = await fetch(resource.url);
+  if (!res.ok || !res.body) throw new Error(`GTFS bundle download failed: HTTP ${res.status}`);
+  await pipeline(Readable.fromWeb(res.body as import('stream/web').ReadableStream), fs.createWriteStream(dest));
+  return dest;
+}
+
 // ─── Load LGA polygons ────────────────────────────────────────────────────────
 
 interface LGAFeature {
   areaId: string;       // e.g. 'lga_sydney'
   lgaCode: string;      // e.g. '17200'
   feature: GeoJSON.Feature;
+  bbox: [number, number, number, number]; // minLon, minLat, maxLon, maxLat — cheap pre-filter
+}
+
+function featureBbox(feature: GeoJSON.Feature): [number, number, number, number] {
+  const box: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = (coords: unknown): void => {
+    if (Array.isArray(coords) && typeof coords[0] === 'number') {
+      const [x, y] = coords as number[];
+      box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y);
+      box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y);
+    } else if (Array.isArray(coords)) {
+      coords.forEach(visit);
+    }
+  };
+  visit((feature.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon).coordinates);
+  return box;
 }
 
 function loadLGAPolygons(): LGAFeature[] {
@@ -156,12 +200,37 @@ function loadLGAPolygons(): LGAFeature[] {
     const areaId = (feature.properties as Record<string, string>)['id'];
     const lgaCode = LGA_CODE_MAP[areaId];
     if (!lgaCode) continue; // benchmark areas without an ABS code
-    result.push({ areaId, lgaCode, feature });
+    result.push({ areaId, lgaCode, feature, bbox: featureBbox(feature) });
   }
   return result;
 }
 
 // ─── Spatial join ─────────────────────────────────────────────────────────────
+
+/** LGA whose boundary vertex is nearest the point, if within `maxMetres`. */
+function nearestLgaWithin(lon: number, lat: number, lgas: LGAFeature[], maxMetres: number): string | null {
+  const metresPerDegLat = 111_320;
+  const metresPerDegLon = metresPerDegLat * Math.cos((lat * Math.PI) / 180);
+  const padLat = maxMetres / metresPerDegLat;
+  const padLon = maxMetres / metresPerDegLon;
+  let best: { code: string; d: number } | null = null;
+  for (const lga of lgas) {
+    const [minX, minY, maxX, maxY] = lga.bbox;
+    if (lon < minX - padLon || lon > maxX + padLon || lat < minY - padLat || lat > maxY + padLat) continue;
+    const visit = (coords: unknown): void => {
+      if (Array.isArray(coords) && typeof coords[0] === 'number') {
+        const dx = ((coords[0] as number) - lon) * metresPerDegLon;
+        const dy = ((coords[1] as number) - lat) * metresPerDegLat;
+        const d = Math.hypot(dx, dy);
+        if (d <= maxMetres && (!best || d < best.d)) best = { code: lga.lgaCode, d };
+      } else if (Array.isArray(coords)) {
+        coords.forEach(visit);
+      }
+    };
+    visit((lga.feature.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon).coordinates);
+  }
+  return best ? (best as { code: string }).code : null;
+}
 
 function joinStopsToLGAs(
   stops: { lon: number; lat: number; stopId: string }[],
@@ -201,7 +270,15 @@ interface FeedResult {
   serviceDate: string | null;
 }
 
-function processFeedZip(feedId: string, defaultMode: string, buf: Buffer): FeedResult | null {
+// A feed is read either from an in-memory zip (per-feed API download) or from
+// a zip on disk via `unzip -p`, which lets the ~450 MB stop_times.txt of the
+// complete open bundle be streamed rather than held in memory as one string.
+interface FeedReader {
+  readText(name: string): Promise<string | null>;
+  lines(name: string): AsyncIterable<string> | null;
+}
+
+function bufferFeedReader(feedId: string, buf: Buffer): FeedReader | null {
   let zip: AdmZip;
   try {
     zip = new AdmZip(buf);
@@ -209,15 +286,45 @@ function processFeedZip(feedId: string, defaultMode: string, buf: Buffer): FeedR
     console.error(`  ✗ ${feedId}: failed to parse zip:`, err);
     return null;
   }
+  const readText = (name: string) => zip.getEntry(name)?.getData().toString('utf-8') ?? null;
+  return {
+    readText: async (name) => readText(name),
+    lines: (name) => {
+      const text = readText(name);
+      if (text === null) return null;
+      return (async function* () { yield* text.split('\n'); })();
+    },
+  };
+}
 
+function fileFeedReader(zipPath: string): FeedReader {
+  const entries = new Set(
+    execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf-8', maxBuffer: 16 * 1024 * 1024 }).split('\n').map(l => l.trim()),
+  );
+  return {
+    readText: async (name) => entries.has(name)
+      ? execFileSync('unzip', ['-p', zipPath, name], { encoding: 'utf-8', maxBuffer: 512 * 1024 * 1024 })
+      : null,
+    lines: (name) => {
+      if (!entries.has(name)) return null;
+      const child = spawn('unzip', ['-p', zipPath, name], { stdio: ['ignore', 'pipe', 'inherit'] });
+      return createInterface({ input: child.stdout, crlfDelay: Infinity });
+    },
+  };
+}
+
+// School buses run almost entirely in the AM/PM peaks and are not general
+// public service, so they are left out of frequency counts (not coverage).
+const SCHOOL_BUS_ROUTE_TYPE = 712;
+
+async function processFeed(feedId: string, defaultMode: string, reader: FeedReader): Promise<FeedResult | null> {
   // ── stops.txt ───────────────────────────────────────────────────────────────
-  const stopsEntry = zip.getEntry('stops.txt');
-  if (!stopsEntry) {
+  const stopsText = await reader.readText('stops.txt');
+  if (stopsText === null) {
     console.warn(`  ↳ ${feedId}: no stops.txt — skipping`);
     return null;
   }
-  const stopsText = stopsEntry.getData().toString('utf-8');
-  const stopsRows = parseCSV(stopsText);
+  const stopsRows = parseCSV(stopsText.replace(/^﻿/, ''));
   const stopsMap = new Map<string, { lat: number; lon: number; name: string }>();
   for (const row of stopsRows) {
     const lat = parseFloat(row['stop_lat']);
@@ -230,83 +337,87 @@ function processFeedZip(feedId: string, defaultMode: string, buf: Buffer): FeedR
   console.log(`  ↳ ${feedId}: ${stopsMap.size} stops`);
 
   // ── routes.txt ──────────────────────────────────────────────────────────────
-  const routesEntry = zip.getEntry('routes.txt');
+  const routesText = await reader.readText('routes.txt');
   const routesMap = new Map<string, number>();
-  if (routesEntry) {
-    const routesRows = parseCSV(routesEntry.getData().toString('utf-8').replace(/^\uFEFF/, ''));
-    for (const row of routesRows) {
+  if (routesText !== null) {
+    for (const row of parseCSV(routesText.replace(/^﻿/, ''))) {
       routesMap.set(row['route_id'], parseInt(row['route_type'] ?? '3', 10));
     }
     console.log(`  ↳ ${feedId}: ${routesMap.size} routes`);
   }
 
   // ── trips.txt ───────────────────────────────────────────────────────────────
-  // Build trip_id → route_id map (needed to link stop_times → routes)
-  const tripsEntry = zip.getEntry('trips.txt');
+  // trip_id → route_id links stop_times → routes; trip_id → service_id drives
+  // the frequency count (school bus trips excluded).
+  const tripsText = await reader.readText('trips.txt');
   const tripToRoute = new Map<string, string>();
   const tripService = new Map<string, string>();
-  if (tripsEntry) {
-    const tripsRows = parseCSV(tripsEntry.getData().toString('utf-8').replace(/^\uFEFF/, ''));
-    for (const row of tripsRows) {
+  if (tripsText !== null) {
+    for (const row of parseCSV(tripsText.replace(/^﻿/, ''))) {
       tripToRoute.set(row['trip_id'], row['route_id']);
-      tripService.set(row['trip_id'], row['service_id']);
+      if (routesMap.get(row['route_id']) !== SCHOOL_BUS_ROUTE_TYPE) {
+        tripService.set(row['trip_id'], row['service_id']);
+      }
     }
     console.log(`  ↳ ${feedId}: ${tripToRoute.size} trips`);
   }
 
-  // ── stop_times.txt ──────────────────────────────────────────────────────────
-  // Build stop_id → Set<route_id> map
-  // This file can be large (100MB+) — process line by line from buffer
+  // ── calendar → representative Tuesday for AM-peak frequency ────────────────
+  const readOptional = async (name: string) => {
+    const text = await reader.readText(name);
+    return text === null ? [] : parseCSV(text.replace(/^﻿/, ''));
+  };
+  const calendarRows = await readOptional('calendar.txt');
+  const calendarDateRows = await readOptional('calendar_dates.txt');
+  const serviceDate = pickServiceDate(calendarRows, calendarDateRows);
+  const counter = createPeakDepartureCounter(
+    tripService,
+    serviceDate ? activeServiceIds(calendarRows, calendarDateRows, serviceDate) : new Set(),
+  );
+  if (!serviceDate) console.warn(`  ↳ ${feedId}: no weekday service date found — frequency skipped`);
+
+  // ── stop_times.txt (streamed) ───────────────────────────────────────────────
+  // stop_id → Set<route_id>, plus AM-peak departures per stop, in one pass.
   const stopRoutes = new Map<string, Set<string>>();
-  let peakDepartures = new Map<string, number>();
-  let serviceDate: string | null = null;
-  const stopTimesEntry = zip.getEntry('stop_times.txt');
-  if (stopTimesEntry && tripToRoute.size > 0) {
-    const stText = stopTimesEntry.getData().toString('utf-8');
-
-    // ── AM-peak service frequency on a representative Tuesday ────────────────
-    const readOptional = (name: string) => {
-      const entry = zip.getEntry(name);
-      return entry ? parseCSV(entry.getData().toString('utf-8').replace(/^\uFEFF/, '')) : [];
-    };
-    const calendarRows = readOptional('calendar.txt');
-    const calendarDateRows = readOptional('calendar_dates.txt');
-    serviceDate = pickServiceDate(calendarRows, calendarDateRows);
-    if (serviceDate) {
-      const active = activeServiceIds(calendarRows, calendarDateRows, serviceDate);
-      peakDepartures = countPeakDepartures(stText, tripService, active);
-      console.log(`  ↳ ${feedId}: ${peakDepartures.size} stops with AM-peak departures on ${serviceDate}`);
-    } else {
-      console.warn(`  ↳ ${feedId}: no weekday service date found — frequency skipped`);
-    }
-
-    const lines = stText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-    // Strip BOM and quotes from header
-    const rawHeader = lines[0].replace(/^\uFEFF/, '');
-    const headers = rawHeader.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-    const stopIdIdx = headers.indexOf('stop_id');
-    const tripIdIdx = headers.indexOf('trip_id');
-    if (stopIdIdx >= 0 && tripIdIdx >= 0) {
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line) continue;
-        const cols = line.split(',');
-        const stopId = cols[stopIdIdx]?.trim().replace(/^"|"$/g, '');
-        const tripId = cols[tripIdIdx]?.trim().replace(/^"|"$/g, '');
-        if (!stopId || !tripId) continue;
-        const routeId = tripToRoute.get(tripId);
-        if (!routeId) continue;
-        let set = stopRoutes.get(stopId);
-        if (!set) { set = new Set(); stopRoutes.set(stopId, set); }
-        set.add(routeId);
+  const stopTimesLines = tripToRoute.size > 0 ? reader.lines('stop_times.txt') : null;
+  if (stopTimesLines) {
+    let stopIdIdx = -1;
+    let tripIdIdx = -1;
+    let isHeader = true;
+    for await (const rawLine of stopTimesLines) {
+      const line = rawLine.replace(/\r$/, '');
+      counter.addLine(line);
+      if (isHeader) {
+        const headers = line.replace(/^﻿/, '').split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        stopIdIdx = headers.indexOf('stop_id');
+        tripIdIdx = headers.indexOf('trip_id');
+        isHeader = false;
+        if (stopIdIdx < 0 || tripIdIdx < 0) {
+          console.warn(`  ↳ ${feedId}: stop_times.txt headers not recognised (got: ${headers.slice(0, 5).join(',')})`);
+        }
+        continue;
       }
-    } else {
-      console.warn(`  ↳ ${feedId}: stop_times.txt headers not recognised (got: ${headers.slice(0,5).join(',')})`);
+      if (!line || stopIdIdx < 0 || tripIdIdx < 0) continue;
+      const cols = line.split(',');
+      const stopId = cols[stopIdIdx]?.trim().replace(/^"|"$/g, '');
+      const tripId = cols[tripIdIdx]?.trim().replace(/^"|"$/g, '');
+      if (!stopId || !tripId) continue;
+      const routeId = tripToRoute.get(tripId);
+      if (!routeId) continue;
+      let set = stopRoutes.get(stopId);
+      if (!set) { set = new Set(); stopRoutes.set(stopId, set); }
+      set.add(routeId);
     }
     console.log(`  ↳ ${feedId}: stop_times processed (${stopRoutes.size} unique stops with routes)`);
+    if (serviceDate) {
+      console.log(`  ↳ ${feedId}: ${counter.counts.size} stops with AM-peak departures on ${serviceDate}`);
+    }
   }
 
-  return { feedId, defaultMode, stops: stopsMap, routes: routesMap, stopRoutes, peakDepartures, serviceDate };
+  return {
+    feedId, defaultMode, stops: stopsMap, routes: routesMap, stopRoutes,
+    peakDepartures: counter.counts, serviceDate: stopTimesLines ? serviceDate : null,
+  };
 }
 
 // ─── Aggregate per-LGA metrics ────────────────────────────────────────────────
@@ -396,26 +507,32 @@ async function main() {
     }
   }
 
-  if (!process.env.TFNSW_API_KEY) {
-    console.error('✗ TFNSW_API_KEY not set. Add it to .env.local and retry.\n');
-    process.exit(1);
-  }
-
   // Load LGA polygons
   console.log('Loading LGA polygons from public/geo/lga-nsw.json...');
   const lgas = loadLGAPolygons();
   console.log(`  ${lgas.length} LGAs loaded\n`);
 
-  // Download and process each GTFS feed
+  // Source: --zip <complete bundle>, else per-feed API (TFNSW_API_KEY), else the
+  // keyless complete bundle from TfNSW Open Data.
   const feedResults: FeedResult[] = [];
+  const args = process.argv.slice(2);
+  const zipArg = args.includes('--zip') ? args[args.indexOf('--zip') + 1] : null;
 
-  for (const feed of GTFS_FEEDS) {
-    console.log(`\n[${feed.name}]`);
-    const buf = await downloadFeed(feed.feedId);
-    if (!buf) continue;
-
-    const result = processFeedZip(feed.feedId, feed.defaultMode, buf);
+  if (zipArg || !process.env.TFNSW_API_KEY) {
+    const zipPath = zipArg ?? await downloadCompleteBundle();
+    console.log(`\n[Complete GTFS bundle: ${zipPath}]`);
+    const result = await processFeed('complete', 'bus', fileFeedReader(zipPath));
     if (result) feedResults.push(result);
+  } else {
+    for (const feed of GTFS_FEEDS) {
+      console.log(`\n[${feed.name}]`);
+      const buf = await downloadFeed(feed.feedId);
+      if (!buf) continue;
+
+      const reader = bufferFeedReader(feed.feedId, buf);
+      const result = reader ? await processFeed(feed.feedId, feed.defaultMode, reader) : null;
+      if (result) feedResults.push(result);
+    }
   }
 
   if (feedResults.length === 0) {
@@ -445,6 +562,8 @@ async function main() {
   for (const stop of allStops) {
     const pt = turfPoint([stop.lon, stop.lat]);
     for (const lga of lgas) {
+      const [minX, minY, maxX, maxY] = lga.bbox;
+      if (stop.lon < minX || stop.lon > maxX || stop.lat < minY || stop.lat > maxY) continue;
       if (booleanPointInPolygon(pt, lga.feature as GeoJSON.Feature<GeoJSON.Polygon | GeoJSON.MultiPolygon>)) {
         stopToLGA.set(stop.stopId, lga.lgaCode);
         break;
@@ -456,6 +575,28 @@ async function main() {
     }
   }
   process.stdout.write(`\r  100% (${allStops.length}/${allStops.length})\n`);
+
+  // Ferry wharves sit over water, outside the land-clipped LGA polygons. Assign
+  // unmatched ferry stops to the nearest LGA boundary within 400 m. Limited to
+  // ferry stops so cross-border (Vic/ACT/Qld) bus stops are not pulled in.
+  let wharvesAssigned = 0;
+  for (const stop of allStops) {
+    if (stopToLGA.has(stop.stopId)) continue;
+    const feed = feedResults[stop.feedIdx];
+    const rawStopId = stop.stopId.slice(stop.stopId.indexOf(':') + 1);
+    const routeIds = feed.stopRoutes.get(rawStopId);
+    const isFerry = routeIds && Array.from(routeIds).some(r => {
+      const t = feed.routes.get(r);
+      return t !== undefined && routeTypeToMode(t, feed.defaultMode) === 'ferryStops';
+    });
+    if (!isFerry) continue;
+    const lgaCode = nearestLgaWithin(stop.lon, stop.lat, lgas, 400);
+    if (lgaCode) {
+      stopToLGA.set(stop.stopId, lgaCode);
+      wharvesAssigned++;
+    }
+  }
+  if (wharvesAssigned > 0) console.log(`  ${wharvesAssigned} ferry wharves outside LGA land polygons assigned to the nearest LGA`);
 
   // Group stops by LGA and feed
   // lgaCode → feedIdx → stopId[]
