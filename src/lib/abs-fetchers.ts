@@ -670,22 +670,101 @@ export async function fetchG51(lgaCode: string): Promise<G51Data | null> {
 //
 // There is no usable G55 SDMX endpoint at LGA level; fetchG55 is not implemented.
 
+/**
+ * Journey-to-work counts by MAIN mode. Multi-method trips are attributed using
+ * the ABS hierarchy: any trip involving train → train; otherwise any trip
+ * involving bus → bus; remaining multi-method trips → other.
+ * The mode fields + worked_home + did_not_go_to_work + not_stated sum to total.
+ */
 export interface JourneyToWorkData {
   car_driver: number;
   car_passenger: number;
   train: number;
   bus: number;
   ferry: number;
-  tram: number;
+  tram: number; // tram / light rail
   bicycle: number;
   walked: number;
   worked_home: number;
   other: number;
+  /** Absent in cache rows written before the MTWP code fix. */
+  did_not_go_to_work?: number;
+  not_stated?: number;
   total: number;
 }
 
 /** @deprecated Use JourneyToWorkData */
 export type G55Data = JourneyToWorkData;
+
+/**
+ * Denominator for mode share: workers who travelled to work or worked at home
+ * (excludes "did not go to work" and "not stated").
+ */
+export function journeyToWorkBase(jtw: JourneyToWorkData): number {
+  return jtw.total - (jtw.did_not_go_to_work ?? 0) - (jtw.not_stated ?? 0);
+}
+
+/** MTWP code for each category in one Census vintage's codelist. */
+interface MtwpCodes {
+  train: string; bus: string; ferry: string; tram: string; taxi: string;
+  carDriver: string; carPassenger: string; truck: string; motorbike: string;
+  bicycle: string; other: string; walked: string;
+  trainAndOne: string; busAndOne: string; otherTwo: string;
+  trainAndTwo: string; busAndTwo: string; otherThree: string;
+  workedHome: string; didNotGo: string; notStated: string; total: string;
+}
+
+// Codes from the ABS codelists CL_C21_MTWP01, CL_C16_MTWP and CL_C11_MTWP
+// (data.api.abs.gov.au, checked 2026-10-22).
+export const MTWP_CODES_2021: MtwpCodes = {
+  train: '1', bus: '2', ferry: '3', tram: '4', taxi: '5',
+  carDriver: '6', carPassenger: '7', truck: '8', motorbike: '9',
+  bicycle: '10', other: '11', walked: '232',
+  trainAndOne: '1_T', busAndOne: '2_T', otherTwo: '_2O',
+  trainAndTwo: '1_2O', busAndTwo: '2_2O', otherThree: '_3O',
+  workedHome: '233', didNotGo: '234', notStated: '_N', total: '_T',
+};
+
+export const MTWP_CODES_2016: MtwpCodes = {
+  ...MTWP_CODES_2021,
+  trainAndOne: 'TA', busAndOne: 'BA', otherTwo: '2A',
+  trainAndTwo: 'T2', busAndTwo: 'B2', otherThree: '3OT',
+  notStated: 'Z', total: 'TOT',
+};
+
+export const MTWP_CODES_2011: MtwpCodes = {
+  ...MTWP_CODES_2016,
+  train: '001', bus: '002', ferry: '003', tram: '004', taxi: '005',
+  carDriver: '006', carPassenger: '007', truck: '008', motorbike: '009',
+  bicycle: '010', other: '011',
+};
+
+/** Map raw MTWP counts (via `get`) to main-mode journey-to-work counts. */
+export function decodeJourneyToWork(
+  get: (code: string) => number,
+  codes: MtwpCodes,
+): JourneyToWorkData | null {
+  const total = get(codes.total);
+  if (!total) return null;
+
+  const r = (n: number) => Math.round(n);
+  return {
+    car_driver:         r(get(codes.carDriver)),
+    car_passenger:      r(get(codes.carPassenger)),
+    train:              r(get(codes.train) + get(codes.trainAndOne) + get(codes.trainAndTwo)),
+    bus:                r(get(codes.bus) + get(codes.busAndOne) + get(codes.busAndTwo)),
+    ferry:              r(get(codes.ferry)),
+    tram:               r(get(codes.tram)),
+    bicycle:            r(get(codes.bicycle)),
+    walked:             r(get(codes.walked)),
+    worked_home:        r(get(codes.workedHome)),
+    other:              r(get(codes.taxi) + get(codes.truck) + get(codes.motorbike) + get(codes.other)
+                          + get(codes.otherTwo) + get(codes.otherThree)),
+    did_not_go_to_work: r(get(codes.didNotGo)),
+    not_stated:         r(get(codes.notStated)),
+    total:              r(total),
+  };
+}
 
 // ─── SEIFA ───────────────────────────────────────────────────────────────────
 
@@ -1064,24 +1143,8 @@ export async function fetchG34(lgaCode: string): Promise<VehicleData | null> {
   };
 }
 
-// ─── G62: Method of Travel to Work (corrected table) ─────────────────────────
-// Attempts C21_G62_LGA — the Census table for MTWP × sex.
-// Returns the same JourneyToWorkData type.
-//
-// Confirmed MTWP codes (verified against live API for Sydney LGA 17200, 2026-04-01):
-//   Hierarchical totals (include all trips using that mode, incl. combinations):
-//     T_1 = all car trips (driver or passenger, alone or combined)
-//     233 = all train trips (alone or combined with other modes)
-//     234 = all bus trips (alone or combined)
-//     232 = all ferry/tram/light rail trips (alone or combined)
-//   Single-mode codes:
-//     6   = car as driver only
-//     2   = car as passenger only
-//     5   = bicycle only
-//     10  = walked only
-//     14  = worked at home
-//     11  = taxi, 12 = ride-share, 13 = other
-//     _T  = total workers (all modes, grand total)
+// ─── G62: 2021 Census Method of Travel to Work (C21_G62_LGA) ────────────────
+// Dimension: MTWP (codelist CL_C21_MTWP01), SEXP=3 persons. See MTWP_CODES_2021.
 
 export async function fetchG62(lgaCode: string): Promise<JourneyToWorkData | null> {
   const url = `${ABS_BASE}/C21_G62_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
@@ -1093,53 +1156,13 @@ export async function fetchG62(lgaCode: string): Promise<JourneyToWorkData | nul
     lookupValue(data, { MTWP: mtwp, SEXP: '3', REGION: lgaCode }, '2021')
     ?? sumValues(data, { MTWP: mtwp, REGION: lgaCode }, '2021');
 
-  // Use hierarchical totals for PT modes (count all trips using that mode).
-  // Use single-mode codes for car driver, bicycle, walked, worked at home.
-  const car_driver    = get('6');   // car driver only (single mode)
-  const car_passenger = get('2');   // car passenger only (single mode)
-  const train         = get('233'); // hierarchical: all trips using train
-  const bus           = get('234'); // hierarchical: all trips using bus
-  const ferry         = get('232'); // hierarchical: all trips using ferry/tram/light rail
-  const tram          = 0;          // included in ferry (code 232) above
-  const bicycle       = get('5');
-  const walked        = get('10');
-  const worked_home   = get('14');
-  const other_raw     = get('11') + get('12') + get('13'); // taxi + ride-share + other
-  const total         = lookupValue(data, { MTWP: '_T', SEXP: '3', REGION: lgaCode }, '2021')
-    ?? sumValues(data, { MTWP: '_T', REGION: lgaCode }, '2021');
-
-  if (total === 0) return null;
-
-  return {
-    car_driver:    Math.round(car_driver),
-    car_passenger: Math.round(car_passenger),
-    train:         Math.round(train),
-    bus:           Math.round(bus),
-    ferry:         Math.round(ferry),
-    tram:          Math.round(tram),
-    bicycle:       Math.round(bicycle),
-    walked:        Math.round(walked),
-    worked_home:   Math.round(worked_home),
-    other:         Math.round(other_raw),
-    total:         Math.round(total),
-  };
+  return decodeJourneyToWork(get, MTWP_CODES_2021);
 }
 
 // ─── G59: 2016 Census Method of Travel to Work (ABS_C16_G59_LGA) ─────────────
 //
-// Dataset: ABS_C16_G59_LGA — Census 2016 LGA G59 Method of Travel to Work by Sex
-// Dimension: MTWP_C16 (region dim: LGA_2016, sex dim: SEX_ABS)
-//
-// Confirmed MTWP_C16 codes (verified against Sydney LGA 17200):
-//   6   = car, as driver
-//   2   = car, as passenger
-//   233 = train (hierarchical: all trips using train)
-//   234 = bus (hierarchical: all trips using bus)
-//   232 = ferry/tram/light rail (hierarchical)
-//   5   = bicycle only
-//   10  = walked only
-//   14  = worked at home
-//   TOT = total workers (grand total)
+// Dimension: MTWP_C16 (codelist CL_C16_MTWP), region dim: LGA_2016, sex dim: SEX_ABS.
+// See MTWP_CODES_2016.
 //
 // Module-level cache: parse the 21MB dataset once, reuse across all LGA calls.
 let _g59Data: Map<string, number> | null = null;
@@ -1156,38 +1179,13 @@ export async function fetchG59_2016(lgaCode: string): Promise<JourneyToWorkData 
     lookupValue(_g59Data!, { MTWP_C16: mtwp, SEX_ABS: '3', LGA_2016: lgaCode }, '2016')
     ?? sumValues(_g59Data!, { MTWP_C16: mtwp, LGA_2016: lgaCode }, '2016');
 
-  const total = get('TOT');
-  if (!total || total === 0) return null;
-
-  return {
-    car_driver:    Math.round(get('6')   ?? 0),
-    car_passenger: Math.round(get('2')   ?? 0),
-    train:         Math.round(get('233') ?? 0),
-    bus:           Math.round(get('234') ?? 0),
-    ferry:         Math.round(get('232') ?? 0),
-    tram:          0,
-    bicycle:       Math.round(get('5')   ?? 0),
-    walked:        Math.round(get('10')  ?? 0),
-    worked_home:   Math.round(get('14')  ?? 0),
-    other:         0,
-    total:         Math.round(total),
-  };
+  return decodeJourneyToWork(get, MTWP_CODES_2016);
 }
 
 // ─── B46: 2011 Census Method of Travel to Work (ABS_CENSUS2011_B46_LGA) ──────
 //
-// Dataset: ABS_CENSUS2011_B46_LGA — Census 2011 LGA B46 Method of Travel to Work by Sex
-// Dimension: MTWP (zero-padded), region dim: REGION (with REGIONTYPE=LGA2011), MEASURE=3 (persons total)
-//
-// Confirmed MTWP codes (verified against Sydney REGION 17200):
-//   006 = car, as driver
-//   002 = car, as passenger
-//   233 = train (hierarchical)
-//   234 = bus (hierarchical)
-//   232 = ferry/tram/light rail (hierarchical)
-//   005 = bicycle only
-//   010 = walked only
-//   TOT = total workers (grand total)
+// Dimension: MTWP (codelist CL_C11_MTWP, zero-padded), region dim: REGION
+// (REGIONTYPE=LGA2011), MEASURE=3 (persons). See MTWP_CODES_2011.
 //
 // Module-level cache: parse the 24MB dataset once, reuse across all LGA calls.
 let _b46Data: Map<string, number> | null = null;
@@ -1204,22 +1202,52 @@ export async function fetchB46_2011(lgaCode: string): Promise<JourneyToWorkData 
     lookupValue(_b46Data!, { MTWP: mtwp, MEASURE: '3', REGION: lgaCode }, '2011')
     ?? sumValues(_b46Data!, { MTWP: mtwp, REGION: lgaCode }, '2011');
 
-  const total = get('TOT');
-  if (!total || total === 0) return null;
+  return decodeJourneyToWork(get, MTWP_CODES_2011);
+}
 
-  return {
-    car_driver:    Math.round(get('006') ?? 0),
-    car_passenger: Math.round(get('002') ?? 0),
-    train:         Math.round(get('233') ?? 0),
-    bus:           Math.round(get('234') ?? 0),
-    ferry:         Math.round(get('232') ?? 0),
-    tram:          0,
-    bicycle:       Math.round(get('005') ?? 0),
-    walked:        Math.round(get('010') ?? 0),
-    worked_home:   0,
-    other:         0,
-    total:         Math.round(total),
-  };
+// ─── Commuting distance (Census 2016, ABS Data by Region) ─────────────────────
+//
+// Dataset: ABS_REGIONAL_LGA2020 — COMMUTE_2 = average, COMMUTE_3 = median
+// commuting distance (km) from place of usual residence. 2016 is the only Census
+// year published at LGA level (ABS_REGIONAL_LGA2021 has no LGA rows), so this is
+// the all-LGA fallback where the TfNSW Household Travel Survey has no coverage.
+// Fetched once as CSV (~80 KB) for all LGAs and cached in memory.
+
+export interface CommuteDistanceData {
+  avgKm: number | null;
+  medianKm: number | null;
+  censusYear: 2016;
+}
+
+let _commuteDistance: Map<string, CommuteDistanceData> | null = null;
+
+export async function fetchCommuteDistance2016(lgaCode: string): Promise<CommuteDistanceData | null> {
+  if (!_commuteDistance) {
+    const url = `${ABS_BASE}/ABS,ABS_REGIONAL_LGA2020/COMMUTE_2+COMMUTE_3....?format=csv`;
+    const csv = await fetchWithRetry(url);
+    if (!csv) return null;
+    _commuteDistance = parseCommuteDistanceCsv(csv);
+  }
+  return _commuteDistance.get(lgaCode) ?? null;
+}
+
+export function parseCommuteDistanceCsv(csv: string): Map<string, CommuteDistanceData> {
+  const lines = csv.replace(/\r/g, '').split('\n').filter(Boolean);
+  const headers = lines[0].split(',');
+  const iMeasure = headers.indexOf('MEASURE');
+  const iLga = headers.indexOf('LGA_2020');
+  const iValue = headers.indexOf('OBS_VALUE');
+  const out = new Map<string, CommuteDistanceData>();
+  for (const line of lines.slice(1)) {
+    const v = line.split(',');
+    const value = Number(v[iValue]);
+    if (!v[iLga] || !Number.isFinite(value)) continue;
+    const entry = out.get(v[iLga]) ?? { avgKm: null, medianKm: null, censusYear: 2016 as const };
+    if (v[iMeasure] === 'COMMUTE_2') entry.avgKm = value;
+    if (v[iMeasure] === 'COMMUTE_3') entry.medianKm = value;
+    out.set(v[iLga], entry);
+  }
+  return out;
 }
 
 // ─── G18: Core Activity Need for Assistance (Disability) ─────────────────────
@@ -1860,6 +1888,7 @@ export interface AllABSData {
   buildingApprovals: BuildingApprovalsData | null;
   g59: JourneyToWorkData | null;  // 2016 JTW (ABS_C16_G59_LGA)
   b46: JourneyToWorkData | null;  // 2011 JTW (ABS_CENSUS2011_B46_LGA)
+  commuteDistance2016: CommuteDistanceData | null;
 }
 
 export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData> {
@@ -1924,15 +1953,16 @@ export async function fetchAllABSDataForLGA(lgaCode: string): Promise<AllABSData
 
   // Batch 6: Historical JTW for mode share trend (2016 and 2011) plus
   // historical qualification datasets for education trend charts.
-  const [g59, b46, g49_2016] = await Promise.all([
+  const [g59, b46, g49_2016, commuteDistance2016] = await Promise.all([
     fetchG59_2016(lgaCode).catch(logWarn('G59')),
     fetchB46_2011(lgaCode).catch(logWarn('B46')),
     fetchG49_2016(lgaCode).catch(logWarn('G49_2016')),
+    fetchCommuteDistance2016(lgaCode).catch(logWarn('COMMUTE_DIST_2016')),
   ]);
 
   return {
     lgaCode, g01, g02, g33, b31_2011, g36, g51, g55, g46, g15, g49, g49_2016, seifa, labour, erp,
     g34, g62, g18, g33Income, g13, g09, g25, g60, housingStress, buildingApprovals,
-    g59, b46,
+    g59, b46, commuteDistance2016,
   };
 }

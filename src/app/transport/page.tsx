@@ -10,7 +10,6 @@ import NeedsLineChart from '@/components/charts/LineChart';
 import StackedBar from '@/components/charts/StackedBar';
 import NeedsRadarChart, { type RadarDataPoint } from '@/components/charts/RadarChart';
 import { useAppStore } from '@/store';
-import { getTransportMetricsForArea, getLatestTransportMetrics } from '@/lib/data/tfnsw-transport';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
 import { Clock, Train, Car, Bus, TrendingDown } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
@@ -27,10 +26,22 @@ export default function TransportPage() {
 
   const { transport: { data, meta }, isLoading } = useLiveData(areaId, year);
 
-  // Static TfNSW transport metrics (from bundled data until TfNSW API key is set)
-  const tfnswMetrics = getTransportMetricsForArea(areaId);
-  const hasTfnswData = tfnswMetrics.length > 0;
-  const latestTfnswMetrics = getLatestTransportMetrics(areaId);
+  // Official commute time (HTS) and station patronage (Opal) series
+  const commutePoints = (data.commuteTrend ?? [])
+    .filter((p) => p.reliability !== 'unreliable')
+    .map((p) => ({
+      year: p.reliability === 'use_with_caution' ? `${p.financialYear}*` : p.financialYear,
+      Minutes: p.avgMinutes,
+    }));
+  const hasCautionPoint = commutePoints.some((p) => p.year.endsWith('*'));
+  const latestCommuteYear = data.commuteTrend
+    ?.filter((p) => p.reliability !== 'unreliable')
+    .at(-1)?.financialYear;
+  const stationMonths = (data.stationPatronage?.months ?? []).map((m) => ({
+    month: m.month,
+    Entries: m.entries,
+    Exits: m.exits,
+  }));
 
   // Calculate car and PT mode shares from journey to work data
   const carModeShare = data.journeyToWork
@@ -38,7 +49,7 @@ export default function TransportPage() {
     .reduce((sum: number, m: { name: string; value: number }) => sum + m.value, 0);
 
   const ptModeShare = data.journeyToWork
-    .filter((m: { name: string; value: number }) => ['Train', 'Bus', 'Ferry'].includes(m.name))
+    .filter((m: { name: string; value: number }) => ['Train', 'Bus', 'Ferry', 'Light rail'].includes(m.name))
     .reduce((sum: number, m: { name: string; value: number }) => sum + m.value, 0);
 
   const activeModeShare = data.journeyToWork
@@ -146,22 +157,30 @@ export default function TransportPage() {
           <StatCardSkeleton count={5} />
         ) : (
           <div className="flex flex-wrap gap-4">
-            {data.avgCommute !== null && (
+            {data.avgCommute !== null ? (
               <StatCard
                 icon={Clock}
                 accentColor="emerald"
                 label="Average Commute Time"
                 value={`${data.avgCommute} min`}
-                subtitle="Latest available value"
+                subtitle={`TfNSW Household Travel Survey ${latestCommuteYear ?? ''}, weekday one-way`}
+              />
+            ) : data.commuteDistance2016?.avgKm != null && (
+              <StatCard
+                icon={Clock}
+                accentColor="emerald"
+                label="Average Commuting Distance"
+                value={`${data.commuteDistance2016.avgKm} km`}
+                subtitle={`ABS Census 2016${data.commuteDistance2016.medianKm != null ? `, median ${data.commuteDistance2016.medianKm} km` : ''}. No travel-time survey covers this LGA.`}
               />
             )}
-            {data.ptPatronage !== null && (
+            {data.ptPatronage !== null && data.stationPatronage && (
               <StatCard
                 icon={Train}
                 accentColor="emerald"
-                label="PT Patronage"
+                label="Station Entries per Resident"
                 value={formatNumber(data.ptPatronage)}
-                subtitle="Latest available value"
+                subtitle={`${formatNumber(data.stationPatronage.latest12mEntries)} rail, metro & light rail entries, ${data.stationPatronage.latest12mPeriod.from} to ${data.stationPatronage.latest12mPeriod.to} (TfNSW Opal)`}
               />
             )}
             <StatCard
@@ -194,7 +213,7 @@ export default function TransportPage() {
           <div data-section="mode-share" className="contents">
             <ChartWrapper
               title="Journey to Work — Mode Share"
-              subtitle="Percentage of workers by transport mode"
+              subtitle="Share of workers by main mode (ABS Census 2021, taken during the August 2021 COVID-19 lockdowns, so work-from-home is unusually high)"
               className="lg:col-span-2"
               data={data.journeyToWork}
               dataKeys={['value']}
@@ -209,17 +228,6 @@ export default function TransportPage() {
                 height={400}
               />
             </ChartWrapper>
-
-            {/* TfNSW data disclaimer */}
-            {hasTfnswData && (
-              <div className="lg:col-span-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                <span className="mt-0.5 shrink-0">⚠</span>
-                <span>
-                  Some trend charts use modelled estimates, not official data. Use them as a guide
-                  alongside the official source badges above.
-                </span>
-              </div>
-            )}
           </div>
 
           <div data-section="traffic-crash" className="contents">
@@ -277,81 +285,39 @@ export default function TransportPage() {
               </ChartWrapper>
             )}
 
-            {/* TfNSW Mode Share Trends - if available */}
-            {hasTfnswData && (
+            {/* Station patronage — TfNSW Opal station entries/exits */}
+            {stationMonths.length > 0 && (
               <ChartWrapper
-                title="Mode Share Trends (2019-2026)"
-                subtitle="Estimated travel mode mix over time"
+                title="Rail, Metro & Light Rail Station Entries"
+                subtitle={`Monthly Opal entries at ${data.stationPatronage?.stations.length ?? 0} stations in ${area.name} (TfNSW). Excludes bus and ferry.`}
                 className="lg:col-span-2"
-                data={tfnswMetrics.map(m => ({
-                  year: m.year,
-                  'Car': m.modeShareCar,
-                  'PT': m.modeSharePT,
-                  'Active': m.modeShareActive,
-                }))}
-                dataKeys={['Car', 'PT', 'Active']}
-                xAxisKey="year"
+                data={stationMonths}
+                dataKeys={['Entries', 'Exits']}
+                xAxisKey="month"
               >
                 <NeedsLineChart
-                  data={tfnswMetrics.map(m => ({
-                    year: m.year,
-                    'Car': m.modeShareCar,
-                    'PT': m.modeSharePT,
-                    'Active': m.modeShareActive,
-                  }))}
-                  dataKeys={['Car', 'PT', 'Active']}
-                  colors={[CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[5]]}
-                  xAxisKey="year"
-                  height={350}
+                  data={stationMonths}
+                  dataKeys={['Entries', 'Exits']}
+                  colors={[CHART_COLORS[2], CHART_COLORS[3]]}
+                  xAxisKey="month"
+                  height={320}
                 />
               </ChartWrapper>
             )}
 
-            {/* PT Patronage Trend - if available */}
-            {hasTfnswData && (
+            {/* Commute time — TfNSW Household Travel Survey */}
+            {commutePoints.length > 0 && (
               <ChartWrapper
-                title="PT Patronage Trend (2019-2026)"
-                subtitle="Trips per capita per day — historical"
+                title="Average Commute Time"
+                subtitle={`Average weekday one-way commute by residents, TfNSW Household Travel Survey${hasCautionPoint ? ' (* = use with caution: RSE 25–50%)' : ''}. No LGA estimates were released for 2020/21.`}
                 className="lg:col-span-2"
-                data={tfnswMetrics.map(m => ({
-                  year: m.year,
-                  'PT Patronage': m.ptPatronagePerCapita,
-                }))}
-                dataKeys={['PT Patronage']}
+                data={commutePoints}
+                dataKeys={['Minutes']}
                 xAxisKey="year"
               >
                 <NeedsLineChart
-                  data={tfnswMetrics.map(m => ({
-                    year: m.year,
-                    'PT Patronage': m.ptPatronagePerCapita,
-                  }))}
-                  dataKeys={['PT Patronage']}
-                  colors={[CHART_COLORS[2]]}
-                  xAxisKey="year"
-                  height={350}
-                />
-              </ChartWrapper>
-            )}
-
-            {/* Commute Time Trend - if available */}
-            {hasTfnswData && (
-              <ChartWrapper
-                title="Average Commute Time (2019-2026)"
-                subtitle="Estimated one-way travel time"
-                className="lg:col-span-2"
-                data={tfnswMetrics.map(m => ({
-                  year: m.year,
-                  'Commute Time': m.averageCommuteTime,
-                }))}
-                dataKeys={['Commute Time']}
-                xAxisKey="year"
-              >
-                <NeedsLineChart
-                  data={tfnswMetrics.map(m => ({
-                    year: m.year,
-                    'Commute Time': m.averageCommuteTime,
-                  }))}
-                  dataKeys={['Commute Time']}
+                  data={commutePoints}
+                  dataKeys={['Minutes']}
                   colors={[CHART_COLORS[1]]}
                   xAxisKey="year"
                   height={300}
@@ -364,7 +330,7 @@ export default function TransportPage() {
             {/* Mode Share Trend */}
             <ChartWrapper
               title="Mode Share Trend"
-              subtitle="Change in transport modes across census years"
+              subtitle="ABS Census 2011, 2016 and 2021 journey to work (2021 affected by COVID-19 lockdowns)"
               data={data.modeShareTrend.map((d: { year: number; car: number; train: number; bus: number; active: number; wfh: number }) => ({ ...d, name: String(d.year) }))}
               dataKeys={['car', 'train', 'bus', 'active', 'wfh']}
               xAxisKey="year"

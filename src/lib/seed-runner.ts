@@ -128,6 +128,9 @@ async function seedABS(lgaFilter?: string): Promise<void> {
       // New datasets
       if (data.g34) await seedRepository.upsertABSCache(lgaCode, 'G34', data.g34, 2021);
       if (data.g62) await seedRepository.upsertABSCache(lgaCode, 'G62', data.g62, 2021);
+      if (data.g59) await seedRepository.upsertABSCache(lgaCode, 'G59', data.g59, 2016);
+      if (data.b46) await seedRepository.upsertABSCache(lgaCode, 'B46', data.b46, 2011);
+      if (data.commuteDistance2016) await seedRepository.upsertABSCache(lgaCode, 'COMMUTE_DIST_2016', data.commuteDistance2016, 2016);
       if (data.g18) await seedRepository.upsertABSCache(lgaCode, 'G18', data.g18, 2021);
       if (data.g33Income) await seedRepository.upsertABSCache(lgaCode, 'G33_INCOME', data.g33Income, 2021);
       if (data.g13) await seedRepository.upsertABSCache(lgaCode, 'G13', data.g13, 2021);

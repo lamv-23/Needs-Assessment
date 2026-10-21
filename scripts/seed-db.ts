@@ -263,6 +263,10 @@ async function seedABSData(lgaFilter?: string): Promise<void> {
         upsertABSCache(lgaCode, 'G59', data.g59, 2016);
         process.stdout.write('G59 ✓ ');
       }
+      if (data.commuteDistance2016) {
+        upsertABSCache(lgaCode, 'COMMUTE_DIST_2016', data.commuteDistance2016, 2016);
+        process.stdout.write('COMMUTE_DIST_2016 ✓ ');
+      }
        if (data.b46) {
          upsertABSCache(lgaCode, 'B46', data.b46, 2011);
          process.stdout.write('B46 ✓ ');

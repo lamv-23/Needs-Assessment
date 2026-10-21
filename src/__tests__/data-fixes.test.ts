@@ -124,56 +124,17 @@ describe('Bug 3b fix: fetchG62 uses correct MTWP codes', () => {
     expect(typeof mod.fetchG62).toBe('function');
   });
 
-  it('fetchG62 source code uses hierarchical code 233 for train (not single-mode 7)', () => {
-    // Code 7 in ABS G62 is only ~1.2% in Sydney (not train).
-    // Code 233 is the hierarchical total for all train trips.
-    const fs = require('fs');
-    const path = require('path');
-    const src = fs.readFileSync(
-      path.join(__dirname, '../lib/abs-fetchers.ts'),
-      'utf-8',
-    );
-    // Should use 233 for train
-    expect(src).toMatch(/get\('233'\)/);
-    // Should NOT use code 7 for train
-    expect(src).not.toMatch(/train\s*=\s*get\('7'\)/);
-  });
-
-  it('fetchG62 source code uses 6 for car driver (not 1)', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const src = fs.readFileSync(
-      path.join(__dirname, '../lib/abs-fetchers.ts'),
-      'utf-8',
-    );
-    expect(src).toMatch(/car_driver\s*=\s*get\('6'\)/);
-    expect(src).not.toMatch(/car_driver\s*=\s*get\('1'\)/);
-  });
-
-  it('fetchG62 source code uses 234 for bus (not 6)', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const src = fs.readFileSync(
-      path.join(__dirname, '../lib/abs-fetchers.ts'),
-      'utf-8',
-    );
-    expect(src).toMatch(/get\('234'\)/);
-    expect(src).not.toMatch(/bus\s*=\s*get\('6'\)/);
-  });
-
-  it('fetchG62 source code uses 232 for ferry/tram/light rail (not 9)', () => {
-    const fs = require('fs');
-    const path = require('path');
-    const src = fs.readFileSync(
-      path.join(__dirname, '../lib/abs-fetchers.ts'),
-      'utf-8',
-    );
-    expect(src).toMatch(/get\('232'\)/);
-    expect(src).not.toMatch(/ferry\s*=\s*get\('9'\)/);
+  it('fetchG62 decodes with the official CL_C21_MTWP01 codes', () => {
+    // 232/233/234 are walked only / worked at home / did not go to work —
+    // they were previously misread as ferry / train / bus.
+    // Behavioural coverage lives in journey-to-work-codes.test.ts.
+    const { MTWP_CODES_2021 } = require('../lib/abs-fetchers');
+    expect(MTWP_CODES_2021).toMatchObject({
+      train: '1', bus: '2', ferry: '3', tram: '4', carDriver: '6', carPassenger: '7',
+      bicycle: '10', walked: '232', workedHome: '233', didNotGo: '234',
+    });
   });
 });
-
-// ─── Bug 3 fix: TfNSW data correctly labelled as modelled/estimated ────────────
 
 describe('Bug 3 fix: TfNSW static data disclaimer in TRANSPORT_DATA_NOTE', () => {
   it('TRANSPORT_DATA_NOTE export exists in tfnsw-transport module', () => {

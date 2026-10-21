@@ -311,7 +311,7 @@ export default function ProblemDefinitionPage() {
     .reduce((sum: number, m: { name: string; value: number }) => sum + m.value, 0);
 
   const ptModeShare = transportData.journeyToWork
-    .filter((m: { name: string; value: number }) => ['Train', 'Bus', 'Ferry'].includes(m.name))
+    .filter((m: { name: string; value: number }) => ['Train', 'Bus', 'Ferry', 'Light rail'].includes(m.name))
     .reduce((sum: number, m: { name: string; value: number }) => sum + m.value, 0);
 
   const activeModeShare = transportData.journeyToWork

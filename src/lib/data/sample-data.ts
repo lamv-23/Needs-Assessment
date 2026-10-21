@@ -23,8 +23,25 @@ export interface TransportData {
   journeyToWork: { name: string; value: number }[];
   vehicleOwnership: { name: string; value: number }[];
   modeShareTrend: { year: number; car: number; train: number; bus: number; active: number; wfh: number }[];
+  /** Annual rail, metro and light rail station entries per resident (TfNSW Opal). */
   ptPatronage: number | null;
+  /** Average weekday one-way commute time in minutes (TfNSW Household Travel Survey). */
   avgCommute: number | null;
+  commuteTrend?: {
+    financialYear: string;
+    avgMinutes: number;
+    avgKm: number | null;
+    reliability: 'reliable' | 'use_with_caution' | 'unreliable';
+  }[];
+  /** ABS Census 2016 commuting distance — the all-LGA fallback where HTS has no coverage. */
+  commuteDistance2016?: { avgKm: number | null; medianKm: number | null };
+  stationPatronage?: {
+    months: { month: string; entries: number; exits: number }[];
+    latest12mEntries: number;
+    latest12mPeriod: { from: string; to: string };
+    stations: { name: string; type: string; entries12m: number }[];
+    suppressedCells: number;
+  };
   trafficVolumeTrend?: { year: number; avgDailyVehicles: number; stationCount: number }[];
   crashTrend?: { year: number; totalCrashes: number; fatalCrashes: number; injuryCrashes: number }[];
   patronageSource?: {

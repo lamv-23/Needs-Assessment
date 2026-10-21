@@ -29,13 +29,17 @@ import {
   getEmploymentProjections,
   type EmploymentProjection,
 } from './nsw-employment-projections';
-import { LGA_CODE_MAP } from '../abs-fetchers';
+import { LGA_CODE_MAP, journeyToWorkBase } from '../abs-fetchers';
 import type {
   G01Data, G02Data, G33Data, G36Data, G51Data, JourneyToWorkData, SEIFAData, LabourData, ERPData,
   EducationData as G46Data, SchoolAttendanceData, QualificationData, HistoricalDwellingStructureData,
   VehicleData, DisabilityData, HouseholdIncomeData, LanguageData, BirthplaceData,
-  FamilyData, OccupationData, HousingStressData, BuildingApprovalsData,
+  FamilyData, OccupationData, HousingStressData, BuildingApprovalsData, CommuteDistanceData,
 } from '../abs-fetchers';
+import {
+  HTS_COMMUTE_DATASET, STATION_PATRONAGE_DATASET,
+  type HtsCommuteData, type StationPatronageData,
+} from '../tfnsw-official';
 import {
   normaliseBirthplaceData,
   normaliseLanguageData,
@@ -362,14 +366,15 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
   if (lgaCode) {
     const jtw = await getABS<JourneyToWorkData>(lgaCode, 'G62');
     const jtwMeta = await getABSMeta(lgaCode, 'G62');
-    if (jtw && jtw.total > 0) {
-      const t = jtw.total;
+    const t = jtw ? journeyToWorkBase(jtw) : 0;
+    if (jtw && t > 0) {
       journeyToWork = [
         { name: 'Car (driver)', value: Math.round((jtw.car_driver / t) * 1000) / 10 },
         { name: 'Car (passenger)', value: Math.round((jtw.car_passenger / t) * 1000) / 10 },
         { name: 'Train', value: Math.round((jtw.train / t) * 1000) / 10 },
         { name: 'Bus', value: Math.round((jtw.bus / t) * 1000) / 10 },
         { name: 'Ferry', value: Math.round((jtw.ferry / t) * 1000) / 10 },
+        { name: 'Light rail', value: Math.round((jtw.tram / t) * 1000) / 10 },
         { name: 'Cycling', value: Math.round((jtw.bicycle / t) * 1000) / 10 },
         { name: 'Walking', value: Math.round((jtw.walked / t) * 1000) / 10 },
         { name: 'Work from home', value: Math.round((jtw.worked_home / t) * 1000) / 10 },
@@ -399,7 +404,7 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     const b46 = await getABS<JourneyToWorkData>(lgaCode, 'B46');  // 2011 JTW
 
     const toPoint = (jtw: JourneyToWorkData, yr: number) => {
-      const t = jtw.total;
+      const t = journeyToWorkBase(jtw);
       if (!t) return null;
       return {
         year: yr,
@@ -486,8 +491,50 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     sampleFields.push('vehicleOwnership');
   }
 
+  // Commute time (HTS), commuting distance (ABS 2016) and station patronage (Opal)
+  let commuteTrend: TransportData['commuteTrend'];
+  let commuteDistance2016: TransportData['commuteDistance2016'];
+  let stationPatronage: TransportData['stationPatronage'];
+  if (lgaCode) {
+    const repo = getLiveDataRepository();
+    const hts = await repo.getTfNSWCacheEntry(lgaCode, HTS_COMMUTE_DATASET);
+    const htsData = hts ? parseCachedJson<HtsCommuteData>(hts.dataJson, `TfNSW dataset HTS_COMMUTE (${lgaCode})`) : null;
+    if (htsData?.latest) {
+      avgCommute = htsData.latest.avgMinutes;
+      commuteTrend = htsData.series.map(({ financialYear, avgMinutes, avgKm, reliability }) =>
+        ({ financialYear, avgMinutes, avgKm, reliability }));
+      liveFields.push('avgCommute', 'commuteTrend');
+      sources.push('TfNSW Household Travel Survey');
+    }
+
+    const dist = await getABS<CommuteDistanceData>(lgaCode, 'COMMUTE_DIST_2016');
+    if (dist && (dist.avgKm !== null || dist.medianKm !== null)) {
+      commuteDistance2016 = { avgKm: dist.avgKm, medianKm: dist.medianKm };
+      liveFields.push('commuteDistance2016');
+      if (!sources.includes('ABS Census 2016 (Data by Region)')) sources.push('ABS Census 2016 (Data by Region)');
+    }
+
+    const station = await repo.getTfNSWCacheEntry(lgaCode, STATION_PATRONAGE_DATASET);
+    const stationData = station
+      ? parseCachedJson<StationPatronageData>(station.dataJson, `TfNSW dataset STATION_PATRONAGE (${lgaCode})`)
+      : null;
+    if (stationData) {
+      const { source: _source, ...rest } = stationData;
+      stationPatronage = rest;
+      const erp = await getABS<ERPData>(lgaCode, 'ERP');
+      const population = erp ? erp.byYear[erp.latestYear] : 0;
+      if (population > 0) {
+        ptPatronage = Math.round((stationData.latest12mEntries / population) * 10) / 10;
+        liveFields.push('ptPatronage');
+      }
+      liveFields.push('stationPatronage');
+      sources.push('TfNSW Station Entries & Exits (Opal)');
+    }
+  }
+
   if (!liveFields.includes('modeShareTrend')) sampleFields.push('modeShareTrend');
-  if (!liveFields.includes('avgCommute')) sampleFields.push('avgCommute', 'ptPatronage');
+  if (!liveFields.includes('avgCommute')) sampleFields.push('avgCommute');
+  if (!liveFields.includes('ptPatronage')) sampleFields.push('ptPatronage');
 
   // GTFS PT coverage from tfnsw_cache
   let ptStops: TransportData['ptStops'];
@@ -530,7 +577,10 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
       vehicleOwnershipRaw,
       modeShareTrend,
       avgCommute,
+      commuteTrend,
+      commuteDistance2016,
       ptPatronage,
+      stationPatronage,
       trafficVolumeTrend,
       crashTrend,
       patronageSource,
