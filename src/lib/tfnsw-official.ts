@@ -219,22 +219,31 @@ export function stationMatchKey(name: string): string {
 }
 
 /**
- * LGA for stations missing from the seeded GTFS stops (newer light rail lines
- * and Gadigal metro). Codes are ABS 2021 LGA codes. Keyed by stationMatchKey().
+ * Explicit station → LGA assignments, applied before the GTFS location lookup.
+ * Covers stations whose GTFS name differs from the Opal name (or that are absent
+ * from older GTFS seeds), and stations that sit on a simplified LGA boundary.
+ * Codes are ABS 2021 LGA codes. Keyed by stationMatchKey().
  */
 const SYDNEY = '17200';
 const RANDWICK = '16550';
 const PARRAMATTA = '16260';
 const NEWCASTLE = '15900';
+const BAYSIDE = '10500';
+const BLUE_MOUNTAINS = '10900';
 export const STATION_LGA_OVERRIDES: Record<string, string> = {
   // Sydney Metro
   'gadigal station': SYDNEY,
+  // Sydney Trains — GTFS names "Domestic/International Airport Station"
+  'domestic station': BAYSIDE, 'international station': BAYSIDE,
+  // On the Blue Mountains / Penrith boundary of the simplified LGA polygons
+  'lapstone station': BLUE_MOUNTAINS,
+  // NSW TrainLink / Hunter Line
+  'newcastle interchange station': NEWCASTLE,
   // L2 / L3 Sydney CBD & South East
   'bridge street light rail': SYDNEY, 'central chalmers street light rail': SYDNEY,
   'chinatown light rail': SYDNEY, 'circular quay light rail': SYDNEY,
   'haymarket light rail': SYDNEY, 'qvb light rail': SYDNEY, 'town hall light rail': SYDNEY,
-  'wynyard light rail': SYDNEY, 'surry hills light rail': SYDNEY, 'crown street light rail': SYDNEY,
-  'moore park light rail': SYDNEY,
+  'wynyard light rail': SYDNEY, 'surry hills light rail': SYDNEY, 'moore park light rail': SYDNEY,
   'es marks light rail': RANDWICK, 'kensington light rail': RANDWICK, 'kingsford light rail': RANDWICK,
   'randwick light rail': RANDWICK, 'royal randwick light rail': RANDWICK,
   'unsw anzac parade light rail': RANDWICK, 'unsw high street light rail': RANDWICK,
@@ -242,7 +251,7 @@ export const STATION_LGA_OVERRIDES: Record<string, string> = {
   // L1 Dulwich Hill (Pyrmont stops)
   'convention light rail': SYDNEY, 'fish market light rail': SYDNEY,
   // Newcastle Light Rail
-  'civic light rail': NEWCASTLE, 'honeysuckle light rail': NEWCASTLE,
+  'civic light rail': NEWCASTLE, 'crown street light rail': NEWCASTLE, 'honeysuckle light rail': NEWCASTLE,
   'newcastle beach light rail': NEWCASTLE, 'newcastle interchange light rail': NEWCASTLE,
   'queens wharf light rail': NEWCASTLE,
   // L4 Parramatta Light Rail

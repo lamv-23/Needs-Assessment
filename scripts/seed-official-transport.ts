@@ -129,13 +129,10 @@ async function seedStationPatronage(): Promise<void> {
   const unmatched: string[] = [];
   for (const station of Array.from(new Set(rows.map((r) => r.station)))) {
     const key = stationMatchKey(station);
+    const override = STATION_LGA_OVERRIDES[key];
+    if (override) { stationLga.set(station, override); continue; }
     const loc = stops.get(key);
-    if (!loc) {
-      const override = STATION_LGA_OVERRIDES[key] ?? null;
-      stationLga.set(station, override);
-      if (!override) unmatched.push(station);
-      continue;
-    }
+    if (!loc) { unmatched.push(station); stationLga.set(station, null); continue; }
     const pt = turfPoint([loc.lng, loc.lat]);
     const lga = polygons.find((p) => booleanPointInPolygon(pt, p.feature));
     stationLga.set(station, lga?.lgaCode ?? null);
