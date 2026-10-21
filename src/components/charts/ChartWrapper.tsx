@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { Download, ChevronDown, Clipboard, Check, ChevronUp } from 'lucide-react';
@@ -50,6 +50,12 @@ export default function ChartWrapper({
   const [exporting, setExporting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  // Detected after mount: `navigator` doesn't exist during SSR, so checking it
+  // while rendering made server and client HTML differ (hydration error).
+  const [clipboardSupported, setClipboardSupported] = useState(false);
+  useEffect(() => {
+    setClipboardSupported(!!navigator.clipboard);
+  }, []);
 
   const captureCanvas = async () => {
     if (!chartRef.current) return null;
@@ -114,7 +120,6 @@ export default function ChartWrapper({
   };
 
   const hasExcelData = data && data.length > 0;
-  const clipboardSupported = typeof navigator !== 'undefined' && !!navigator.clipboard;
 
   return (
     <div
