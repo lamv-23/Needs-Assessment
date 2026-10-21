@@ -25,7 +25,8 @@ import { point as turfPoint } from '@turf/helpers';
 import { upsertTfNSWCache, upsertGtfsStopsBatch, clearGtfsStops, setConfigValue } from '../src/lib/db';
 import type { GtfsStop } from '../src/lib/db';
 import { LGA_CODE_MAP } from '../src/lib/abs-fetchers';
-import { pickServiceDate, activeServiceIds, createPeakDepartureCounter, summariseFrequency } from '../src/lib/gtfs-frequency';
+import { pickServiceDate, activeServiceIds, createPeakDepartureCounter, summariseFrequency, frequencyBenchmarks } from '../src/lib/gtfs-frequency';
+import { SAMPLE_AREAS } from '../src/lib/data/sample-areas';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -746,12 +747,25 @@ async function main() {
     const tally = new Map<string, number>();
     for (const d of serviceDates) tally.set(d, (tally.get(d) ?? 0) + 1);
     const serviceDate = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const greaterSydneyCodes = new Set(
+      SAMPLE_AREAS.filter(a => a.region === 'Greater Sydney' && LGA_CODE_MAP[a.id]).map(a => LGA_CODE_MAP[a.id]),
+    );
+    const { greaterSydney, nsw } = frequencyBenchmarks(lgaFrequencyStops, allPeakDepartures, serviceDate, code => greaterSydneyCodes.has(code));
+    const benchmarks = {
+      greaterSydneyFrequentStopShare: greaterSydney.frequentStopShare,
+      nswFrequentStopShare: nsw.frequentStopShare,
+    };
+    const year = new Date().getFullYear();
     let frequencyUpserted = 0;
     for (const [lgaCode, stops] of lgaFrequencyStops) {
-      upsertTfNSWCache(lgaCode, 'GTFS_FREQUENCY', summariseFrequency(stops, allPeakDepartures, serviceDate), new Date().getFullYear());
+      upsertTfNSWCache(lgaCode, 'GTFS_FREQUENCY', { ...summariseFrequency(stops, allPeakDepartures, serviceDate), benchmarks }, year);
       frequencyUpserted++;
     }
+    // Benchmark areas get the pooled summaries themselves.
+    if (LGA_CODE_MAP.benchmark_gsy) upsertTfNSWCache(LGA_CODE_MAP.benchmark_gsy, 'GTFS_FREQUENCY', { ...greaterSydney, benchmarks }, year);
+    if (LGA_CODE_MAP.benchmark_nsw) upsertTfNSWCache(LGA_CODE_MAP.benchmark_nsw, 'GTFS_FREQUENCY', { ...nsw, benchmarks }, year);
     console.log(`  ✅ ${frequencyUpserted} LGAs with AM-peak frequency data stored in tfnsw_cache (service date ${serviceDate})`);
+    console.log(`     Frequent-stop share: Greater Sydney ${greaterSydney.frequentStopShare}%, NSW ${nsw.frequentStopShare}%`);
   }
 
   setConfigValue('tfnsw_last_refresh', new Date().toISOString());

@@ -11,6 +11,7 @@ import StackedBar from '@/components/charts/StackedBar';
 import NeedsRadarChart, { type RadarDataPoint } from '@/components/charts/RadarChart';
 import { useAppStore } from '@/store';
 import { formatNumber, formatPercent, CHART_COLORS } from '@/lib/utils';
+import { describeStopsVsUse, pickFrequencyBenchmark } from '@/lib/data/transport-helpers';
 import { Clock, Train, Car, Bus, TrendingDown } from 'lucide-react';
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
@@ -128,8 +129,26 @@ export default function TransportPage() {
   const cycleKm = infraData.find((i) => i.feature_type === 'CycleTrack')?.total_length_km ?? 0;
   const latestTrafficIdx = trafficPopData.length >= 2 ? trafficPopData[trafficPopData.length - 1]['Traffic Index'] : 100;
 
+  // PT use: HTS all-trips share (post-COVID) where surveyed, else Census 2021
+  // journey to work (taken during lockdowns).
+  const htsPtShare = data.travelSurvey?.modes.find((m) => m.mode === 'publicTransport')?.modeShare;
+  const ptUse = htsPtShare !== undefined && data.travelSurvey
+    ? { share: htsPtShare, title: 'PT share of all weekday trips', source: `TfNSW Household Travel Survey ${data.travelSurvey.latestYear}`, label: `of all weekday trips (HTS ${data.travelSurvey.latestYear})` }
+    : { share: ptModeShare, title: 'PT commute mode share', source: 'ABS Census 2021 journey-to-work', label: 'of journeys to work (Census 2021)' };
+
+  // PT axis: share of stops with 4+ departures/hr 7–9am (GTFS) against the
+  // measured Greater Sydney share; falls back to the stop-count proxy.
+  const ptFrequency = data.ptFrequency;
+  const ptRadarPoint: RadarDataPoint = ptFrequency
+    ? {
+        axis: 'PT Frequency',
+        value: Math.round(ptFrequency.frequentStopShare),
+        benchmark: Math.round(ptFrequency.benchmarks?.greaterSydneyFrequentStopShare ?? 50),
+      }
+    : { axis: 'PT Coverage', value: Math.min(100, Math.round(ptStopDensity / 3)), benchmark: 50 };
+
   const radarData: RadarDataPoint[] = [
-    { axis: 'PT Coverage', value: Math.min(100, Math.round(ptStopDensity / 3)), benchmark: 50 },
+    ptRadarPoint,
     { axis: 'PT Reliability', value: avgReliability || 0, benchmark: 80 },
     { axis: 'Commute Competitiveness', value: commuteCompetitiveness, benchmark: 50 },
     { axis: 'Active Safety', value: liveCrashTrend.length > 0 ? Math.max(0, 100 - Math.round(liveCrashTrend[liveCrashTrend.length - 1].totalCrashes / 10)) : 50, benchmark: 60 },
@@ -478,8 +497,8 @@ export default function TransportPage() {
               {/* Visual 4: PT Stop Density vs Mode Share */}
               <ChartWrapper
                 title="PT Stop Density vs Mode Share"
-                subtitle="How stop coverage compares with public transport use"
-                data={[{ name: area.name, stops: ptStopDensity, modeShare: ptModeShare }]}
+                subtitle="How stop coverage and peak frequency compare with public transport use"
+                data={[{ name: area.name, stops: ptStopDensity, modeShare: ptUse.share }]}
                 dataKeys={['stops', 'modeShare']}
               >
                 <div className="space-y-3 p-2">
@@ -490,17 +509,20 @@ export default function TransportPage() {
                       <div className="text-xs text-slate-500 mt-0.5">Train + Bus + Ferry + Light Rail + Metro</div>
                     </div>
                     <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-emerald-700">{formatPercent(ptModeShare)}</div>
-                      <div className="text-xs text-emerald-600 mt-1">PT commute mode share</div>
-                      <div className="text-xs text-slate-500 mt-0.5">ABS Census 2021 journey-to-work</div>
+                      <div className="text-2xl font-bold text-emerald-700">{formatPercent(ptUse.share)}</div>
+                      <div className="text-xs text-emerald-600 mt-1">{ptUse.title}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{ptUse.source}</div>
                     </div>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    {ptStopDensity > 200 && ptModeShare < 20
-                      ? `⚠️ ${area.name} has high PT stop coverage (${ptStopDensity} stops) but low mode share (${formatPercent(ptModeShare)}), suggesting a service frequency or reliability gap rather than a coverage gap.`
-                      : ptStopDensity < 50 && ptModeShare < 15
-                      ? `⚠️ ${area.name} has low PT stop coverage (${ptStopDensity} stops) and low mode share, indicating a supply gap — additional stops and routes are needed.`
-                      : `${area.name} has ${ptStopDensity} PT stops serving a ${formatPercent(ptModeShare)} commute mode share.`}
+                    {describeStopsVsUse({
+                      areaName: area.name,
+                      stops: ptStopDensity,
+                      ptShare: ptUse.share,
+                      ptShareLabel: ptUse.label,
+                      frequentStopShare: ptFrequency?.frequentStopShare ?? null,
+                      benchmark: pickFrequencyBenchmark(ptFrequency?.benchmarks, selectedArea?.region ?? 'Greater Sydney'),
+                    })}
                   </p>
                 </div>
               </ChartWrapper>

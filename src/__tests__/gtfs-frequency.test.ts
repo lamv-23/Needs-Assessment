@@ -3,6 +3,7 @@ import {
   activeServiceIds,
   countPeakDepartures,
   summariseFrequency,
+  frequencyBenchmarks,
   FREQUENT_DEPARTURES_THRESHOLD,
 } from '../lib/gtfs-frequency';
 
@@ -99,5 +100,21 @@ describe('summariseFrequency', () => {
 
   it('returns a zero share rather than NaN when there are no stops', () => {
     expect(summariseFrequency([], new Map(), '20261027').frequentStopShare).toBe(0);
+  });
+});
+
+describe('frequencyBenchmarks', () => {
+  it('pools stops across Greater Sydney LGAs and across all LGAs for NSW', () => {
+    const lgaStops = new Map([
+      ['17200', [{ stopId: 'a', mode: 'bus' }, { stopId: 'b', mode: 'bus' }]],  // Greater Sydney: 1 of 2 frequent
+      ['10750', [{ stopId: 'c', mode: 'train' }, { stopId: 'd', mode: 'bus' }]], // Greater Sydney: 1 of 2 frequent
+      ['10050', [{ stopId: 'e', mode: 'bus' }, { stopId: 'f', mode: 'bus' }, { stopId: 'g', mode: 'bus' }, { stopId: 'h', mode: 'bus' }]], // regional: 0 of 4
+    ]);
+    const departures = new Map([['a', 10], ['b', 1], ['c', 12], ['d', 0], ['e', 2]]);
+    const b = frequencyBenchmarks(lgaStops, departures, '20261027', code => code !== '10050');
+    expect(b.greaterSydney.totalStops).toBe(4);
+    expect(b.greaterSydney.frequentStopShare).toBe(50);
+    expect(b.nsw.totalStops).toBe(8);
+    expect(b.nsw.frequentStopShare).toBe(25);
   });
 });

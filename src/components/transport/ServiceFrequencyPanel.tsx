@@ -54,6 +54,11 @@ export default function ServiceFrequencyPanel({ areaName, ptFrequency }: Props) 
               <div className="text-2xl font-bold text-emerald-700">{formatPercent(ptFrequency.frequentStopShare)}</div>
               <div className="text-xs text-emerald-600 mt-1">Share of stops that are frequent</div>
               <div className="text-xs text-slate-500 mt-0.5">
+                {ptFrequency.benchmarks
+                  ? `Greater Sydney ${formatPercent(ptFrequency.benchmarks.greaterSydneyFrequentStopShare)} · NSW ${formatPercent(ptFrequency.benchmarks.nswFrequentStopShare)}`
+                  : 'Share of all stops in the LGA'}
+              </div>
+              <div className="text-xs text-slate-500 mt-0.5">
                 {ptFrequency.totalStops - ptFrequency.servicedStops > 0
                   ? `${(ptFrequency.totalStops - ptFrequency.servicedStops).toLocaleString()} of ${ptFrequency.totalStops.toLocaleString()} stops have no 7–9am service`
                   : `All ${ptFrequency.totalStops.toLocaleString()} stops have 7–9am service`}

@@ -25,6 +25,7 @@ import {
 import { useLiveData } from '@/hooks/useLiveData';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import PageNav from '@/components/ui/PageNav';
+import type { TransportData } from '@/lib/data/sample-data';
 
 // ─── Service Level Standards ──────────────────────────────────────────────────
 // Based on TfNSW planning standards and Connecting NSW mode share targets
@@ -132,6 +133,27 @@ const BASE_EVIDENCE_ITEMS: EvidenceItem[] = [
     source: 'ABS Census + TfNSW Open Data',
   },
   {
+    category: 'Demand & Population',
+    item: 'All-purpose travel behaviour (trips per person, purpose, mode)',
+    statusKey: 'unavailable',
+    note: 'TfNSW Household Travel Survey publishes LGA estimates for the Sydney Greater Metropolitan Area only',
+    source: 'TfNSW Household Travel Survey',
+  },
+  {
+    category: 'Demand & Population',
+    item: 'Commuting flows between LGAs (origin–destination)',
+    statusKey: 'partial',
+    note: 'Requires an ABS TableBuilder export (LGA of residence × LGA of workplace); not yet loaded',
+    source: 'ABS Census TableBuilder',
+  },
+  {
+    category: 'Transport Performance',
+    item: 'Timetabled PT service frequency (AM peak)',
+    statusKey: 'unavailable',
+    note: 'GTFS timetable frequency has not been loaded for this area',
+    source: 'TfNSW GTFS timetable',
+  },
+  {
     category: 'Transport Performance',
     item: 'Journey time reliability (on-time running)',
     statusKey: 'unavailable',
@@ -175,8 +197,44 @@ const BASE_EVIDENCE_ITEMS: EvidenceItem[] = [
   },
 ];
 
-function buildEvidenceItems(hasPatronageSource: boolean, hasCrashTrend: boolean): EvidenceItem[] {
+function buildEvidenceItems({
+  hasPatronageSource,
+  hasCrashTrend,
+  ptFrequency,
+  travelSurvey,
+  commuteFlows,
+}: {
+  hasPatronageSource: boolean;
+  hasCrashTrend: boolean;
+  ptFrequency: TransportData['ptFrequency'];
+  travelSurvey: TransportData['travelSurvey'];
+  commuteFlows: TransportData['commuteFlows'];
+}): EvidenceItem[] {
   return BASE_EVIDENCE_ITEMS.map((item) => {
+    if (item.item === 'Timetabled PT service frequency (AM peak)' && ptFrequency) {
+      return {
+        ...item,
+        statusKey: 'available' as const,
+        note: `${ptFrequency.frequentStopShare.toFixed(1)}% of stops have 4+ departures an hour 7–9am on the weekday timetable`,
+      };
+    }
+
+    if (item.item === 'All-purpose travel behaviour (trips per person, purpose, mode)' && travelSurvey) {
+      return {
+        ...item,
+        statusKey: 'available' as const,
+        note: `HTS ${travelSurvey.latestYear}: ${travelSurvey.tripsPerPerson ?? 'n/a'} weekday trips per resident, with mode and purpose splits`,
+      };
+    }
+
+    if (item.item === 'Commuting flows between LGAs (origin–destination)' && commuteFlows) {
+      return {
+        ...item,
+        statusKey: 'available' as const,
+        note: `Census ${commuteFlows.censusYear}: ${commuteFlows.selfContainment.toFixed(1)}% of employed residents work in the LGA`,
+      };
+    }
+
     if (item.item === 'TfNSW mode share & patronage trends') {
       return hasPatronageSource
         ? {
@@ -329,13 +387,31 @@ export default function ProblemDefinitionPage() {
   const popGrowthPct = pop2021 > 0 ? Math.round(((pop2041 - pop2021) / pop2021) * 1000) / 10 : 0;
 
   // ── Demand scenarios ─────────────────────────────────────────────────────
-  const DAILY_TRIPS_PER_PERSON = 1.8; // average, source: TfNSW
+  // Measured weekday trips per resident and all-trip PT share from the TfNSW
+  // Household Travel Survey where it covers the LGA (Sydney GMA); otherwise an
+  // assumed trip rate with the Census journey-to-work PT share.
+  const ASSUMED_DAILY_TRIPS_PER_PERSON = 1.8;
+  const travelSurvey = transportData.travelSurvey;
+  const surveyPtShare = travelSurvey?.modes.find((m) => m.mode === 'publicTransport')?.modeShare;
+  const demandBasis = travelSurvey?.tripsPerPerson && surveyPtShare !== undefined
+    ? {
+        tripsPerPerson: travelSurvey.tripsPerPerson,
+        ptShare: surveyPtShare,
+        measured: true,
+        description: `${travelSurvey.tripsPerPerson} weekday trips per resident and a ${surveyPtShare.toFixed(1)}% PT share of all trips (TfNSW Household Travel Survey ${travelSurvey.latestYear})`,
+      }
+    : {
+        tripsPerPerson: ASSUMED_DAILY_TRIPS_PER_PERSON,
+        ptShare: ptModeShare,
+        measured: false,
+        description: `an assumed ${ASSUMED_DAILY_TRIPS_PER_PERSON} daily trips per person (no travel survey covers this LGA) and the ${ptModeShare.toFixed(1)}% Census 2021 journey-to-work PT share`,
+      };
   const allPop = [...growthData.populationHistory, ...growthData.populationProjections];
   const demandScenarioData = allPop.map((d: { year: number; population: number }) => ({
     year: d.year,
-    'Constant mode share': Math.round(d.population * DAILY_TRIPS_PER_PERSON * (ptModeShare / 100)),
-    '+5pp PT mode shift': Math.round(d.population * DAILY_TRIPS_PER_PERSON * ((ptModeShare + 5) / 100)),
-    '+10pp PT mode shift': Math.round(d.population * DAILY_TRIPS_PER_PERSON * ((ptModeShare + 10) / 100)),
+    'Constant mode share': Math.round(d.population * demandBasis.tripsPerPerson * (demandBasis.ptShare / 100)),
+    '+5pp PT mode shift': Math.round(d.population * demandBasis.tripsPerPerson * ((demandBasis.ptShare + 5) / 100)),
+    '+10pp PT mode shift': Math.round(d.population * demandBasis.tripsPerPerson * ((demandBasis.ptShare + 10) / 100)),
   }));
 
   // ── Mode share trend ───────────────────────────────────────────────────────
@@ -358,10 +434,13 @@ export default function ProblemDefinitionPage() {
     ...(transportData.avgCommute !== null ? { 'Average Commute Time (one way)': transportData.avgCommute } : {}),
   };
 
-  const evidenceItems = buildEvidenceItems(
-    Boolean(transportData.patronageSource),
-    Boolean((transportData.crashTrend ?? []).length)
-  );
+  const evidenceItems = buildEvidenceItems({
+    hasPatronageSource: Boolean(transportData.patronageSource),
+    hasCrashTrend: Boolean((transportData.crashTrend ?? []).length),
+    ptFrequency: transportData.ptFrequency,
+    travelSurvey: transportData.travelSurvey,
+    commuteFlows: transportData.commuteFlows,
+  });
 
   // ── Journey to work snapshot sorted descending ─────────────────────────────
   const jtw2021 = [...transportData.journeyToWork]
@@ -787,7 +866,7 @@ export default function ProblemDefinitionPage() {
 
           <ChartWrapper
             title="Implied PT Demand — Projection Scenarios (2011–2041)"
-            subtitle="Estimated daily PT trips under three mode share assumptions (NSW DPE population base)"
+            subtitle={`Estimated weekday PT trips under three mode share assumptions (NSW DPE population base; ${demandBasis.measured ? 'measured trip rate' : 'assumed trip rate'})`}
             data={demandScenarioData}
             dataKeys={['Constant mode share', '+5pp PT mode shift', '+10pp PT mode shift']}
             xAxisKey="year"
@@ -801,10 +880,10 @@ export default function ProblemDefinitionPage() {
               height={320}
             />
             <p className="text-xs text-gray-400 mt-3 px-1">
-              Assumes {DAILY_TRIPS_PER_PERSON} daily trips per person. Base: {formatNumber(pop2021)} persons
-              (2021), {ptModeShare.toFixed(1)}% PT mode share. Projected to {formatNumber(pop2041)} persons
-              (2041). This is an indicative demand model for problem definition purposes — a formal
-              patronage model (STM or equivalent) is required for a full business case CBA.
+              Based on {demandBasis.description}. Base: {formatNumber(pop2021)} persons (2021), projected
+              to {formatNumber(pop2041)} persons (2041).{!demandBasis.measured && ' The trip rate is an assumption, not a measured value.'}{' '}
+              This is an indicative demand model for problem definition purposes — a formal patronage
+              model (STM or equivalent) is required for a full business case CBA.
             </p>
           </ChartWrapper>
 
@@ -812,7 +891,7 @@ export default function ProblemDefinitionPage() {
             <FindingCallout severity="info" heading="Significant headroom from mode shift investment">
               Under the +10pp PT mode shift scenario, daily PT demand in {area.name} could reach{' '}
               {formatNumber(Math.round(maxDailyDemand2041))} trips per day by 2041 — compared with{' '}
-              {formatNumber(Math.round(pop2021 * DAILY_TRIPS_PER_PERSON * (ptModeShare / 100)))} trips under
+              {formatNumber(Math.round(pop2021 * demandBasis.tripsPerPerson * (demandBasis.ptShare / 100)))} trips under
               current conditions. ATAP requires sensitivity testing across scenarios where patronage
               drives the benefit estimate.
             </FindingCallout>

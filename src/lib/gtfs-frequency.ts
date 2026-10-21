@@ -24,6 +24,8 @@ export interface GTFSFrequencyData {
   frequentStopShare: number;  // % of totalStops, 1 dp
   amPeakDepartures: number;   // sum of stop departures 07:00–09:00
   frequentStopsByMode: Record<FrequencyMode, number>;
+  /** Frequent-stop share (%) pooled across all stops in Greater Sydney / NSW, same service date. */
+  benchmarks?: { greaterSydneyFrequentStopShare: number; nswFrequentStopShare: number };
   source: 'tfnsw_gtfs';
 }
 
@@ -160,6 +162,28 @@ export function countPeakDepartures(
   const counter = createPeakDepartureCounter(tripService, activeServices);
   for (const line of stopTimesText.split('\n')) counter.addLine(line);
   return counter.counts;
+}
+
+/**
+ * Greater Sydney and NSW benchmark summaries, pooling every stop in the
+ * member LGAs (so large LGAs weigh more, as for the whole network).
+ */
+export function frequencyBenchmarks(
+  lgaStops: Map<string, { stopId: string; mode: string }[]>,
+  departures: Map<string, number>,
+  serviceDate: string,
+  isGreaterSydney: (lgaCode: string) => boolean,
+): { greaterSydney: GTFSFrequencyData; nsw: GTFSFrequencyData } {
+  const greaterSydneyStops: { stopId: string; mode: string }[] = [];
+  const nswStops: { stopId: string; mode: string }[] = [];
+  for (const [lgaCode, stops] of lgaStops) {
+    nswStops.push(...stops);
+    if (isGreaterSydney(lgaCode)) greaterSydneyStops.push(...stops);
+  }
+  return {
+    greaterSydney: summariseFrequency(greaterSydneyStops, departures, serviceDate),
+    nsw: summariseFrequency(nswStops, departures, serviceDate),
+  };
 }
 
 /** Summarise AM-peak service for one LGA's stops. */

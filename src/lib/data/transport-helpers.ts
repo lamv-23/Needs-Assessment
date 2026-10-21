@@ -1,3 +1,5 @@
+import { formatPercent } from '@/lib/utils';
+
 type ModeShare = { name: string; value: number };
 type DistributionShare = { name: string; value: number };
 
@@ -33,6 +35,62 @@ export function getPTModeShare(journeyToWork: ModeShare[]): number {
 
 export function getActiveModeShare(journeyToWork: ModeShare[]): number {
   return getModeValue(journeyToWork, ['Cycling', 'Walking']);
+}
+
+export interface FrequencyBenchmark {
+  label: 'Greater Sydney' | 'NSW';
+  share: number; // % of stops with 4+ departures/hr, 7–9am
+}
+
+/** Greater Sydney LGAs are compared with Greater Sydney; all others with NSW. */
+export function pickFrequencyBenchmark(
+  benchmarks: { greaterSydneyFrequentStopShare: number; nswFrequentStopShare: number } | undefined,
+  region: string | undefined,
+): FrequencyBenchmark | null {
+  if (!benchmarks) return null;
+  return region === 'Greater Sydney'
+    ? { label: 'Greater Sydney', share: benchmarks.greaterSydneyFrequentStopShare }
+    : { label: 'NSW', share: benchmarks.nswFrequentStopShare };
+}
+
+const LOW_PT_SHARE = 15;      // % — below this, PT plays a minor role
+const FREQUENCY_MARGIN = 5;   // percentage points below benchmark before calling a gap
+
+/** Plain-language reading of stop supply, service frequency and PT use. */
+export function describeStopsVsUse(input: {
+  areaName: string;
+  stops: number;
+  ptShare: number;
+  ptShareLabel: string;
+  frequentStopShare: number | null;
+  benchmark: FrequencyBenchmark | null;
+}): string {
+  const { areaName, stops, ptShare, ptShareLabel, frequentStopShare, benchmark } = input;
+  const pt = `${formatPercent(ptShare)} ${ptShareLabel}`;
+
+  if (frequentStopShare !== null && benchmark) {
+    const frequent = `${formatPercent(frequentStopShare)} of stops have a combined service every 15 minutes or better at 7–9am (${benchmark.label} ${formatPercent(benchmark.share)})`;
+    const frequencyGap = frequentStopShare < benchmark.share - FREQUENCY_MARGIN;
+    const lowUse = ptShare < LOW_PT_SHARE;
+    if (frequencyGap && lowUse) {
+      return `⚠️ In ${areaName}, only ${frequent}, and public transport carries ${pt}: evidence of a service frequency gap rather than a lack of stops (${stops.toLocaleString()} stops).`;
+    }
+    if (!frequencyGap && lowUse) {
+      return `⚠️ In ${areaName}, ${frequent}, yet public transport carries only ${pt}: frequency is not the main barrier. Look at the destinations served, travel times and reliability.`;
+    }
+    if (frequencyGap) {
+      return `In ${areaName}, only ${frequent}, but public transport still carries ${pt}: there is demand that a more frequent network could serve better.`;
+    }
+    return `In ${areaName}, ${frequent}, and public transport carries ${pt}.`;
+  }
+
+  if (stops > 200 && ptShare < 20) {
+    return `⚠️ ${areaName} has high PT stop coverage (${stops} stops) but low mode share (${pt}), suggesting a service frequency or reliability gap rather than a coverage gap.`;
+  }
+  if (stops < 50 && ptShare < LOW_PT_SHARE) {
+    return `⚠️ ${areaName} has low PT stop coverage (${stops} stops) and low mode share, indicating a supply gap — additional stops and routes are needed.`;
+  }
+  return `${areaName} has ${stops} PT stops serving ${pt}.`;
 }
 
 export function getVehicleOwnershipShare(
