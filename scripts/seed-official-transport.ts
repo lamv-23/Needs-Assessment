@@ -7,6 +7,8 @@
  *   STATION_PATRONAGE  (tfnsw_cache) TfNSW station monthly entries/exits, joined
  *                      to LGAs via GTFS stop locations (needs `npm run seed:gtfs` first)
  *   COMMUTE_DIST_2016  (abs_cache)   ABS Census 2016 commuting distance, all LGAs
+ *   CRASH_SUMMARY_LIVE (tfnsw_cache) NSW road crash data — crashes by reporting year,
+ *                      fatal / injury, all LGAs (otherwise fetched lazily per page view)
  *
  * No API key needed. Resource URLs are resolved from the TfNSW CKAN catalogue.
  *
@@ -19,6 +21,7 @@ import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point as turfPoint } from '@turf/helpers';
 import { getDb, upsertABSCache, upsertTfNSWCache, setConfigValue } from '../src/lib/db';
 import { LGA_CODE_MAP, fetchCommuteDistance2016 } from '../src/lib/abs-fetchers';
+import { seedCrashTrendsForAllLgas } from '../src/lib/tfnsw-api';
 import {
   TFNSW_CKAN_BASE, HTS_PACKAGE, STATION_USAGE_PACKAGE,
   HTS_COMMUTE_DATASET, STATION_PATRONAGE_DATASET,
@@ -149,6 +152,13 @@ async function seedStationPatronage(): Promise<void> {
   if (unmatched.length) console.log(`  ⚠ Not attributed (${unmatched.length}): ${unmatched.join('; ')}`);
 }
 
+// ─── Road crashes ────────────────────────────────────────────────────────────
+
+async function seedCrashTrends(): Promise<void> {
+  console.log('\n[TfNSW] NSW road crash data → crashes by LGA and year');
+  console.log(`  ✓ ${await seedCrashTrendsForAllLgas()} LGAs with crash trends`);
+}
+
 async function main(): Promise<void> {
   getDb();
   const failures: string[] = [];
@@ -156,6 +166,7 @@ async function main(): Promise<void> {
     ['HTS_COMMUTE', seedHtsCommute],
     ['COMMUTE_DIST_2016', seedCommuteDistance],
     ['STATION_PATRONAGE', seedStationPatronage],
+    ['CRASH_SUMMARY_LIVE', seedCrashTrends],
   ] as const) {
     try { await step(); } catch (err) {
       failures.push(name);

@@ -235,13 +235,18 @@ async function fetchTrafficTrendFromApi(aliases: string[]): Promise<TfNSWTraffic
   return trend.length > 0 ? trend : null;
 }
 
-function parseCrashWorkbook(buffer: ArrayBuffer, aliases: string[]): TfNSWCrashTrendPoint[] | null {
+function readCrashRows(buffer: ArrayBuffer): Record<string, unknown>[] {
   const workbook = XLSX.read(buffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
-  if (!firstSheetName) return null;
+  if (!firstSheetName) return [];
+  return XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[firstSheetName], { defval: null });
+}
 
-  const sheet = workbook.Sheets[firstSheetName];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
+function parseCrashWorkbook(buffer: ArrayBuffer, aliases: string[]): TfNSWCrashTrendPoint[] | null {
+  return summariseCrashRows(readCrashRows(buffer), aliases);
+}
+
+function summariseCrashRows(rows: Record<string, unknown>[], aliases: string[]): TfNSWCrashTrendPoint[] | null {
   if (rows.length === 0) return null;
 
   const headers = Object.keys(rows[0]);
@@ -256,6 +261,7 @@ function parseCrashWorkbook(buffer: ArrayBuffer, aliases: string[]): TfNSWCrashT
     (key) => key.endsWith('_year'),
   ]);
   const severityHeader = findHeader(headers, [
+    (key) => key === 'degree_of_crash', // Fatal / Injury / Non-casualty (towaway)
     (key) => key.includes('degree_of_injury'),
     (key) => key.includes('injury_severity'),
     (key) => key === 'severity',
@@ -404,6 +410,25 @@ export async function fetchAllTfNSWData(lgaCode: string): Promise<TfNSWLiveTrans
     };
   }
   return getLiveTfNSWTransportData(areaId);
+}
+
+/** Download the NSW crash workbook once and summarise it for every LGA (used by seed:transport). */
+export async function seedCrashTrendsForAllLgas(): Promise<number> {
+  const response = await fetch(NSW_CRASH_DATA_XLSX_URL, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Crash workbook request failed with status ${response.status}`);
+  }
+  const rows = readCrashRows(await response.arrayBuffer());
+
+  let written = 0;
+  for (const [areaId, lgaCode] of Object.entries(LGA_CODE_MAP)) {
+    if (!areaId.startsWith('lga_')) continue;
+    const trend = summariseCrashRows(rows, getTfNSWLgaAliases(areaId));
+    if (!trend) continue;
+    await writeCache(lgaCode, CRASH_CACHE_DATASET, trend, trend[trend.length - 1].year);
+    written++;
+  }
+  return written;
 }
 
 export { parseCrashWorkbook, extractRows };

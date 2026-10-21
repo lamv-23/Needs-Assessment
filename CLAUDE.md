@@ -15,7 +15,7 @@ npm run seed:static      # seed static data only — projections + transport (~5
 npm run seed:abs         # fetch ABS data only for all LGAs (~30–40 min)
 npm run seed -- --lga lga_sydney   # fetch ABS for a single LGA
 npm run seed:g62         # re-fetch Census journey-to-work (G62/G59/B46) for all LGAs
-npm run seed:transport   # HTS commute time, ABS commute distance, station patronage (~1 min, needs gtfs_stops)
+npm run seed:transport   # HTS commute time, ABS commute distance, station patronage, crash trends (~2 min, needs gtfs_stops)
 
 npm run parse:population  # regenerate src/lib/data/nsw-projections-data.ts from XLSX
 npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV
