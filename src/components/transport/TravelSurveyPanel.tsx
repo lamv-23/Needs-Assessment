@@ -12,7 +12,7 @@ interface Props {
   travelSurvey: TransportData['travelSurvey'];
 }
 
-const FLAG: Record<HTSReliability, string> = { ok: '', caution: '*', unreliable: '**' };
+const FLAG: Record<HTSReliability, string> = { reliable: '', use_with_caution: '*', unreliable: '**' };
 
 /** All-purpose weekday travel from the TfNSW Household Travel Survey. */
 export default function TravelSurveyPanel({ areaName, travelSurvey }: Props) {
@@ -42,7 +42,7 @@ export default function TravelSurveyPanel({ areaName, travelSurvey }: Props) {
     Walk: p.walk,
     Other: p.other,
   }));
-  const hasFlags = modes.some(m => m.reliability !== 'ok') || purposes.some(p => p.reliability !== 'ok');
+  const hasFlags = modes.some(m => m.reliability !== 'reliable') || purposes.some(p => p.reliability !== 'reliable');
 
   return (
     <ChartWrapper

@@ -18,20 +18,15 @@ import * as path from 'path';
 import * as XLSX from 'xlsx';
 import { LGA_CODE_MAP } from '../src/lib/abs-fetchers';
 import { parseHtsWorkbookRows, type HTSRawRows } from '../src/lib/hts-parser';
+import { TFNSW_CKAN_BASE, HTS_PACKAGE, pickHtsLgaResources, type CkanResource } from '../src/lib/tfnsw-official';
 
-const CKAN_PACKAGE_URL =
-  'https://opendata.transport.nsw.gov.au/data/api/3/action/package_show?id=household-travel-survey';
 const OUTPUT_PATH = path.join(process.cwd(), 'src', 'lib', 'data', 'hts-lga-data.ts');
 
-interface CkanResource { name: string; url: string; format: string }
-
 async function resolveLgaWorkbookUrls(): Promise<string[]> {
-  const res = await fetch(CKAN_PACKAGE_URL);
+  const res = await fetch(`${TFNSW_CKAN_BASE}/package_show?id=${HTS_PACKAGE}`);
   if (!res.ok) throw new Error(`CKAN package_show failed: HTTP ${res.status}`);
   const body = await res.json() as { result: { resources: CkanResource[] } };
-  return body.result.resources
-    .filter(r => /data-by-lga/i.test(r.url) && /xlsx/i.test(r.format || r.url))
-    .map(r => r.url);
+  return pickHtsLgaResources(body.result.resources);
 }
 
 async function loadWorkbook(source: string): Promise<{ wb: XLSX.WorkBook; label: string }> {

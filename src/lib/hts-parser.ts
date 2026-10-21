@@ -11,7 +11,9 @@
  *   ^  on the LGA name: the LGA total has RSE ≥25%
  */
 
-export type HTSReliability = 'ok' | 'caution' | 'unreliable';
+import { htsLgaIdToAbsCode, parseHtsReliability, type HtsReliability } from './tfnsw-official';
+
+export type HTSReliability = HtsReliability;
 export type HTSModeKey = 'vehicleDriver' | 'vehiclePassenger' | 'publicTransport' | 'walkOnly' | 'walkLinked' | 'other';
 
 export interface HTSModeEntry {
@@ -85,12 +87,11 @@ const PURPOSE_BY_SOURCE_LABEL: Record<string, string> = {
   other: 'Other',
 };
 
-const RELIABILITY_RANK: Record<HTSReliability, number> = { ok: 0, caution: 1, unreliable: 2 };
+const RELIABILITY_RANK: Record<HTSReliability, number> = { reliable: 0, use_with_caution: 1, unreliable: 2 };
 
 function parseLabel(value: unknown): { label: string; reliability: HTSReliability } {
   const text = String(value ?? '').trim();
-  const reliability: HTSReliability = text.endsWith('**') ? 'unreliable' : text.endsWith('*') ? 'caution' : 'ok';
-  return { label: text.replace(/\*+$/, '').trim().toLowerCase(), reliability };
+  return { label: text.replace(/\*+$/, '').trim().toLowerCase(), reliability: parseHtsReliability(text) };
 }
 
 function num(value: unknown): number | null {
@@ -126,7 +127,7 @@ export function parseHtsWorkbookRows(
     const id = num(row.hh_lga_id);
     const fy = String(row.financial_year ?? '').trim();
     if (id === null || !fy) return null;
-    const code = String(id + 10000);
+    const code = htsLgaIdToAbsCode(id);
     const rawName = String(row.hh_lga_name ?? '').trim();
     if (!knownLgaCodes.has(code)) {
       if (rawName) unmatched.add(`${rawName.replace(/\^/g, '')} (${code})`);
@@ -173,7 +174,7 @@ export function parseHtsWorkbookRows(
       avgDistanceKm: weightedAverage(parts.map(p => ({ value: p.dist, weight: p.trips }))),
       avgTimeMin: weightedAverage(parts.map(p => ({ value: p.time, weight: p.trips }))),
       // Combined Bus + Train keeps the weaker of the two flags (conservative).
-      reliability: parts.reduce<HTSReliability>((worst, p) => (RELIABILITY_RANK[p.rel] > RELIABILITY_RANK[worst] ? p.rel : worst), 'ok'),
+      reliability: parts.reduce<HTSReliability>((worst, p) => (RELIABILITY_RANK[p.rel] > RELIABILITY_RANK[worst] ? p.rel : worst), 'reliable'),
     });
   }
 
@@ -199,7 +200,7 @@ export function parseHtsWorkbookRows(
   for (const row of raw.demographics) {
     const id = num(row.hh_lga_id);
     const fy = String(row.financial_year ?? '').trim();
-    const year = id === null ? undefined : yearData.get(`${id + 10000}|${fy}`);
+    const year = id === null ? undefined : yearData.get(`${htsLgaIdToAbsCode(id)}|${fy}`);
     if (year) year.population = num(row.population);
   }
 

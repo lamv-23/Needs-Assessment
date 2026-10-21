@@ -32,10 +32,10 @@ describe('parseHtsWorkbookRows', () => {
     const year = byLgaCode['10750'].years[0];
     expect(byLgaCode['10750'].lgaName).toBe('Blacktown');
     expect(year.lgaTotalReliable).toBe(false);
-    expect(year.modes.find(m => m.mode === 'publicTransport')?.reliability).toBe('caution');
+    expect(year.modes.find(m => m.mode === 'publicTransport')?.reliability).toBe('use_with_caution');
     expect(year.modes.find(m => m.mode === 'other')?.reliability).toBe('unreliable');
     expect(year.purposes).toEqual([
-      { purpose: 'Social/recreation', journeys: 90000, share: 20, avgDistanceKm: null, avgTimeMin: null, reliability: 'caution' },
+      { purpose: 'Social/recreation', journeys: 90000, share: 20, avgDistanceKm: null, avgTimeMin: null, reliability: 'use_with_caution' },
     ]);
   });
 
@@ -51,7 +51,7 @@ describe('parseHtsWorkbookRows', () => {
     }, known);
     const year = byLgaCode['17200'].years[0];
     const pt = year.modes.find(m => m.mode === 'publicTransport')!;
-    expect(pt).toMatchObject({ trips: 400, modeShare: 40, avgDistanceKm: 10, avgTimeMin: 35, reliability: 'caution' });
+    expect(pt).toMatchObject({ trips: 400, modeShare: 40, avgDistanceKm: 10, avgTimeMin: 35, reliability: 'use_with_caution' });
     expect(year.modes.find(m => m.mode === 'vehicleDriver')?.label).toBe('Vehicle driver');
     expect(year.population).toBe(240000);
   });
@@ -84,7 +84,7 @@ describe('tripsPerPerson', () => {
 
 describe('summariseTravelSurvey', () => {
   const mode = (m: HTSModeKey, share: number) =>
-    ({ mode: m, label: m, trips: 1, modeShare: share, avgDistanceKm: null, avgTimeMin: null, reliability: 'ok' as const });
+    ({ mode: m, label: m, trips: 1, modeShare: share, avgDistanceKm: null, avgTimeMin: null, reliability: 'reliable' as const });
   const lga: HTSLgaData = {
     lgaName: 'Sydney',
     years: [
