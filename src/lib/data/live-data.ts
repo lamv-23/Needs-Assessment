@@ -41,12 +41,7 @@ import {
   HTS_COMMUTE_DATASET, STATION_PATRONAGE_DATASET,
   type HtsCommuteData, type StationPatronageData,
 } from '../tfnsw-official';
-import {
-  normaliseBirthplaceData,
-  normaliseLanguageData,
-  sanitiseBirthplaceGroups,
-  sanitiseLanguageGroups,
-} from '../abs-fetchers';
+import { sanitiseBirthplaceGroups, sanitiseLanguageGroups } from '../abs-fetchers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -259,15 +254,18 @@ export async function getLiveDemographicsData(areaId: string, year: number): Pro
   // Birthplace detail from G09 (replaces G01 binary born-overseas when available)
   let birthplaceGroups = sample.birthplaceGroups;
   if (lgaCode) {
-    const g09 = await getABS<BirthplaceData>(lgaCode, 'G09', normaliseBirthplaceData);
+    const g09 = await getABS<BirthplaceData>(lgaCode, 'G09');
     const cleanedBirthplaceGroups = g09 ? sanitiseBirthplaceGroups(g09.birthplaceGroups) : [];
     if (g09 && cleanedBirthplaceGroups.length > 0) {
       birthplaceGroups = cleanedBirthplaceGroups;
-      // Also update countriesOfBirth to use real counts from G09
-      countriesOfBirth = cleanedBirthplaceGroups
-        .filter(group => group.code !== 'other')
-        .slice(0, 9)
-        .map(b => ({ name: b.name, value: b.count }));
+      // Australia first, then the largest overseas countries (G09 counts)
+      countriesOfBirth = [
+        { name: 'Australia', value: g09.bornAustralia },
+        ...cleanedBirthplaceGroups
+          .filter(group => group.code !== 'other')
+          .slice(0, 8)
+          .map(b => ({ name: b.name, value: b.count })),
+      ];
       liveFields.push('birthplaceGroups', 'countriesOfBirth');
       if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
     }
@@ -278,7 +276,7 @@ export async function getLiveDemographicsData(areaId: string, year: number): Pro
   let englishOnly = sample.englishOnly;
   let limitedEnglish = sample.limitedEnglish;
   if (lgaCode) {
-    const g13 = await getABS<LanguageData>(lgaCode, 'G13', normaliseLanguageData);
+    const g13 = await getABS<LanguageData>(lgaCode, 'G13');
     const cleanedLanguageGroups = g13 ? sanitiseLanguageGroups(g13.languageGroups) : [];
     if (g13 && cleanedLanguageGroups.length > 0) {
       languageGroups = cleanedLanguageGroups;
@@ -302,21 +300,23 @@ export async function getLiveDemographicsData(areaId: string, year: number): Pro
     }
   }
 
-  // Family composition from G25 (replaces sample householdComposition)
+  // Families by type (G32) and households by type (G35), stored as G25
   let familyComposition = sample.familyComposition;
   let householdComposition = sample.householdComposition;
   if (lgaCode) {
     const g25 = await getABS<FamilyData>(lgaCode, 'G25');
-    if (g25 && g25.totalHouseholds > 0) {
+    if (g25 && g25.totalHouseholds > 0 && g25.familyHouseholds !== undefined) {
       familyComposition = [
         { name: 'Couple with children', value: g25.coupleWithChildren },
         { name: 'Couple without children', value: g25.coupleNoChildren },
         { name: 'One-parent family', value: g25.oneParentFamily },
         { name: 'Other family', value: g25.otherFamily },
+      ].filter(f => f.value > 0);
+      householdComposition = [
+        { name: 'Family household', value: g25.familyHouseholds },
         { name: 'Lone person', value: g25.lonePersonHousehold },
         { name: 'Group household', value: g25.groupHousehold },
       ].filter(f => f.value > 0);
-      householdComposition = familyComposition;
       liveFields.push('familyComposition', 'householdComposition');
       if (!sources.includes('ABS Census 2021')) sources.push('ABS Census 2021');
     } else {

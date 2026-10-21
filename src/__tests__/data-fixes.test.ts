@@ -156,81 +156,17 @@ describe('Bug 3 fix: TfNSW static data disclaimer in TRANSPORT_DATA_NOTE', () =>
 });
 
 describe('Bug fix: demographics labels are sanitised before chart rendering', () => {
-  it('collapses unmapped birthplace codes into an Other countries bucket', () => {
-    const { sanitiseBirthplaceGroups } = require('../lib/abs-fetchers');
-    const groups = sanitiseBirthplaceGroups([
-      { name: 'Country 11', code: '11', count: 188954 },
-      { name: 'China (excl. SARs)', code: '6101', count: 33153 },
-      { name: 'Country 2102', code: '2102', count: 20197 },
-      { name: 'Country _N', code: '_N', count: 28450 },
-    ]);
-
-    expect(groups).toEqual([
-      { name: 'Other countries', code: 'other', count: 237601 },
-      { name: 'China (excl. SARs)', code: '6101', count: 33153 },
-    ]);
-  });
-
-  it('collapses roll-up and unmapped language codes into an Other languages bucket', () => {
+  // Country/language labels now come from the official ABS codelists; selection
+  // and bucketing are covered in abs-decoders-detail.test.ts.
+  it('sanitises cached groups by dropping empty entries and ordering by size', () => {
     const { sanitiseLanguageGroups } = require('../lib/abs-fetchers');
-    const groups = sanitiseLanguageGroups([
-      { name: 'Language 71', code: '71', count: 98139 },
-      { name: 'Mandarin', code: '7101', count: 32711 },
-      { name: 'Language 6902', code: '6902', count: 28290 },
-      { name: 'Arabic', code: '4202', count: 16588 },
-      { name: 'Language _O', code: '_O', count: 24221 },
-    ]);
-
-    expect(groups).toEqual([
-      { name: 'Other languages', code: 'other', count: 122360 },
-      { name: 'Mandarin', code: '7101', count: 32711 },
-      { name: 'Tamil', code: '6902', count: 28290 },
-      { name: 'Arabic', code: '4202', count: 16588 },
-    ]);
-  });
-
-  it('selects detailed language codes before slicing so roll-up totals do not crowd out named languages', () => {
-    const { selectTopDetailedLanguageGroups } = require('../lib/abs-fetchers');
-
-    const groups = selectTopDetailedLanguageGroups([
-      ['1', 122723],
-      ['71', 50068],
-      ['7104', 36324],
-      ['65', 13150],
-      ['7101', 11960],
-      ['6402', 11802],
-      ['3106', 10077],
-      ['6504', 8734],
-      ['52', 7229],
-    ]);
-
-    expect(groups).toEqual([
-      { name: 'Other languages', code: 'other', count: 193170 },
-      { name: 'Cantonese', code: '7104', count: 36324 },
-      { name: 'Mandarin', code: '7101', count: 11960 },
-      { name: 'Thai', code: '6402', count: 11802 },
-      { name: 'Spanish', code: '3106', count: 10077 },
-      { name: 'Indonesian', code: '6504', count: 8734 },
-    ]);
-  });
-
-  it('selects detailed birthplace codes before slicing so aggregate buckets do not crowd out named countries', () => {
-    const { selectTopDetailedBirthplaceGroups } = require('../lib/abs-fetchers');
-
-    const groups = selectTopDetailedBirthplaceGroups([
-      ['11', 188954],
-      ['6101', 33153],
-      ['2102', 20197],
-      ['1201', 11436],
-      ['2201', 4695],
-      ['_N', 28450],
-    ]);
-
-    expect(groups).toEqual([
-      { name: 'Other countries', code: 'other', count: 237601 },
-      { name: 'China (excl. SARs)', code: '6101', count: 33153 },
-      { name: 'England', code: '1201', count: 11436 },
-      { name: 'New Zealand', code: '2201', count: 4695 },
+    expect(sanitiseLanguageGroups([
+      { name: 'Chinese: Mandarin', code: '7104', count: 18213 },
+      { name: 'Other languages', code: 'other', count: 40000 },
+      { name: 'Korean', code: '6902', count: 0 },
+    ])).toEqual([
+      { name: 'Other languages', code: 'other', count: 40000 },
+      { name: 'Chinese: Mandarin', code: '7104', count: 18213 },
     ]);
   });
 

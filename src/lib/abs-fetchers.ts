@@ -1239,37 +1239,37 @@ export async function fetchG18(lgaCode: string): Promise<DisabilityData | null> 
 // ─── G33_INCOME: Household Income Distribution ────────────────────────────────
 // C21_G33_LGA is Total Household Income (weekly) × Household Composition.
 // NOTE: The dwelling structure data we call "G33" internally is from C21_G36_LGA.
-// HIND codes: 1=negative, 2=nil, 3=$1-$149, 4=$150-$299, 5=$300-$399, 6=$400-$499,
-//             7=$500-$649, 8=$650-$799, 9=$800-$999, 10=$1000-$1249, 11=$1250-$1499,
-//             12=$1500-$1749, 13=$1750-$1999, 14=$2000-$2499, 15=$2500-$2999,
-//             16=$3000-$3499, 17=$3500-$3999, 18=$4000+, _T=total
+// HIND codes (CL_C21_HIND02): 1 negative/nil, 2 $1–149, 3 $150–299, 4 $300–399,
+// 5 $400–499, 6 $500–649, 7 $650–799, 8 $800–999, 9 $1,000–1,249, 10 $1,250–1,499,
+// 11 $1,500–1,749, 12 $1,750–1,999, 13 $2,000–2,499, 14 $2,500–2,999,
+// 15 $3,000–3,499, 16 $3,500–3,999, 17 $4,000 or more, 18 partial income stated,
+// _N all incomes not stated, _T total.
 
 const HIND_LABELS: Record<string, string> = {
-  '1':  'Negative income',
-  '2':  'Nil income',
-  '3':  '$1–$149/wk',
-  '4':  '$150–$299/wk',
-  '5':  '$300–$399/wk',
-  '6':  '$400–$499/wk',
-  '7':  '$500–$649/wk',
-  '8':  '$650–$799/wk',
-  '9':  '$800–$999/wk',
-  '10': '$1,000–$1,249/wk',
-  '11': '$1,250–$1,499/wk',
-  '12': '$1,500–$1,749/wk',
-  '13': '$1,750–$1,999/wk',
-  '14': '$2,000–$2,499/wk',
-  '15': '$2,500–$2,999/wk',
-  '16': '$3,000–$3,499/wk',
-  '17': '$3,500–$3,999/wk',
-  '18': '$4,000+/wk',
+  '1':  'Negative/Nil income',
+  '2':  '$1–$149/wk',
+  '3':  '$150–$299/wk',
+  '4':  '$300–$399/wk',
+  '5':  '$400–$499/wk',
+  '6':  '$500–$649/wk',
+  '7':  '$650–$799/wk',
+  '8':  '$800–$999/wk',
+  '9':  '$1,000–$1,249/wk',
+  '10': '$1,250–$1,499/wk',
+  '11': '$1,500–$1,749/wk',
+  '12': '$1,750–$1,999/wk',
+  '13': '$2,000–$2,499/wk',
+  '14': '$2,500–$2,999/wk',
+  '15': '$3,000–$3,499/wk',
+  '16': '$3,500–$3,999/wk',
+  '17': '$4,000+/wk',
 };
 
 export interface HouseholdIncomeData {
   incomeRanges: { label: string; count: number }[];
-  lowIncomeHouseholds: number;  // codes 1–6: <$500/wk
-  highIncomeHouseholds: number; // codes 14–18: $2,000+/wk
-  total: number;
+  lowIncomeHouseholds: number;  // HIND 1–5: under $500/wk
+  highIncomeHouseholds: number; // HIND 13–17: $2,000+/wk
+  total: number;                // all households, incl. partial / not stated
 }
 
 export async function fetchG33Income(lgaCode: string): Promise<HouseholdIncomeData | null> {
@@ -1277,277 +1277,157 @@ export async function fetchG33Income(lgaCode: string): Promise<HouseholdIncomeDa
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
   const data = parseSdmxXml(xml);
+  return decodeG33Income((hind) => lookupValue(data, { HIND: hind, HHCD: '_T', REGION: lgaCode }, '2021'));
+}
 
-  const get = (hind: string) =>
-    lookupValue(data, { HIND: hind, HHCD: '_T', REGION: lgaCode }, '2021')
-    ?? sumValues(data, { HIND: hind, REGION: lgaCode }, '2021');
-
-  const total = get('_T');
+export function decodeG33Income(get: (hind: string) => number | null): HouseholdIncomeData | null {
+  const total = get('_T') ?? 0;
   if (total === 0) return null;
-
-  const incomeRanges = Object.entries(HIND_LABELS).map(([code, label]) => ({
-    label,
-    count: Math.round(get(code)),
-  }));
-
-  const lowIncome  = ['1','2','3','4','5','6'].reduce((s, c) => s + get(c), 0);
-  const highIncome = ['14','15','16','17','18'].reduce((s, c) => s + get(c), 0);
+  const sum = (codes: string[]) => codes.reduce((acc, c) => acc + (get(c) ?? 0), 0);
 
   return {
-    incomeRanges,
-    lowIncomeHouseholds:  Math.round(lowIncome),
-    highIncomeHouseholds: Math.round(highIncome),
+    incomeRanges: Object.entries(HIND_LABELS).map(([code, label]) => ({ label, count: Math.round(get(code) ?? 0) })),
+    lowIncomeHouseholds:  Math.round(sum(['1', '2', '3', '4', '5'])),
+    highIncomeHouseholds: Math.round(sum(['13', '14', '15', '16', '17'])),
     total: Math.round(total),
   };
 }
 
+// ─── Official codelists ───────────────────────────────────────────────────────
+// Country and language labels come from the ABS codelist itself rather than a
+// hand-written map (the previous maps had most codes mislabelled).
+
+export interface CodelistEntry { id: string; name: string; parent?: string }
+
+const _codelists = new Map<string, CodelistEntry[]>();
+
+async function fetchCodelist(dataflow: string, codelistPrefix: string): Promise<CodelistEntry[]> {
+  const key = `${dataflow}:${codelistPrefix}`;
+  const cached = _codelists.get(key);
+  if (cached) return cached;
+
+  const res = await fetch(
+    `https://data.api.abs.gov.au/rest/dataflow/ABS/${dataflow}?references=all&detail=referencepartial`,
+    { headers: { Accept: 'application/vnd.sdmx.structure+json', 'User-Agent': DEFAULT_HEADERS['User-Agent'] }, cache: 'no-store' },
+  );
+  if (!res.ok) throw new Error(`ABS codelist ${dataflow}: HTTP ${res.status}`);
+  const json = await res.json() as { data: { codelists: Array<{ id: string; codes: CodelistEntry[] }> } };
+  const list = json.data.codelists.find((cl) => cl.id.startsWith(codelistPrefix));
+  if (!list) throw new Error(`Codelist ${codelistPrefix} not found for ${dataflow}`);
+  const entries = list.codes.map(({ id, name, parent }) => ({ id, name, parent }));
+  _codelists.set(key, entries);
+  return entries;
+}
+
+/**
+ * Top-N named groups among the leaf codes under `within`, with the remaining
+ * leaves summed into one `otherLabel` bucket. Subtotal codes (any code that is a
+ * parent) are never counted, so nothing is double-counted. Codes in `exclude`
+ * are left out entirely; codes in `otherCodes` always go to the bucket.
+ */
+export function selectTopGroups(
+  counts: Map<string, number>,
+  codelist: CodelistEntry[],
+  opts: { within: string; limit: number; otherLabel: string; exclude?: string[]; otherCodes?: string[] },
+): Array<{ name: string; code: string; count: number }> {
+  const byId = new Map(codelist.map((c) => [c.id, c]));
+  const parents = new Set(codelist.map((c) => c.parent).filter(Boolean) as string[]);
+  const isUnder = (id: string): boolean => {
+    for (let p = byId.get(id)?.parent; p; p = byId.get(p)?.parent) if (p === opts.within) return true;
+    return false;
+  };
+  const exclude = new Set(opts.exclude ?? []);
+  const otherCodes = new Set(opts.otherCodes ?? []);
+
+  const leaves = codelist
+    .filter((c) => !parents.has(c.id) && !exclude.has(c.id) && isUnder(c.id))
+    .map((c) => ({ name: c.name, code: c.id, count: Math.round(counts.get(c.id) ?? 0) }))
+    .filter((g) => g.count > 0);
+
+  const named = leaves.filter((g) => !otherCodes.has(g.code)).sort((a, b) => b.count - a.count).slice(0, opts.limit);
+  const namedCodes = new Set(named.map((g) => g.code));
+  const otherCount = leaves.filter((g) => !namedCodes.has(g.code)).reduce((acc, g) => acc + g.count, 0);
+
+  const groups = otherCount > 0 ? [...named, { name: opts.otherLabel, code: 'other', count: otherCount }] : named;
+  return groups.sort((a, b) => b.count - a.count);
+}
+
 // ─── G13: Language Spoken at Home ─────────────────────────────────────────────
-// C21_G13_LGA: Language spoken at home (LANP) × English proficiency (ENGLP) × sex
-
-const LANP_LABELS: Record<string, string> = {
-  '1201': 'English',
-  '7101': 'Mandarin',
-  '4202': 'Arabic',
-  '7201': 'Cantonese',
-  '7104': 'Cantonese',
-  '9201': 'Vietnamese',
-  '5101': 'Hindi',
-  '5107': 'Urdu',
-  '5203': 'Punjabi',
-  '6301': 'Korean',
-  '6402': 'Thai',
-  '6504': 'Indonesian',
-  '6902': 'Tamil',
-  '3101': 'Greek',
-  '3106': 'Spanish',
-  '9101': 'Tagalog / Filipino',
-  '9401': 'Korean',
-  '4601': 'Italian',
-  '4901': 'Spanish',
-  '5301': 'Punjabi',
-  '5601': 'Nepali',
-  '5501': 'Bengali',
-  '4701': 'French',
-  '3401': 'Croatian',
-  '6201': 'Japanese',
-  '8101': 'Portuguese',
-};
-
-function isDetailedAbsCode(code: string): boolean {
-  return /^\d{4}$/.test(code);
-}
-
-function sanitiseNamedGroups(
-  groups: Array<{ name: string; code: string; count: number }>,
-  labels: Record<string, string>,
-  otherLabel: string,
-): Array<{ name: string; code: string; count: number }> {
-  const known: Array<{ name: string; code: string; count: number }> = [];
-  let otherCount = 0;
-
-  for (const group of groups) {
-    if (group.count <= 0) continue;
-    const code = String(group.code);
-
-    if (!isDetailedAbsCode(code)) {
-      otherCount += group.count;
-      continue;
-    }
-
-    const label = labels[code];
-    if (!label) {
-      otherCount += group.count;
-      continue;
-    }
-
-    known.push({
-      name: label,
-      code,
-      count: Math.round(group.count),
-    });
-  }
-
-  known.sort((a, b) => b.count - a.count);
-
-  if (otherCount > 0) {
-    known.push({
-      name: otherLabel,
-      code: 'other',
-      count: Math.round(otherCount),
-    });
-  }
-
-  known.sort((a, b) => b.count - a.count);
-
-  return known;
-}
-
-function selectTopDetailedNamedGroups(
-  entries: Array<[string, number]>,
-  labels: Record<string, string>,
-  otherLabel: string,
-  limit: number,
-  excludedCodes: string[] = []
-): Array<{ name: string; code: string; count: number }> {
-  const excluded = new Set(excludedCodes);
-  const labelledDetailed = entries
-    .filter(([code, count]) => count > 0 && !excluded.has(code) && isDetailedAbsCode(code) && Boolean(labels[code]))
-    .sort((a, b) => b[1] - a[1]);
-
-  const topDetailed = labelledDetailed.slice(0, limit);
-  const selectedCodes = new Set(topDetailed.map(([code]) => code));
-
-  const groups = topDetailed.map(([code, count]) => ({
-    name: labels[code],
-    code,
-    count: Math.round(count),
-  }));
-
-  let otherCount = 0;
-  for (const [code, count] of entries) {
-    if (count <= 0 || excluded.has(code)) continue;
-    if (!isDetailedAbsCode(code) || !labels[code] || !selectedCodes.has(code)) {
-      otherCount += count;
-    }
-  }
-
-  if (otherCount > 0) {
-    groups.push({
-      name: otherLabel,
-      code: 'other',
-      count: Math.round(otherCount),
-    });
-  }
-
-  groups.sort((a, b) => b.count - a.count);
-  return groups;
-}
+// C21_G13_LGA: Language used at home (LANP, CL_C21_LANP02) × proficiency in
+// spoken English (ENGLP, CL_C21_ENGLP02) × sex.
+//   LANP: 1 speaks English only; O_T other languages total, with subtotals such
+//         as 71 Chinese: Total over 7101 Cantonese / 7104 Mandarin; _N not stated.
+//   ENGLP: 1 English only; 4 uses other language total = 2 (speaks English very
+//         well or well) + 3 (not well or not at all); _N not stated; _T total.
 
 export interface LanguageData {
   englishOnly: number;
   languageGroups: { name: string; code: string; count: number }[];
-  limitedEnglish: number; // speaks a LOTE and English not well/not at all
+  limitedEnglish: number; // uses another language and speaks English not well / not at all
   total: number;
 }
 
-export function sanitiseLanguageGroups(
-  groups: Array<{ name: string; code: string; count: number }>
-): Array<{ name: string; code: string; count: number }> {
-  return sanitiseNamedGroups(groups, LANP_LABELS, 'Other languages');
+/** Drop empty groups and order by size; labels are already official ABS names. */
+function sanitiseGroups(groups: Array<{ name: string; code: string; count: number }>) {
+  return groups
+    .filter((g) => g.count > 0)
+    .map((g) => ({ name: g.name, code: String(g.code), count: Math.round(g.count) }))
+    .sort((a, b) => b.count - a.count);
 }
 
-export function selectTopDetailedLanguageGroups(
-  languageEntries: Array<[string, number]>,
-  limit = 12
-): Array<{ name: string; code: string; count: number }> {
-  return selectTopDetailedNamedGroups(languageEntries, LANP_LABELS, 'Other languages', limit, ['1201']);
-}
-
-export function normaliseLanguageData(data: LanguageData): LanguageData {
-  const entries = data.languageGroups.map(group => [String(group.code), Number(group.count) || 0] as [string, number]);
-  return {
-    ...data,
-    languageGroups: selectTopDetailedLanguageGroups(entries, 12),
-  };
-}
+export const sanitiseLanguageGroups = sanitiseGroups;
+export const sanitiseBirthplaceGroups = sanitiseGroups;
 
 export async function fetchG13(lgaCode: string): Promise<LanguageData | null> {
-  // ENGLP codes: 1=speaks English only, 2=very well, 3=well, 4=not well, 5=not at all
   const url = `${ABS_BASE}/C21_G13_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
   const data = parseSdmxXml(xml);
+  const codelist = await fetchCodelist('C21_G13_LGA', 'CL_C21_LANP');
 
-  const total = lookupValue(data, { LANP: '_T', ENGLP: '_T', SEXP: '3', REGION: lgaCode }, '2021')
-    ?? sumValues(data, { SEXP: '3', REGION: lgaCode }, '2021');
+  const get = (lanp: string, englp: string) =>
+    lookupValue(data, { LANP: lanp, ENGLP: englp, SEXP: '3', REGION: lgaCode }, '2021');
+  return decodeG13(get, codelist);
+}
+
+/** "Indo-Aryan: Punjabi" → "Punjabi"; keeps the group for catch-alls ("Chinese: Other"). */
+function shortLanguageName(name: string): string {
+  const i = name.lastIndexOf(': ');
+  return i < 0 || /^other\b/i.test(name.slice(i + 2)) ? name : name.slice(i + 2);
+}
+
+export function decodeG13(
+  get: (lanp: string, englp: string) => number | null,
+  codelist: CodelistEntry[],
+): LanguageData | null {
+  const total = get('_T', '_T') ?? 0;
   if (total === 0) return null;
 
-  // Extract all LANP counts for Persons at this LGA
-  const langCounts = new Map<string, number>();
-  for (const [key, value] of Array.from(data.entries())) {
-    const kd = parseKey(key);
-    if (kd['REGION'] !== lgaCode) continue;
-    if (kd['SEXP'] !== '3') continue;
-    if (normaliseTime(kd['TIME_PERIOD'] ?? '') !== '2021') continue;
-    const lanp = kd['LANP'];
-    if (!lanp || lanp === '_T') continue;
-    const englp = kd['ENGLP'];
-    if (!englp || englp === '_T') continue;
-    langCounts.set(lanp, (langCounts.get(lanp) ?? 0) + value);
+  const counts = new Map<string, number>();
+  for (const { id } of codelist) {
+    const v = get(id, '_T');
+    if (v !== null) counts.set(id, v);
   }
 
-  if (langCounts.size === 0) return null;
-
-  const englishOnly   = langCounts.get('1201') ?? 0;
-  const limitedEnglish = sumValues(data, { SEXP: '3', ENGLP: '4', REGION: lgaCode }, '2021')
-    + sumValues(data, { SEXP: '3', ENGLP: '5', REGION: lgaCode }, '2021');
-
-  const languageGroups = selectTopDetailedLanguageGroups(Array.from(langCounts.entries()));
-
   return {
-    englishOnly:     Math.round(englishOnly),
-    languageGroups,
-    limitedEnglish:  Math.round(limitedEnglish),
-    total:           Math.round(total),
+    englishOnly: Math.round(get('1', '_T') ?? 0),
+    languageGroups: selectTopGroups(counts, codelist, {
+      within: 'O_T', limit: 12, otherLabel: 'Other languages', otherCodes: ['_O'],
+    }).map((g) => ({ ...g, name: shortLanguageName(g.name) })),
+    limitedEnglish: Math.round(get('_T', '3') ?? 0),
+    total: Math.round(total),
   };
 }
 
 // ─── G09: Country of Birth (Detailed) ─────────────────────────────────────────
-// C21_G09_LGA: Country of birth (BPLP) × sex by LGA
-
-const BPLP_LABELS: Record<string, string> = {
-  '1101': 'Australia',
-  '6101': 'China (excl. SARs)',
-  '5101': 'India',
-  '1201': 'England',
-  '6201': 'Philippines',
-  '9201': 'Vietnam',
-  '6301': 'South Korea',
-  '4302': 'Lebanon',
-  '2201': 'New Zealand',
-  '5201': 'Sri Lanka',
-  '1202': 'Scotland',
-  '4101': 'Italy',
-  '9301': 'Indonesia',
-  '3101': 'Greece',
-  '9402': 'Malaysia',
-  '5301': 'Pakistan',
-  '5501': 'Bangladesh',
-  '4201': 'Egypt',
-  '1103': 'South Africa',
-  '4301': 'Iraq',
-  '5401': 'Nepal',
-  '7201': 'Japan',
-  '4701': 'France',
-  '4901': 'Spain',
-};
+// C21_G09_LGA: Country of birth (BPLP, CL_C21_BPLP11) × age × sex. BPLP is a flat
+// list under _T: 11 Australia, 50 named countries, _O other, _N not stated.
 
 export interface BirthplaceData {
-  birthplaceGroups: { name: string; code: string; count: number }[];
+  birthplaceGroups: { name: string; code: string; count: number }[]; // overseas countries
   bornAustralia: number;
   bornOverseas: number;
   total: number;
-}
-
-export function sanitiseBirthplaceGroups(
-  groups: Array<{ name: string; code: string; count: number }>
-): Array<{ name: string; code: string; count: number }> {
-  return sanitiseNamedGroups(groups, BPLP_LABELS, 'Other countries');
-}
-
-export function selectTopDetailedBirthplaceGroups(
-  birthplaceEntries: Array<[string, number]>,
-  limit = 15
-): Array<{ name: string; code: string; count: number }> {
-  return selectTopDetailedNamedGroups(birthplaceEntries, BPLP_LABELS, 'Other countries', limit, ['1101']);
-}
-
-export function normaliseBirthplaceData(data: BirthplaceData): BirthplaceData {
-  const entries = data.birthplaceGroups.map(group => [String(group.code), Number(group.count) || 0] as [string, number]);
-  return {
-    ...data,
-    birthplaceGroups: selectTopDetailedBirthplaceGroups(entries, 15),
-  };
 }
 
 export async function fetchG09(lgaCode: string): Promise<BirthplaceData | null> {
@@ -1555,86 +1435,90 @@ export async function fetchG09(lgaCode: string): Promise<BirthplaceData | null> 
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
   const data = parseSdmxXml(xml);
+  const codelist = await fetchCodelist('C21_G09_LGA', 'CL_C21_BPLP');
 
-  const total = lookupValue(data, { BPLP: '_T', SEXP: '3', REGION: lgaCode }, '2021')
-    ?? sumValues(data, { SEXP: '3', REGION: lgaCode }, '2021');
+  return decodeG09(
+    (bplp) => lookupValue(data, { BPLP: bplp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021'),
+    codelist,
+  );
+}
+
+export function decodeG09(get: (bplp: string) => number | null, codelist: CodelistEntry[]): BirthplaceData | null {
+  const total = get('_T') ?? 0;
   if (total === 0) return null;
 
-  const bplpCounts = new Map<string, number>();
-  for (const [key, value] of Array.from(data.entries())) {
-    const kd = parseKey(key);
-    if (kd['REGION'] !== lgaCode) continue;
-    if (kd['SEXP'] !== '3') continue;
-    if (normaliseTime(kd['TIME_PERIOD'] ?? '') !== '2021') continue;
-    const bplp = kd['BPLP'];
-    if (!bplp || bplp === '_T') continue;
-    bplpCounts.set(bplp, (bplpCounts.get(bplp) ?? 0) + value);
+  const counts = new Map<string, number>();
+  for (const { id } of codelist) {
+    const v = get(id);
+    if (v !== null) counts.set(id, v);
   }
-
-  if (bplpCounts.size === 0) return null;
-
-  const bornAustralia = bplpCounts.get('1101') ?? 0;
-  const bornOverseas  = total - bornAustralia;
-
-  const birthplaceGroups = selectTopDetailedBirthplaceGroups(Array.from(bplpCounts.entries()));
+  const bornAustralia = counts.get('11') ?? 0;
+  const notStated = counts.get('_N') ?? 0;
 
   return {
-    birthplaceGroups,
+    birthplaceGroups: selectTopGroups(counts, codelist, {
+      within: '_T', limit: 15, otherLabel: 'Other countries', exclude: ['11', '_N'], otherCodes: ['_O'],
+    }),
     bornAustralia: Math.round(bornAustralia),
-    bornOverseas:  Math.round(bornOverseas),
-    total:         Math.round(total),
+    bornOverseas: Math.round(total - bornAustralia - notStated),
+    total: Math.round(total),
   };
 }
 
-// ─── G25: Family Composition ──────────────────────────────────────────────────
+// ─── G25: Family and Household Composition ────────────────────────────────────
+// Internal name G25 is historical (C21_G25_LGA is unpaid care).
+//   Families:   C21_G32_LGA, FMCF (CL_C21_FMCF02) 1 couple without children,
+//               2 couple with children, 3 one parent, 9 other family; FINF=_T.
+//   Households: C21_G35_LGA, HHCD (1_2 family households, 3 non-family) ×
+//               NPRD (1 one person … _T); lone person = non-family with 1 person,
+//               group = non-family with 2+ persons.
 
 export interface FamilyData {
   coupleWithChildren: number;
   coupleNoChildren: number;
   oneParentFamily: number;
   otherFamily: number;
+  totalFamilies: number;
+  familyHouseholds: number;
   lonePersonHousehold: number;
   groupHousehold: number;
   totalHouseholds: number;
 }
 
 export async function fetchG25(lgaCode: string): Promise<FamilyData | null> {
-  // NOTE: C21_G25_LGA is unpaid care (UNCAREP), not family composition.
-  // C21_G32_LGA has HHCD (household composition) × NPRD (number of persons).
-  // HHCD codes in G32/G35: 1_2=family households, 3=non-family, _T=total
-  // A dedicated family type × composition breakdown is not directly available
-  // as a single SDMX table at LGA level via the REST API.
-  // Attempt C21_G32_LGA for aggregate household type counts.
-  const url = `${ABS_BASE}/C21_G32_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
-  const xml = await fetchWithRetry(url);
-  if (!xml) return null;
-  const data = parseSdmxXml(xml);
+  const [familyXml, householdXml] = await Promise.all([
+    fetchWithRetry(`${ABS_BASE}/C21_G32_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`),
+    fetchWithRetry(`${ABS_BASE}/C21_G35_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`),
+  ]);
+  if (!familyXml || !householdXml) return null;
+  const families = parseSdmxXml(familyXml);
+  const households = parseSdmxXml(householdXml);
 
-  // Try HHCD dimension first, then FMCF fallback
-  const get = (code: string) =>
-    lookupValue(data, { HHCD: code, REGION: lgaCode }, '2021')
-    ?? lookupValue(data, { FMCF: code, REGION: lgaCode }, '2021')
-    ?? sumValues(data, { HHCD: code, REGION: lgaCode }, '2021');
+  return decodeG25(
+    (fmcf) => lookupValue(families, { FMCF: fmcf, FINF: '_T', REGION: lgaCode }, '2021'),
+    (hhcd, nprd) => lookupValue(households, { HHCD: hhcd, NPRD: nprd, REGION: lgaCode }, '2021'),
+  );
+}
 
-  const coupleChild   = get('2');
-  const coupleNoChild = get('1');
-  const oneParent     = get('3');
-  const other         = get('4');
-  const lonePerson    = get('5');
-  const group         = get('6');
-  const total         = get('_T');
+export function decodeG25(
+  family: (fmcf: string) => number | null,
+  household: (hhcd: string, nprd: string) => number | null,
+): FamilyData | null {
+  const totalHouseholds = household('_T', '_T') ?? 0;
+  const totalFamilies = family('_T') ?? 0;
+  if (totalHouseholds === 0 && totalFamilies === 0) return null;
 
-  const computed = coupleChild + coupleNoChild + oneParent + other + lonePerson + group;
-  if (total === 0 && computed === 0) return null;
-
+  const lone = household('3', '1') ?? 0;
   return {
-    coupleWithChildren:  Math.round(coupleChild),
-    coupleNoChildren:    Math.round(coupleNoChild),
-    oneParentFamily:     Math.round(oneParent),
-    otherFamily:         Math.round(other),
-    lonePersonHousehold: Math.round(lonePerson),
-    groupHousehold:      Math.round(group),
-    totalHouseholds:     Math.round(total > 0 ? total : computed),
+    coupleNoChildren:    Math.round(family('1') ?? 0),
+    coupleWithChildren:  Math.round(family('2') ?? 0),
+    oneParentFamily:     Math.round(family('3') ?? 0),
+    otherFamily:         Math.round(family('9') ?? 0),
+    totalFamilies:       Math.round(totalFamilies),
+    familyHouseholds:    Math.round(household('1_2', '_T') ?? 0),
+    lonePersonHousehold: Math.round(lone),
+    groupHousehold:      Math.round((household('3', '_T') ?? 0) - lone),
+    totalHouseholds:     Math.round(totalHouseholds),
   };
 }
 
