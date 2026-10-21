@@ -19,6 +19,8 @@ npm run seed:transport   # HTS commute time, ABS commute distance, station patro
 
 npm run parse:population  # regenerate src/lib/data/nsw-projections-data.ts from XLSX
 npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV
+npm run parse:hts         # regenerate src/lib/data/hts-lga-data.ts (HTS all-purpose travel)
+npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-data.ts from a TableBuilder export
 ```
 
 ## Routes
@@ -43,10 +45,13 @@ npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.t
 | ABS Building Approvals API (BA_LGA2024 / BA_LGA2025) | Monthly residential building approvals by LGA | `npm run seed:abs` |
 | NSW DPE bundled data | Population projections 2021–2041 by LGA | `npm run seed:static` (or `parse:population` then `seed:static`) |
 | TfNSW TZP24 bundled data | Employment projections 2021–2066 by LGA | `npm run seed:static` (or `parse:employment` then `seed:static`) |
-| TfNSW Household Travel Survey (HTS) | Avg weekday commute time by LGA — 45 LGAs (Sydney GMA, Central Coast, Hunter, Illawarra, Shoalhaven) | `npm run seed:transport` |
+| TfNSW Household Travel Survey (HTS) — commute | Avg weekday commute time by LGA — 45 LGAs (Sydney GMA, Central Coast, Hunter, Illawarra, Shoalhaven) | `npm run seed:transport` |
+| TfNSW Household Travel Survey (all trips) | Mode share of all weekday trips, trip purpose, trips per resident — 45 Sydney GMA LGAs | `npm run parse:hts` regenerates bundled `src/lib/data/hts-lga-data.ts` |
 | TfNSW Station Entries & Exits (Opal) | Monthly rail/metro/light rail entries, joined to LGAs via `gtfs_stops` + `STATION_LGA_OVERRIDES` | `npm run seed:transport` |
 | ABS Data by Region (ABS_REGIONAL_LGA2020) | Census 2016 commuting distance, all LGAs (fallback where HTS has no coverage) | `npm run seed:transport` / `seed:abs` |
-| TfNSW transport static | **Modelled** mode share / commute / patronage for 5 LGAs — no longer shown on `/transport`; still used by `/compare` | `npm run seed:static` |
+| TfNSW GTFS schedule | Stops/routes per LGA + weekday 7–9am departures per stop (frequent = ≥8, i.e. ≥4/hr; school buses excluded) | `npm run seed:gtfs` — keyless complete bundle from Open Data (~300 MB, ~1 min), or per-feed API if `TFNSW_API_KEY` is set; `-- --zip <path>` to reuse a download |
+| ABS Census JTW flows (TableBuilder) | LGA of residence × LGA of workplace: self-containment, self-sufficiency, top destinations/origins. No open 2021 LGA→LGA file exists, so it needs a TableBuilder CSV export (spec in `scripts/parse-jtw-flows.ts`) | `npm run parse:jtw-flows -- <export.csv>` regenerates bundled `src/lib/data/jtw-flows-data.ts` (ships empty) |
+| TfNSW transport static | **Modelled** mode share / commute / patronage trends 2019–2026 for 5 LGAs (not official — see header of `src/lib/data/tfnsw-transport.ts`); no longer shown on `/transport`, still used by `/compare` | `npm run seed:static` |
 
 ### ABS LGA Codes (key ones)
 `lga_sydney→17200` `lga_parramatta→16260` `lga_blacktown→10750` `lga_penrith→16350`
@@ -70,9 +75,10 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 | LABOUR | C21_G46_LGA | Labour force status (FT/PT employed, unemployed, NILF) |
 | ERP | ABS_ANNUAL_ERP_LGA2021 | Estimated resident population 2001–2024 |
 | BUILDING_APPROVALS | BA_LGA2024 / BA_LGA2025 | Monthly residential building approvals by LGA |
-| G62 / G59 / B46 | C21_G62_LGA / ABS_C16_G59_LGA / ABS_CENSUS2011_B46_LGA | Method of travel to work 2021/2016/2011 — decoded by `decodeJourneyToWork` with `MTWP_CODES_20xx` (232 = walked, 233 = worked at home, 234 = did not go; not modes) |
+| G34 | C21_G34_LGA | Motor vehicles per dwelling (0 / 1 / 2 / 3+) — zero-car households |
+| G62 / G59 / B46 | C21_G62_LGA / ABS_C16_G59_LGA / ABS_CENSUS2011_B46_LGA | Method of travel to work 2021/2016/2011 (mode share + trend) — decoded by `decodeJourneyToWork` with `MTWP_CODES_20xx` (232 = walked, 233 = worked at home, 234 = did not go; not modes). `npm run seed:g62` refreshes all three |
 | COMMUTE_DIST_2016 | ABS_REGIONAL_LGA2020 | Avg / median commuting distance (Census 2016) |
-| G55 | — | Not used (C21_G55_LGA is industry × hours); journey-to-work comes from G62 |
+| G55 | — | Not used (C21_G55_LGA is industry × hours); journey-to-work comes from G62/G59/B46 |
 
 ### Adding a New LGA
 1. Add entry to `LGA_CODE_MAP` in `src/lib/abs-fetchers.ts` (`lga_xxx → 5-digit ABS code`)
@@ -103,7 +109,7 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 | `abs_cache` | `(lga_code, dataset)` | JSON blob of parsed ABS data per LGA per dataset |
 | `nsw_projections` | `(lga_name, projection_type)` | Population & employment projections |
 | `transport_static` | `(lga_name, year)` | TfNSW mode share / commute data |
-| `tfnsw_cache` | `(lga_code, dataset)` | GTFS coverage, traffic trends, crash summaries, `HTS_COMMUTE`, `STATION_PATRONAGE` |
+| `tfnsw_cache` | `(lga_code, dataset)` | GTFS coverage (`GTFS_COVERAGE`), weekday AM-peak service frequency (`GTFS_FREQUENCY`), traffic trends, crash summaries, `HTS_COMMUTE`, `STATION_PATRONAGE`, patronage source metadata |
 | `app_config` | `key` | Key-value store (e.g. `abs_last_seeded`) |
 | `refresh_log` | `id` | Audit log of seed runs |
 

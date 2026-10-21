@@ -25,6 +25,7 @@ import {
 } from './sample-data';
 import { getProjectionsForArea } from './nsw-projections-data';
 import { getLiveTfNSWTransportData } from '../tfnsw-api';
+import { getPtFrequency, getTravelSurvey, getCommuteFlows } from './transport-service-demand';
 import {
   getEmploymentProjections,
   type EmploymentProjection,
@@ -569,6 +570,26 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     sampleFields.push('ptStops', 'ptRoutes');
   }
 
+  // PT service frequency (GTFS), all-purpose travel (HTS) and commuting flows
+  // between LGAs (Census) — see transport-service-demand.ts
+  const ptFrequency = lgaCode ? await getPtFrequency(lgaCode) : null;
+  const travelSurvey = lgaCode ? await getTravelSurvey(lgaCode) : null;
+  const commuteFlows = lgaCode ? getCommuteFlows(lgaCode) : null;
+  if (ptFrequency) {
+    liveFields.push('ptFrequency');
+    if (!sources.includes('TfNSW GTFS')) sources.push('TfNSW GTFS');
+  } else {
+    sampleFields.push('ptFrequency');
+  }
+  if (travelSurvey) {
+    liveFields.push('travelSurvey');
+    if (!sources.includes('TfNSW Household Travel Survey')) sources.push('TfNSW Household Travel Survey');
+  }
+  if (commuteFlows) {
+    liveFields.push('commuteFlows');
+    sources.push(`ABS Census ${commuteFlows.censusYear} journey to work (TableBuilder)`);
+  }
+
   return {
     data: {
       ...sample,
@@ -586,6 +607,9 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
       patronageSource,
       ptStops,
       ptRoutes,
+      ptFrequency: ptFrequency ?? undefined,
+      travelSurvey: travelSurvey ?? undefined,
+      commuteFlows: commuteFlows ?? undefined,
     },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };

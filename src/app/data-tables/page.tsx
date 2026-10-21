@@ -176,6 +176,12 @@ export default function DataTablesPage() {
               transport.ptPatronage !== null && ['PT patronage', formatNumber(transport.ptPatronage)],
               ['PT stops total', transport.ptStops?.total ?? 'N/A'],
               ['PT routes total', transport.ptRoutes?.total ?? 'N/A'],
+              ['Frequent stops (≥4/hr, 7–9am)', transport.ptFrequency?.frequentStops ?? 'N/A'],
+              ['Share of stops frequent', transport.ptFrequency ? formatPercent(transport.ptFrequency.frequentStopShare) : 'N/A'],
+              ['AM-peak departures per 1,000 residents', transport.ptFrequency?.departuresPer1000Residents ?? 'N/A'],
+              ['HTS trips per resident per weekday', transport.travelSurvey?.tripsPerPerson ?? 'N/A'],
+              ['Residents who work in the LGA (Census)', transport.commuteFlows ? formatPercent(transport.commuteFlows.selfContainment) : 'N/A'],
+              ['Local jobs held by residents (Census)', transport.commuteFlows ? formatPercent(transport.commuteFlows.selfSufficiency) : 'N/A'],
             ].filter(Boolean) as [string, string | number][]}
           />
           <SimpleTable
@@ -223,6 +229,16 @@ export default function DataTablesPage() {
               transport.ptRoutes.lightRail,
               transport.ptRoutes.total,
             ]] : []}
+          />
+          <SimpleTable
+            title={`Household Travel Survey mode share (all weekday trips${transport.travelSurvey ? `, ${transport.travelSurvey.latestYear}` : ''})`}
+            columns={['Mode', 'Share of trips', 'Avg distance (km)', 'Avg time (min)']}
+            rows={(transport.travelSurvey?.modes ?? []).map((m) => [m.label, formatPercent(m.modeShare), m.avgDistanceKm ?? 'N/A', m.avgTimeMin ?? 'N/A'])}
+          />
+          <SimpleTable
+            title="Household Travel Survey trip purpose"
+            columns={['Purpose', 'Share of journeys', 'Avg distance (km)', 'Avg time (min)']}
+            rows={(transport.travelSurvey?.purposes ?? []).map((p) => [p.purpose, formatPercent(p.share), p.avgDistanceKm ?? 'N/A', p.avgTimeMin ?? 'N/A'])}
           />
           <SimpleTable
             title="Traffic volume trend"

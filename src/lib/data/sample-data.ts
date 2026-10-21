@@ -1,3 +1,6 @@
+import type { GTFSFrequencyData } from '@/lib/gtfs-frequency';
+import type { HTSTravelSurveySummary } from '@/lib/hts-parser';
+import type { JTWFlowSummary } from '@/lib/jtw-flows';
 import { OFFICIAL_FALLBACKS } from './official-fallback-data';
 
 export interface DemographicsData {
@@ -54,6 +57,11 @@ export interface TransportData {
   vehicleOwnershipRaw?: { noCar: number; oneCar: number; twoCars: number; threePlusCars: number; totalDwellings: number };
   ptStops?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
   ptRoutes?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
+  ptFrequency?: GTFSFrequencyData & { departuresPer1000Residents: number | null };
+  /** All-purpose weekday travel, TfNSW Household Travel Survey (Sydney GMA LGAs only). */
+  travelSurvey?: HTSTravelSurveySummary;
+  /** Census journey-to-work flows between LGAs (ABS TableBuilder export). */
+  commuteFlows?: JTWFlowSummary & { censusYear: number };
 }
 
 export interface EconomyData {
