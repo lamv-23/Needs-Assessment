@@ -17,7 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getDb } from '../src/lib/db';
 import { LGA_CODE_MAP, type G01Data, type JourneyToWorkData } from '../src/lib/abs-fetchers';
-import { SAMPLE_AREAS } from '../src/lib/data/sample-areas';
+import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '../src/lib/data/sample-areas';
 import { journeyToWorkShares, modeShareTrendPoints } from '../src/lib/data/live-data';
 
 const FALLBACK_PATH = path.join(process.cwd(), 'src/lib/data/official-fallback-data.ts');
@@ -78,12 +78,7 @@ const JTW_KEYS: Array<keyof JourneyToWorkData> = [
 ];
 
 function buildGreaterSydneyBenchmark(): void {
-  // ABS Greater Sydney GCCSA = the app's 33 "Greater Sydney" LGAs + Central Coast.
-  const areaIds = [
-    ...SAMPLE_AREAS.filter((a) => a.type === 'lga' && a.region === 'Greater Sydney').map((a) => a.id),
-    'lga_central_coast',
-  ];
-  const codes = Array.from(new Set(areaIds.map((id) => LGA_CODE_MAP[id])));
+  const codes = Array.from(new Set(GREATER_SYDNEY_GCCSA_AREA_IDS.map((id) => LGA_CODE_MAP[id])));
 
   let population = 0;
   const jtw = Object.fromEntries(JTW_KEYS.map((k) => [k, 0])) as Record<keyof JourneyToWorkData, number>;

@@ -89,6 +89,13 @@ export function getDb(): Database.Database {
 
     initSchema(db);
     cleanupZombieRefreshLogs(db);
+
+    // Fold the WAL into cache.db when the process ends, so seed writes are in the
+    // file git tracks (data/cache.db-wal is gitignored).
+    const writable = db;
+    process.once('exit', () => {
+      try { writable.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* best effort */ }
+    });
   }
   return db;
 }

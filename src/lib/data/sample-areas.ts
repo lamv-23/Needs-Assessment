@@ -184,6 +184,16 @@ export const SAMPLE_AREAS: Area[] = [
   { id: 'sub_hornsby',         name: 'Hornsby',     type: 'suburb', parentId: 'lga_hornsby',              centroidLat: -33.7046, centroidLng: 151.0985 },
 ];
 
+/**
+ * LGAs making up the ABS Greater Sydney GCCSA — the definition used for every
+ * Greater Sydney benchmark. This is the 'Greater Sydney' region above plus
+ * Central Coast, which the ABS includes in Greater Sydney.
+ */
+export const GREATER_SYDNEY_GCCSA_AREA_IDS: string[] = [
+  ...SAMPLE_AREAS.filter((a) => a.type === 'lga' && a.region === 'Greater Sydney').map((a) => a.id),
+  'lga_central_coast',
+];
+
 export const GREATER_SYDNEY_BENCHMARK: Area = {
   id: 'benchmark_gsy',
   name: 'Greater Sydney',

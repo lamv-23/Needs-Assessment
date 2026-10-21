@@ -26,7 +26,7 @@ import { upsertTfNSWCache, upsertGtfsStopsBatch, clearGtfsStops, setConfigValue 
 import type { GtfsStop } from '../src/lib/db';
 import { LGA_CODE_MAP } from '../src/lib/abs-fetchers';
 import { pickServiceDate, activeServiceIds, createPeakDepartureCounter, summariseFrequency, frequencyBenchmarks } from '../src/lib/gtfs-frequency';
-import { SAMPLE_AREAS } from '../src/lib/data/sample-areas';
+import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '../src/lib/data/sample-areas';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -747,9 +747,7 @@ async function main() {
     const tally = new Map<string, number>();
     for (const d of serviceDates) tally.set(d, (tally.get(d) ?? 0) + 1);
     const serviceDate = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    const greaterSydneyCodes = new Set(
-      SAMPLE_AREAS.filter(a => a.region === 'Greater Sydney' && LGA_CODE_MAP[a.id]).map(a => LGA_CODE_MAP[a.id]),
-    );
+    const greaterSydneyCodes = new Set(GREATER_SYDNEY_GCCSA_AREA_IDS.map(id => LGA_CODE_MAP[id]).filter(Boolean));
     const { greaterSydney, nsw } = frequencyBenchmarks(lgaFrequencyStops, allPeakDepartures, serviceDate, code => greaterSydneyCodes.has(code));
     const benchmarks = {
       greaterSydneyFrequentStopShare: greaterSydney.frequentStopShare,
