@@ -1,3 +1,4 @@
+import type { GTFSFrequencyData } from '@/lib/gtfs-frequency';
 import { OFFICIAL_FALLBACKS } from './official-fallback-data';
 
 export interface DemographicsData {
@@ -37,6 +38,7 @@ export interface TransportData {
   vehicleOwnershipRaw?: { noCar: number; oneCar: number; twoCars: number; threePlusCars: number; totalDwellings: number };
   ptStops?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
   ptRoutes?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
+  ptFrequency?: GTFSFrequencyData & { departuresPer1000Residents: number | null };
 }
 
 export interface EconomyData {

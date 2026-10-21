@@ -41,7 +41,8 @@ npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.t
 | ABS Building Approvals API (BA_LGA2024 / BA_LGA2025) | Monthly residential building approvals by LGA | `npm run seed:abs` |
 | NSW DPE bundled data | Population projections 2021–2041 by LGA | `npm run seed:static` (or `parse:population` then `seed:static`) |
 | TfNSW TZP24 bundled data | Employment projections 2021–2066 by LGA | `npm run seed:static` (or `parse:employment` then `seed:static`) |
-| TfNSW transport static | Mode share, commute times by LGA/year | `npm run seed:static` |
+| TfNSW transport static | **Modelled** mode share / commute / patronage trends 2019–2026 (not official — see header of `src/lib/data/tfnsw-transport.ts`) | `npm run seed:static` |
+| TfNSW GTFS schedule | Stops/routes per LGA + weekday 7–9am departures per stop (frequent = ≥8, i.e. ≥4/hr) | `npm run seed:gtfs` (needs `TFNSW_API_KEY`) |
 
 ### ABS LGA Codes (key ones)
 `lga_sydney→17200` `lga_parramatta→16260` `lga_blacktown→10750` `lga_penrith→16350`
@@ -65,7 +66,11 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 | LABOUR | C21_G46_LGA | Labour force status (FT/PT employed, unemployed, NILF) |
 | ERP | ABS_ANNUAL_ERP_LGA2021 | Estimated resident population 2001–2024 |
 | BUILDING_APPROVALS | BA_LGA2024 / BA_LGA2025 | Monthly residential building approvals by LGA |
-| G55 | — | Journey-to-work: **no ABS SDMX endpoint at LGA level** — stubbed null |
+| G34 | C21_G34_LGA | Motor vehicles per dwelling (0 / 1 / 2 / 3+) — zero-car households |
+| G62 | C21_G62_LGA | Method of travel to work 2021 (journey-to-work mode share) — `npm run seed:g62` to refresh only this |
+| G59 | ABS_C16_G59_LGA | Method of travel to work 2016 (mode share trend) |
+| B46 | ABS_CENSUS2011_B46_LGA | Method of travel to work 2011 (mode share trend) |
+| G55 | — | Legacy name, permanently stubbed null — JTW comes from G62/G59/B46 |
 
 ### Adding a New LGA
 1. Add entry to `LGA_CODE_MAP` in `src/lib/abs-fetchers.ts` (`lga_xxx → 5-digit ABS code`)
@@ -96,7 +101,7 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 | `abs_cache` | `(lga_code, dataset)` | JSON blob of parsed ABS data per LGA per dataset |
 | `nsw_projections` | `(lga_name, projection_type)` | Population & employment projections |
 | `transport_static` | `(lga_name, year)` | TfNSW mode share / commute data |
-| `tfnsw_cache` | `(lga_code, dataset)` | GTFS coverage, live traffic trends, crash summaries, patronage source metadata |
+| `tfnsw_cache` | `(lga_code, dataset)` | GTFS coverage (`GTFS_COVERAGE`), weekday AM-peak service frequency (`GTFS_FREQUENCY`), live traffic trends, crash summaries, patronage source metadata |
 | `app_config` | `key` | Key-value store (e.g. `abs_last_seeded`) |
 | `refresh_log` | `id` | Audit log of seed runs |
 

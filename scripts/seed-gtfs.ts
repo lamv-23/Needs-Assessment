@@ -4,8 +4,8 @@
  * Downloads GTFS schedule zips from TfNSW, spatially joins stops to NSW LGA
  * polygons, and stores per-LGA PT coverage metrics in tfnsw_cache.
  *
- * Stored dataset key: 'GTFS_COVERAGE'
- * Shape: GTFSCoverageData (see interface below)
+ * Stored dataset keys: 'GTFS_COVERAGE' (GTFSCoverageData, see interface below)
+ *                      'GTFS_FREQUENCY' (GTFSFrequencyData, see src/lib/gtfs-frequency.ts)
  *
  * Run:  npm run seed:gtfs
  */
@@ -18,6 +18,7 @@ import { point as turfPoint } from '@turf/helpers';
 import { upsertTfNSWCache, upsertGtfsStopsBatch, clearGtfsStops, setConfigValue } from '../src/lib/db';
 import type { GtfsStop } from '../src/lib/db';
 import { LGA_CODE_MAP } from '../src/lib/abs-fetchers';
+import { pickServiceDate, activeServiceIds, countPeakDepartures, summariseFrequency } from '../src/lib/gtfs-frequency';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -195,6 +196,9 @@ interface FeedResult {
   routes: Map<string, number>;
   // stopId → Set<routeId> (derived from stop_times + trips)
   stopRoutes: Map<string, Set<string>>;
+  // stopId → weekday AM-peak departures on serviceDate
+  peakDepartures: Map<string, number>;
+  serviceDate: string | null;
 }
 
 function processFeedZip(feedId: string, defaultMode: string, buf: Buffer): FeedResult | null {
@@ -240,10 +244,12 @@ function processFeedZip(feedId: string, defaultMode: string, buf: Buffer): FeedR
   // Build trip_id → route_id map (needed to link stop_times → routes)
   const tripsEntry = zip.getEntry('trips.txt');
   const tripToRoute = new Map<string, string>();
+  const tripService = new Map<string, string>();
   if (tripsEntry) {
     const tripsRows = parseCSV(tripsEntry.getData().toString('utf-8').replace(/^\uFEFF/, ''));
     for (const row of tripsRows) {
       tripToRoute.set(row['trip_id'], row['route_id']);
+      tripService.set(row['trip_id'], row['service_id']);
     }
     console.log(`  ↳ ${feedId}: ${tripToRoute.size} trips`);
   }
@@ -252,9 +258,28 @@ function processFeedZip(feedId: string, defaultMode: string, buf: Buffer): FeedR
   // Build stop_id → Set<route_id> map
   // This file can be large (100MB+) — process line by line from buffer
   const stopRoutes = new Map<string, Set<string>>();
+  let peakDepartures = new Map<string, number>();
+  let serviceDate: string | null = null;
   const stopTimesEntry = zip.getEntry('stop_times.txt');
   if (stopTimesEntry && tripToRoute.size > 0) {
     const stText = stopTimesEntry.getData().toString('utf-8');
+
+    // ── AM-peak service frequency on a representative Tuesday ────────────────
+    const readOptional = (name: string) => {
+      const entry = zip.getEntry(name);
+      return entry ? parseCSV(entry.getData().toString('utf-8').replace(/^\uFEFF/, '')) : [];
+    };
+    const calendarRows = readOptional('calendar.txt');
+    const calendarDateRows = readOptional('calendar_dates.txt');
+    serviceDate = pickServiceDate(calendarRows, calendarDateRows);
+    if (serviceDate) {
+      const active = activeServiceIds(calendarRows, calendarDateRows, serviceDate);
+      peakDepartures = countPeakDepartures(stText, tripService, active);
+      console.log(`  ↳ ${feedId}: ${peakDepartures.size} stops with AM-peak departures on ${serviceDate}`);
+    } else {
+      console.warn(`  ↳ ${feedId}: no weekday service date found — frequency skipped`);
+    }
+
     const lines = stText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
     // Strip BOM and quotes from header
     const rawHeader = lines[0].replace(/^\uFEFF/, '');
@@ -281,7 +306,7 @@ function processFeedZip(feedId: string, defaultMode: string, buf: Buffer): FeedR
     console.log(`  ↳ ${feedId}: stop_times processed (${stopRoutes.size} unique stops with routes)`);
   }
 
-  return { feedId, defaultMode, stops: stopsMap, routes: routesMap, stopRoutes };
+  return { feedId, defaultMode, stops: stopsMap, routes: routesMap, stopRoutes, peakDepartures, serviceDate };
 }
 
 // ─── Aggregate per-LGA metrics ────────────────────────────────────────────────
@@ -450,8 +475,14 @@ async function main() {
   console.log(`\n\nPersisting individual stops to gtfs_stops table...`);
   clearGtfsStops();
   const gtfsStopRows: GtfsStop[] = [];
+  // lgaCode → stops (feed-qualified id + primary mode) for frequency summaries
+  const lgaFrequencyStops = new Map<string, { stopId: string; mode: string }[]>();
+  const allPeakDepartures = new Map<string, number>();
+  for (let fi = 0; fi < feedResults.length; fi++) {
+    for (const [stopId, n] of feedResults[fi].peakDepartures) allPeakDepartures.set(`${fi}:${stopId}`, n);
+  }
 
-  for (const [key, _lgaCode] of stopToLGA) {
+  for (const [key, lgaCode] of stopToLGA) {
     const [feedIdxStr, ...rest] = key.split(':');
     const feedIdx = parseInt(feedIdxStr, 10);
     const stopId = rest.join(':');
@@ -480,6 +511,9 @@ async function main() {
     // We don't have stop_name in stopsMap — get it from stopsRows via the feed's stops array
     // The stops CSV text was parsed earlier; we'll use the feedId as a lookup key prefix
     const prefixedId = `${feed.feedId}_${stopId}`;
+    const lgaStopList = lgaFrequencyStops.get(lgaCode) ?? [];
+    lgaStopList.push({ stopId: key, mode });
+    lgaFrequencyStops.set(lgaCode, lgaStopList);
     gtfsStopRows.push({
       stop_id: prefixedId,
       stop_name: coords.name,
@@ -563,6 +597,20 @@ async function main() {
 
     upsertTfNSWCache(lga.lgaCode, 'GTFS_COVERAGE', data, new Date().getFullYear());
     upserted++;
+  }
+
+  // ── AM-peak service frequency per LGA ─────────────────────────────────────
+  const serviceDates = feedResults.map(f => f.serviceDate).filter((d): d is string => !!d);
+  if (serviceDates.length > 0) {
+    const tally = new Map<string, number>();
+    for (const d of serviceDates) tally.set(d, (tally.get(d) ?? 0) + 1);
+    const serviceDate = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    let frequencyUpserted = 0;
+    for (const [lgaCode, stops] of lgaFrequencyStops) {
+      upsertTfNSWCache(lgaCode, 'GTFS_FREQUENCY', summariseFrequency(stops, allPeakDepartures, serviceDate), new Date().getFullYear());
+      frequencyUpserted++;
+    }
+    console.log(`  ✅ ${frequencyUpserted} LGAs with AM-peak frequency data stored in tfnsw_cache (service date ${serviceDate})`);
   }
 
   setConfigValue('tfnsw_last_refresh', new Date().toISOString());

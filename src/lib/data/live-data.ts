@@ -25,6 +25,7 @@ import {
 } from './sample-data';
 import { getProjectionsForArea } from './nsw-projections-data';
 import { getLiveTfNSWTransportData } from '../tfnsw-api';
+import type { GTFSFrequencyData } from '../gtfs-frequency';
 import {
   getEmploymentProjections,
   type EmploymentProjection,
@@ -522,6 +523,31 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     sampleFields.push('ptStops', 'ptRoutes');
   }
 
+  // GTFS weekday AM-peak service frequency from tfnsw_cache
+  let ptFrequency: TransportData['ptFrequency'];
+  if (lgaCode) {
+    const freqEntry = await getLiveDataRepository().getTfNSWCacheEntry(lgaCode, 'GTFS_FREQUENCY');
+    const freq = freqEntry
+      ? parseCachedJson<GTFSFrequencyData>(freqEntry.dataJson, `TfNSW dataset GTFS_FREQUENCY (${lgaCode})`)
+      : null;
+    if (freq) {
+      const g01 = await getABS<G01Data>(lgaCode, 'G01');
+      const population = g01?.totalPopulation ?? 0;
+      ptFrequency = {
+        ...freq,
+        departuresPer1000Residents: population > 0
+          ? Math.round((freq.amPeakDepartures / population) * 10000) / 10
+          : null,
+      };
+      liveFields.push('ptFrequency');
+      if (!sources.includes('TfNSW GTFS')) sources.push('TfNSW GTFS');
+    } else {
+      sampleFields.push('ptFrequency');
+    }
+  } else {
+    sampleFields.push('ptFrequency');
+  }
+
   return {
     data: {
       ...sample,
@@ -536,6 +562,7 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
       patronageSource,
       ptStops,
       ptRoutes,
+      ptFrequency,
     },
     meta: buildMeta(sources, fetchedAt, liveFields, sampleFields),
   };

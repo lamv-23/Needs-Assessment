@@ -176,6 +176,9 @@ export default function DataTablesPage() {
               transport.ptPatronage !== null && ['PT patronage', formatNumber(transport.ptPatronage)],
               ['PT stops total', transport.ptStops?.total ?? 'N/A'],
               ['PT routes total', transport.ptRoutes?.total ?? 'N/A'],
+              ['Frequent stops (≥4/hr, 7–9am)', transport.ptFrequency?.frequentStops ?? 'N/A'],
+              ['Share of stops frequent', transport.ptFrequency ? formatPercent(transport.ptFrequency.frequentStopShare) : 'N/A'],
+              ['AM-peak departures per 1,000 residents', transport.ptFrequency?.departuresPer1000Residents ?? 'N/A'],
             ].filter(Boolean) as [string, string | number][]}
           />
           <SimpleTable
