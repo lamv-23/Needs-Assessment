@@ -151,16 +151,18 @@ describe('G55 stub removal', () => {
 // ─── 5. Transport N/A hiding ──────────────────────────────────────────────────
 
 describe('Transport null field filtering', () => {
-  it('avgCommute and ptPatronage are null in sample data for Ryde', () => {
-    const data = getTransportData('lga_ryde', 2021);
+  // Commute time (TfNSW Household Travel Survey) and station patronage (Opal) are
+  // only set where an official source covers the LGA — never estimated.
+  it('avgCommute and ptPatronage are null where no official source covers the LGA (Dubbo)', () => {
+    const data = getTransportData('lga_dubbo', 2021);
     expect(data.avgCommute).toBeNull();
     expect(data.ptPatronage).toBeNull();
   });
 
-  it('avgCommute and ptPatronage are null in sample data for Sydney', () => {
+  it('avgCommute and ptPatronage carry official values where covered (Sydney)', () => {
     const data = getTransportData('lga_sydney', 2021);
-    expect(data.avgCommute).toBeNull();
-    expect(data.ptPatronage).toBeNull();
+    expect(data.avgCommute).toBeGreaterThan(0);
+    expect(data.ptPatronage).toBeGreaterThan(0);
   });
 
   it('filtering null rows from transport summary works correctly', () => {

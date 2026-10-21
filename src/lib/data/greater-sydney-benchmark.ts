@@ -59,10 +59,10 @@ export const GREATER_SYDNEY_BENCHMARK_DATA: GreaterSydneyBenchmark = {
       "value": 2.3
     }
   ],
+  "unemploymentRate": 5.1,
   "medianAge": null,
   "seifaScore": null,
   "medianWeeklyIncome": null,
-  "unemploymentRate": null,
   "lgaCodes": [
     "17200",
     "16260",

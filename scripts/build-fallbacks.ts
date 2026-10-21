@@ -1,14 +1,17 @@
 #!/usr/bin/env tsx
 /**
- * Rebuild bundled transport fallbacks from data/cache.db.
+ * Rebuild bundled fallbacks from data/cache.db.
  *
- *   1. src/lib/data/official-fallback-data.ts — rewrites transport.journeyToWork
- *      and transport.modeShareTrend (same builders as the live pages) and
- *      demographics total / male / female population from cached Census data.
+ *   1. src/lib/data/official-fallback-data.ts — for every LGA, refreshes each
+ *      field the fallback already carries from what the live data layer returns
+ *      (getLive*Data), so it cannot drift from the corrected live figures. The
+ *      file ships to the browser, so its shape is kept: series it deliberately
+ *      leaves empty stay empty and no new fields are added. Non-LGA entries
+ *      (suburbs, benchmarks) are left as they are.
  *   2. src/lib/data/greater-sydney-benchmark.ts — Greater Sydney (ABS GCCSA)
  *      benchmark for /compare, summed from its 34 LGAs. Only additive counts
- *      (population, journey-to-work) are aggregated; medians and SEIFA cannot be
- *      summed and are left null.
+ *      (population, journey-to-work, labour force) are aggregated; medians and
+ *      SEIFA cannot be summed and are left null.
  *
  * Run after `npm run seed:g62` / `seed:abs`:  npm run build:fallbacks
  */
@@ -16,9 +19,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { getDb } from '../src/lib/db';
-import { LGA_CODE_MAP, type G01Data, type JourneyToWorkData } from '../src/lib/abs-fetchers';
+import { LGA_CODE_MAP, type G01Data, type JourneyToWorkData, type LabourData } from '../src/lib/abs-fetchers';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '../src/lib/data/sample-areas';
-import { journeyToWorkShares, modeShareTrendPoints } from '../src/lib/data/live-data';
+import {
+  journeyToWorkShares,
+  getLiveDemographicsData, getLiveTransportData, getLiveEconomyData,
+  getLiveEducationData, getLiveHousingData, getLiveGrowthData,
+} from '../src/lib/data/live-data';
+
+// Census year used by the pages' default selectedYear; the live builders ignore it
+// for Census fields.
+const YEAR = 2021;
 
 const FALLBACK_PATH = path.join(process.cwd(), 'src/lib/data/official-fallback-data.ts');
 const BENCHMARK_PATH = path.join(process.cwd(), 'src/lib/data/greater-sydney-benchmark.ts');
@@ -30,38 +41,41 @@ function cached<T>(lgaCode: string, dataset: string): T | null {
   return row ? JSON.parse(row.data_json) as T : null;
 }
 
-type Fallbacks = Record<string, {
-  demographics: { totalPopulation: number; malePopulation: number; femalePopulation: number };
-  transport: { journeyToWork: unknown; modeShareTrend: unknown };
-}>;
-
-function rebuildFallbacks(): void {
+async function rebuildFallbacks(): Promise<void> {
   const source = fs.readFileSync(FALLBACK_PATH, 'utf-8');
   const start = source.indexOf(DECLARATION);
   const end = source.lastIndexOf('} as const;');
   if (start < 0 || end < 0) throw new Error('Unexpected official-fallback-data.ts layout');
 
-  const fallbacks = JSON.parse(source.slice(start + DECLARATION.length, end + 1)) as Fallbacks;
+  type Section = Record<string, unknown>;
+  const fallbacks = JSON.parse(source.slice(start + DECLARATION.length, end + 1)) as Record<string, Record<string, Section>>;
+  const refresh = (current: Section, live: object): Section => Object.fromEntries(
+    Object.entries(current).map(([key, value]) => {
+      const keepEmpty = Array.isArray(value) && value.length === 0;
+      const next = (live as Section)[key];
+      return [key, keepEmpty || next === undefined ? value : next];
+    }),
+  );
   let updated = 0;
-  let populations = 0;
-  for (const [areaId, entry] of Object.entries(fallbacks)) {
-    const code = LGA_CODE_MAP[areaId];
-    const g01 = code ? cached<G01Data>(code, 'G01') : null;
-    if (g01) {
-      entry.demographics.totalPopulation = g01.totalPopulation;
-      entry.demographics.malePopulation = g01.malePopulation;
-      entry.demographics.femalePopulation = g01.femalePopulation;
-      populations++;
-    }
-
-    const g62 = code ? cached<JourneyToWorkData>(code, 'G62') : null;
-    if (!code || !g62) continue;
-    entry.transport.journeyToWork = journeyToWorkShares(g62);
-    entry.transport.modeShareTrend = modeShareTrendPoints({
-      2011: cached<JourneyToWorkData>(code, 'B46'),
-      2016: cached<JourneyToWorkData>(code, 'G59'),
-      2021: g62,
-    });
+  for (const areaId of Object.keys(fallbacks)) {
+    if (!areaId.startsWith('lga_') || !LGA_CODE_MAP[areaId]) continue;
+    const [demographics, transport, economy, education, housing, growth] = await Promise.all([
+      getLiveDemographicsData(areaId, YEAR),
+      getLiveTransportData(areaId, YEAR),
+      getLiveEconomyData(areaId, YEAR),
+      getLiveEducationData(areaId, YEAR),
+      getLiveHousingData(areaId, YEAR),
+      getLiveGrowthData(areaId),
+    ]);
+    const entry = fallbacks[areaId];
+    fallbacks[areaId] = {
+      demographics: refresh(entry.demographics, demographics.data),
+      transport: refresh(entry.transport, transport.data),
+      economy: refresh(entry.economy, economy.data),
+      education: refresh(entry.education, education.data),
+      housing: refresh(entry.housing, housing.data),
+      growth: refresh(entry.growth, growth.data),
+    };
     updated++;
   }
 
@@ -69,7 +83,7 @@ function rebuildFallbacks(): void {
     FALLBACK_PATH,
     `${source.slice(0, start)}${DECLARATION}${JSON.stringify(fallbacks, null, 2)} as const;\n`,
   );
-  console.log(`  ✓ official-fallback-data.ts: mode share rebuilt for ${updated} areas, population for ${populations}`);
+  console.log(`  ✓ official-fallback-data.ts: ${updated} LGAs refreshed from live data`);
 }
 
 const JTW_KEYS: Array<keyof JourneyToWorkData> = [
@@ -81,12 +95,19 @@ function buildGreaterSydneyBenchmark(): void {
   const codes = Array.from(new Set(GREATER_SYDNEY_GCCSA_AREA_IDS.map((id) => LGA_CODE_MAP[id])));
 
   let population = 0;
+  let unemployed = 0;
+  let labourForce = 0;
   const jtw = Object.fromEntries(JTW_KEYS.map((k) => [k, 0])) as Record<keyof JourneyToWorkData, number>;
   for (const code of codes) {
     const g01 = cached<G01Data>(code, 'G01');
     const g62 = cached<JourneyToWorkData>(code, 'G62');
-    if (!g01 || !g62) throw new Error(`Missing G01/G62 for LGA ${code} — run npm run seed:abs`);
+    const labour = cached<LabourData>(code, 'LABOUR');
+    if (!g01 || !g62 || labour?.labourForce === undefined) {
+      throw new Error(`Missing G01/G62/LABOUR counts for LGA ${code} — run npm run seed:abs`);
+    }
     population += g01.totalPopulation;
+    unemployed += labour.unemployed ?? 0;
+    labourForce += labour.labourForce;
     for (const k of JTW_KEYS) jtw[k] += g62[k] ?? 0;
   }
 
@@ -95,11 +116,11 @@ function buildGreaterSydneyBenchmark(): void {
     censusYear: 2021,
     totalPopulation: population,
     journeyToWork: journeyToWorkShares(jtw),
+    unemploymentRate: Math.round((unemployed / labourForce) * 1000) / 10,
     // Not additive across LGAs — no official Greater Sydney value is bundled.
     medianAge: null,
     seifaScore: null,
     medianWeeklyIncome: null,
-    unemploymentRate: null,
     lgaCodes: codes,
   };
 
@@ -123,5 +144,9 @@ export const GREATER_SYDNEY_BENCHMARK_DATA: GreaterSydneyBenchmark = ${JSON.stri
   console.log(`  ✓ greater-sydney-benchmark.ts: ${codes.length} LGAs, population ${population.toLocaleString()}`);
 }
 
-rebuildFallbacks();
-buildGreaterSydneyBenchmark();
+rebuildFallbacks()
+  .then(buildGreaterSydneyBenchmark)
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
