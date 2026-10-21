@@ -15,16 +15,18 @@ import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import { useMultiAreaData } from '@/hooks/useMultiAreaData';
 import type { Area } from '@/types';
 
-function ChangeIndicator({ value, benchmark }: { value: number; benchmark: number }) {
+function ChangeIndicator({ value, benchmark, lowerIsBetter = false }: { value: number; benchmark: number; lowerIsBetter?: boolean }) {
   const diff = value - benchmark;
   const pctDiff = benchmark !== 0 ? (diff / benchmark) * 100 : 0;
   if (Math.abs(pctDiff) < 1) return <Minus className="w-4 h-4 text-gray-400" />;
+  const good = lowerIsBetter ? pctDiff < 0 : pctDiff > 0;
+  const colour = good ? 'text-emerald-600' : 'text-red-600';
   return pctDiff > 0 ? (
-    <span className="flex items-center text-emerald-600 text-xs font-medium">
+    <span className={`flex items-center ${colour} text-xs font-medium`}>
       <ArrowUpRight className="w-3 h-3" />+{pctDiff.toFixed(1)}%
     </span>
   ) : (
-    <span className="flex items-center text-red-600 text-xs font-medium">
+    <span className={`flex items-center ${colour} text-xs font-medium`}>
       <ArrowDownRight className="w-3 h-3" />{pctDiff.toFixed(1)}%
     </span>
   );
@@ -99,13 +101,30 @@ export default function ComparePage() {
     medianWeeklyIncome: GSY.medianWeeklyIncome ?? 0,
   };
 
-  const indicators = [
+  // Measured Greater Sydney frequent-stop share (stored with every LGA's GTFS frequency record).
+  const frequencyBenchmark = areasData
+    .map(d => d.transport?.ptFrequency?.benchmarks?.greaterSydneyFrequentStopShare)
+    .find((v): v is number => v !== undefined) ?? 0;
+
+  // getValue returns null where the source does not cover the area (shown as N/A).
+  const indicators: {
+    label: string;
+    getValue: (d: typeof areasData[0]) => number | null;
+    format: (v: number) => string;
+    benchmark: number;
+    lowerIsBetter?: boolean;
+  }[] = [
     { label: 'Total Population (2021)', getValue: (d: typeof areasData[0]) => d.growth.pop2021 ?? d.demographics?.totalPopulation ?? 0, format: formatNumber, benchmark: benchmark.totalPopulation },
     { label: 'Projected Population (2041)', getValue: (d: typeof areasData[0]) => d.growth.pop2041 ?? 0, format: formatNumber, benchmark: 0 },
     { label: 'Median Age', getValue: (d: typeof areasData[0]) => d.demographics?.medianAge ?? 0, format: (v: number) => v.toFixed(1), benchmark: benchmark.medianAge },
     { label: 'SEIFA Score', getValue: (d: typeof areasData[0]) => d.demographics?.seifaScore ?? 0, format: (v: number) => v.toString(), benchmark: benchmark.seifaScore },
-    { label: 'Car (driver) Mode Share (%)', getValue: (d: typeof areasData[0]) => getCarModeShare(d.transport?.journeyToWork ?? []), format: (v: number) => formatPercent(v), benchmark: benchmark.carDriverShare },
+    { label: 'Car (driver) Mode Share (%)', getValue: (d: typeof areasData[0]) => getCarModeShare(d.transport?.journeyToWork ?? []), format: (v: number) => formatPercent(v), benchmark: benchmark.carDriverShare, lowerIsBetter: true },
     { label: 'PT Mode Share (%)', getValue: (d: typeof areasData[0]) => getPTModeShare(d.transport?.journeyToWork ?? []), format: (v: number) => formatPercent(v), benchmark: benchmark.ptShare },
+    { label: 'Frequent PT Stops (% of stops, 7–9am)', getValue: (d: typeof areasData[0]) => d.transport?.ptFrequency?.frequentStopShare ?? null, format: (v: number) => formatPercent(v), benchmark: frequencyBenchmark },
+    { label: 'Peak PT Departures per 1,000 Residents', getValue: (d: typeof areasData[0]) => d.transport?.ptFrequency?.departuresPer1000Residents ?? null, format: (v: number) => v.toFixed(1), benchmark: 0 },
+    { label: 'Weekday Trips per Resident (HTS)', getValue: (d: typeof areasData[0]) => d.transport?.travelSurvey?.tripsPerPerson ?? null, format: (v: number) => v.toFixed(2), benchmark: 0 },
+    { label: 'PT Share of All Weekday Trips (HTS, %)', getValue: (d: typeof areasData[0]) => d.transport?.travelSurvey?.modes.find(m => m.mode === 'publicTransport')?.modeShare ?? null, format: (v: number) => formatPercent(v), benchmark: 0 },
+    { label: 'Residents Working in the LGA (%)', getValue: (d: typeof areasData[0]) => d.transport?.commuteFlows?.selfContainment ?? null, format: (v: number) => formatPercent(v), benchmark: 0 },
     { label: 'Unemployment (%)', getValue: (d: typeof areasData[0]) => d.economy?.unemploymentRate ?? 0, format: (v: number) => formatPercent(v), benchmark: benchmark.unemploymentRate },
     { label: 'Median Income ($/wk)', getValue: (d: typeof areasData[0]) => d.economy?.medianWeeklyIncome ?? 0, format: (v: number) => formatCurrency(v), benchmark: benchmark.medianWeeklyIncome },
     { label: 'Median Rent ($/wk)', getValue: (d: typeof areasData[0]) => d.housing?.medianWeeklyRent ?? 0, format: (v: number) => formatCurrency(v), benchmark: 0 },
@@ -185,10 +204,10 @@ export default function ComparePage() {
 
   const compareMeta = {
     source: anyLive
-      ? `ABS Census 2021 incl. journey to work (${liveAreaNames.join(', ')}); NSW DPE Population Projections`
+      ? `ABS Census 2021 incl. journey to work (${liveAreaNames.join(', ')}); TfNSW GTFS timetable; TfNSW Household Travel Survey; NSW DPE Population Projections`
       : 'Bundled ABS Census 2021 snapshot; NSW DPE Population Projections',
     lastRefreshed: multiData[0]?.demographics.meta.lastRefreshed ?? null,
-    liveFields: anyLive ? ['population', 'medianAge', 'SEIFA', 'income', 'unemployment', 'rent', 'journeyToWork'] : [],
+    liveFields: anyLive ? ['population', 'medianAge', 'SEIFA', 'income', 'unemployment', 'rent', 'journeyToWork', 'PT frequency', 'travel survey'] : [],
     sampleFields: anyLive ? [] : ['all'],
     hasLiveData: anyLive,
     hasPartialLive: anyLive,
@@ -302,8 +321,14 @@ export default function ComparePage() {
                         return (
                           <td key={d.area.id} className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <span className="text-sm font-semibold text-gray-900">{ind.format(val)}</span>
-                              {ind.benchmark > 0 && <ChangeIndicator value={val} benchmark={ind.benchmark} />}
+                              {val === null ? (
+                                <span className="text-sm text-gray-400" title="No data source covers this area">N/A</span>
+                              ) : (
+                                <>
+                                  <span className="text-sm font-semibold text-gray-900">{ind.format(val)}</span>
+                                  {ind.benchmark > 0 && <ChangeIndicator value={val} benchmark={ind.benchmark} lowerIsBetter={ind.lowerIsBetter} />}
+                                </>
+                              )}
                             </div>
                           </td>
                         );

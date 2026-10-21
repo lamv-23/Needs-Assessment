@@ -199,6 +199,35 @@ export default function ReportPage() {
                 <div className="text-lg font-bold">{transport.avgCommute !== null ? `${transport.avgCommute} min` : 'N/A'}</div>
               </div>
             </div>
+            {(transport.ptFrequency || transport.travelSurvey) && (
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                {transport.ptFrequency && (
+                  <div className="bg-gray-50 rounded p-3">
+                    <div className="text-gray-500">Frequent PT Stops (7–9am)</div>
+                    <div className="text-lg font-bold">{formatPercent(transport.ptFrequency.frequentStopShare)}</div>
+                    <div className="text-xs text-gray-400">
+                      4+ departures/hr{transport.ptFrequency.benchmarks ? ` · Greater Sydney ${formatPercent(transport.ptFrequency.benchmarks.greaterSydneyFrequentStopShare)}` : ''}
+                    </div>
+                  </div>
+                )}
+                {transport.travelSurvey && (
+                  <>
+                    <div className="bg-gray-50 rounded p-3">
+                      <div className="text-gray-500">Weekday Trips per Resident</div>
+                      <div className="text-lg font-bold">{transport.travelSurvey.tripsPerPerson ?? 'N/A'}</div>
+                      <div className="text-xs text-gray-400">TfNSW HTS {transport.travelSurvey.latestYear}</div>
+                    </div>
+                    <div className="bg-gray-50 rounded p-3">
+                      <div className="text-gray-500">PT Share of All Trips</div>
+                      <div className="text-lg font-bold">
+                        {formatPercent(transport.travelSurvey.modes.find(m => m.mode === 'publicTransport')?.modeShare ?? 0)}
+                      </div>
+                      <div className="text-xs text-gray-400">TfNSW HTS {transport.travelSurvey.latestYear}</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <NeedsBarChart data={transport.journeyToWork} dataKeys={['value']} layout="horizontal" height={280} colors={CHART_COLORS} />
           </div>
         );
