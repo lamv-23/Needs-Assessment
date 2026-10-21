@@ -650,7 +650,7 @@ export async function getLiveEconomyData(areaId: string, year: number): Promise<
       unemploymentRate = labour.unemploymentRate;
       participationRate = labour.participationRate;
       liveFields.push('unemploymentRate', 'participationRate');
-      sources.push(`ABS Labour Force ${labour.dataYear}`);
+      sources.push(`ABS Census ${labour.dataYear} (labour force status)`);
       fetchedAt = labourMeta?.fetchedAt ?? null;
     } else {
       sampleFields.push('unemploymentRate', 'participationRate');
@@ -777,15 +777,24 @@ export async function getLiveEducationData(areaId: string, year: number): Promis
     const g49Meta = await getABSMeta(lgaCode, 'G49');
     const g15Meta = await getABSMeta(lgaCode, 'G15');
 
-    if (g49 && g49.total > 0) {
-      const t = g49.total;
+    // G49 covers only people with a non-school qualification; shares are of all
+    // persons 15+ (G01), with "no qualification" as the remainder (as ABS QuickStats).
+    const g01 = await getABS<G01Data>(lgaCode, 'G01');
+    const persons15Plus = g01
+      ? g01.totalPopulation - (g01.ageGroups['0_4'] ?? 0) - (g01.ageGroups['5_14'] ?? 0)
+      : 0;
+
+    if (g49 && g49.total > 0 && persons15Plus > g49.total) {
+      const t = persons15Plus;
+      const share = (n: number) => Math.round((n / t) * 1000) / 10;
       attainment = [
-        { name: 'Postgraduate', value: Math.round((g49.postgrad / t) * 1000) / 10 },
-        { name: 'Bachelor Degree', value: Math.round((g49.bachelor / t) * 1000) / 10 },
-        { name: 'Diploma', value: Math.round(((g49.grad_diploma + g49.adv_diploma) / t) * 1000) / 10 },
-        { name: 'Certificate III/IV', value: Math.round((g49.cert3_4 / t) * 1000) / 10 },
-        { name: 'Certificate I/II', value: Math.round((g49.cert1_2 / t) * 1000) / 10 },
-        { name: 'No qualification', value: Math.round((g49.no_qualification / t) * 1000) / 10 },
+        { name: 'Postgraduate', value: share(g49.postgrad) },
+        { name: 'Bachelor Degree', value: share(g49.bachelor) },
+        { name: 'Diploma', value: share(g49.grad_diploma + g49.adv_diploma) },
+        { name: 'Certificate III/IV', value: share(g49.cert3_4) },
+        { name: 'Certificate I/II', value: share(g49.cert1_2) },
+        { name: 'Level not stated or unclear', value: share(g49.cert_nfd + g49.inadequately_described + g49.not_stated) },
+        { name: 'No qualification', value: share(persons15Plus - g49.total) },
       ];
       liveFields.push('attainment');
       sources.push('ABS Census 2021');

@@ -100,7 +100,7 @@ export default function EducationPage() {
           {data.qualificationTrend.length > 0 && (
             <ChartWrapper
               title="Qualification Trends"
-              subtitle="Percentage of population with qualifications over time"
+              subtitle="Level of highest non-school qualification, % of people holding one (ABS Census 2016, 2021)"
               data={data.qualificationTrend}
               dataKeys={['bachelor', 'diploma', 'certificate']}
               xAxisKey="year"

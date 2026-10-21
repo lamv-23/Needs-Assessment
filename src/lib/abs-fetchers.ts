@@ -428,29 +428,26 @@ export async function fetchG02(lgaCode: string): Promise<G02Data | null> {
 
   const data = parseSdmxXml(xml);
 
-  // G02 uses MEDAVG numeric codes (confirmed from ABS API):
-  // MEDAVG=1 → median age of persons
-  // MEDAVG=2 → median weekly household income
-  // MEDAVG=3 → median monthly mortgage repayment
-  // MEDAVG=4 → median weekly personal income
-  // MEDAVG=5 → median weekly family income
-  // MEDAVG=6 → median weekly rent
-  // MEDAVG=7 → average motor vehicles per dwelling
-  // MEDAVG=8 → average household size (persons per dwelling)
-  const medianAge = lookupValue(data, { MEDAVG: '1', REGION: lgaCode }, '2021');
-  const medianIncome = lookupValue(data, { MEDAVG: '2', REGION: lgaCode }, '2021');
-  const medianMortgage = lookupValue(data, { MEDAVG: '3', REGION: lgaCode }, '2021');
-  const medianRent = lookupValue(data, { MEDAVG: '6', REGION: lgaCode }, '2021');
-  const avgHhSize = lookupValue(data, { MEDAVG: '8', REGION: lgaCode }, '2021');
+  return decodeG02((medavg) => lookupValue(data, { MEDAVG: medavg, REGION: lgaCode }, '2021'));
+}
 
+/**
+ * MEDAVG codes (CL_C21_MEDAVG01): 1 median age, 2 median personal income (weekly),
+ * 3 median family income (weekly), 4 median household income (weekly),
+ * 5 median mortgage repayment (monthly), 6 median rent (weekly),
+ * 7 average persons per bedroom, 8 average household size.
+ */
+export function decodeG02(get: (medavg: string) => number | null): G02Data | null {
+  const medianAge = get('1');
+  const medianIncome = get('4');
   if (medianAge === null && medianIncome === null) return null;
 
   return {
     medianAge: medianAge ?? 0,
     medianWeeklyHouseholdIncome: medianIncome ?? 0,
-    medianMonthlyMortgage: medianMortgage ?? 0,
-    medianWeeklyRent: medianRent ?? 0,
-    averageHouseholdSize: avgHhSize ?? 0,
+    medianMonthlyMortgage: get('5') ?? 0,
+    medianWeeklyRent: get('6') ?? 0,
+    averageHouseholdSize: get('8') ?? 0,
   };
 }
 
@@ -475,27 +472,26 @@ export interface HistoricalDwellingStructureData {
 }
 
 export async function fetchG33(lgaCode: string): Promise<G33Data | null> {
-  // C21_G36_LGA: Dwelling structure by LGA
-  // DWTSTRD codes (confirmed from ABS API):
-  //   11 = Separate house
-  //   2  = Semi-detached, row/terrace/townhouse (21=owned, 22=rented subtypes)
-  //   3  = Flat, unit or apartment (31-35 subtypes)
-  //   9  = Other dwelling
-  //   _T = Total private dwellings
-  // SUM=D filters to dwelling counts (vs SUM=P for persons)
+  // C21_G36_LGA: Dwelling structure by LGA; SUM=D for dwelling counts.
   const url = `${ABS_BASE}/C21_G36_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
+  return decodeG33((dwtstrd) => lookupValue(data, { DWTSTRD: dwtstrd, SUM: 'D', REGION: lgaCode }, '2021'));
+}
 
-  const separateHouse = lookupValue(data, { DWTSTRD: '11', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
-  const semiDetached  = lookupValue(data, { DWTSTRD: '2', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
-  const flatApt       = lookupValue(data, { DWTSTRD: '3', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
-  const other         = lookupValue(data, { DWTSTRD: '9', SUM: 'D', REGION: lgaCode }, '2021') ?? 0;
-  const total         = lookupValue(data, { DWTSTRD: '_T', SUM: 'D', REGION: lgaCode }, '2021')
-                        ?? (separateHouse + semiDetached + flatApt + other);
-
+/**
+ * DWTSTRD codes (CL_C21_DWTSTRD02): 11 separate house, 2 semi-detached/terrace,
+ * 3 flat or apartment, 9 other, _N not stated — all children of OCC (occupied
+ * private dwellings). _T also includes N_OCC (unoccupied), so OCC is the total.
+ */
+export function decodeG33(get: (dwtstrd: string) => number | null): G33Data | null {
+  const separateHouse = get('11') ?? 0;
+  const semiDetached  = get('2') ?? 0;
+  const flatApt       = get('3') ?? 0;
+  const other         = get('9') ?? 0;
+  const total         = get('OCC') ?? (separateHouse + semiDetached + flatApt + other);
   if (total === 0) return null;
 
   return {
@@ -554,30 +550,26 @@ export interface G36Data {
 }
 
 export async function fetchG36(lgaCode: string): Promise<G36Data | null> {
-  // C21_G37_LGA: Tenure type × dwelling structure by LGA
-  // TENLLD codes (confirmed from ABS API, STRD=_T for all dwelling types):
-  //   1  = Owned outright
-  //   2  = Owned with mortgage
-  //   3  = Rented (total — all landlord types combined)
-  //   4  = Rented from private landlord
-  //   5  = Rented from real estate agent
-  //   6  = Rented from state/territory housing authority
-  //   7  = Rented from community housing
-  //   9  = Other tenure
-  //   _T = Total occupied private dwellings
+  // C21_G37_LGA: Tenure × landlord type × dwelling structure; STRD=_T for all dwellings.
   const url = `${ABS_BASE}/C21_G37_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
+  return decodeG36((tenlld) => lookupValue(data, { TENLLD: tenlld, STRD: '_T', REGION: lgaCode }, '2021'));
+}
 
-  const owned    = lookupValue(data, { TENLLD: '1', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
-  const mortgage = lookupValue(data, { TENLLD: '2', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
-  const rented   = lookupValue(data, { TENLLD: '3', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
-  const other    = lookupValue(data, { TENLLD: '9', STRD: '_T', REGION: lgaCode }, '2021') ?? 0;
-
-  const total = owned + mortgage + rented + other;
-  if (total === 0) return null;
+/**
+ * TENLLD codes (CL_C21_TENLLD01): 1 owned outright, 2 owned with a mortgage,
+ * R_T rented total (children: 3 real estate agent, 4 state housing, 5 community
+ * housing, 6 person not in same household, 7 other, R_N not stated), 9 other tenure.
+ */
+export function decodeG36(get: (tenlld: string) => number | null): G36Data | null {
+  const owned    = get('1') ?? 0;
+  const mortgage = get('2') ?? 0;
+  const rented   = get('R_T') ?? 0;
+  const other    = get('9') ?? 0;
+  if (owned + mortgage + rented + other === 0) return null;
 
   return {
     owned: Math.round(owned),
@@ -588,15 +580,16 @@ export async function fetchG36(lgaCode: string): Promise<G36Data | null> {
 }
 
 // ─── G51: Industry of Employment ──────────────────────────────────────────────
-// NOTE: C21_G51_LGA is qualification × occupation (wrong table).
-// Industry of employment is in C21_G53_LGA using INDP single-letter ANZSIC codes.
+// Internal name G51 is historical. Industry of employment for ALL employed persons
+// is C21_G54_LGA (industry × age × sex). C21_G53_LGA (used previously) is
+// industry × non-school qualification, which only covers qualified workers.
 
 export interface G51Data {
   industries: Array<{ name: string; code: string; employed: number }>;
   totalEmployed: number;
 }
 
-// INDP single-letter ANZSIC division codes (confirmed from ABS API C21_G53_LGA):
+// INDP single-letter ANZSIC division codes (CL_C21_INDP03):
 const INDUSTRY_LABELS: Record<string, string> = {
   A: 'Agriculture, Forestry & Fishing',
   B: 'Mining',
@@ -620,30 +613,30 @@ const INDUSTRY_LABELS: Record<string, string> = {
 };
 
 export async function fetchG51(lgaCode: string): Promise<G51Data | null> {
-  // C21_G53_LGA: Industry of employment × qualification × sex by LGA
-  // Use SEXP=3 (all persons) and QALLP=_T (all qualifications) for total industry counts
-  const url = `${ABS_BASE}/C21_G53_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
+  const url = `${ABS_BASE}/C21_G54_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
+  return decodeG51((indp) => lookupValue(data, { INDP: indp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021'));
+}
 
+/** Industries A–S plus INDP _T (all employed, incl. inadequately described / not stated). */
+export function decodeG51(get: (indp: string) => number | null): G51Data | null {
   const industries: G51Data['industries'] = [];
-  let total = 0;
-
+  let sum = 0;
   for (const [code, name] of Object.entries(INDUSTRY_LABELS)) {
-    const v = lookupValue(data, { INDP: code, SEXP: '3', QALLP: '_T', REGION: lgaCode }, '2021') ?? 0;
+    const v = get(code) ?? 0;
     if (v > 0) {
       industries.push({ name, code, employed: Math.round(v) });
-      total += v;
+      sum += v;
     }
   }
-
-  if (total === 0) return null;
+  if (sum === 0) return null;
 
   return {
     industries: industries.sort((a, b) => b.employed - a.employed),
-    totalEmployed: Math.round(total),
+    totalEmployed: Math.round(get('_T') ?? sum),
   };
 }
 
@@ -794,45 +787,45 @@ export interface LabourData {
   participationRate: number;
   employmentRate: number;
   dataYear: number;
+  /** Counts (persons 15+). Absent in cache rows written before the LFSP code fix. */
+  employed?: number;
+  unemployed?: number;
+  labourForce?: number;
+  persons15Plus?: number;
 }
 
 export async function fetchLabour(lgaCode: string): Promise<LabourData | null> {
-  // C21_G46_LGA: Labour Force Status × age × sex by LGA (person-level counts)
-  // LFSP codes (confirmed from ABS API):
-  //   1  = Employed, worked full-time
-  //   2  = Employed, worked part-time
-  //   3  = Employed, away from work
-  //   4  = Unemployed, looking for work (full-time or part-time)
-  //   5  = Not in the labour force (retired/home duties/students etc)
-  //   6-10 = Other NILF sub-categories
-  //   _N = Not stated / not applicable (includes under 15)
-  //   _T = Total aged 15+ (excludes not applicable)
-  // Use SEXP=3 (Persons) and AGEP=_T (all ages 15+)
+  // C21_G46_LGA: Labour force status × age × sex; SEXP=3 persons, AGEP=_T (15+).
   const url = `${ABS_BASE}/C21_G46_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
+  return decodeLabour((lfsp) => lookupValue(data, { LFSP: lfsp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021'));
+}
 
-  const get = (code: string) =>
-    lookupValue(data, { LFSP: code, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021') ?? 0;
-
-  const empFT   = get('1');
-  const empPT   = get('2');
-  const empAway = get('3');
-  const unemp   = get('4');
-  const total   = get('_T');
-
+/**
+ * LFSP codes (CL_C21_LFHRP01): 5 employed total (1 FT, 2 PT, 3 away, 4 hours not
+ * stated), 8 unemployed total (6 looking FT, 7 looking PT), 9 labour force,
+ * 10 not in the labour force, _N not stated, _T total persons 15+.
+ * Rates match the ABS's published C21_G43 LFS_P1–P3.
+ */
+export function decodeLabour(get: (lfsp: string) => number | null): LabourData | null {
+  const total = get('_T') ?? 0;
   if (total === 0) return null;
-
-  const employed    = empFT + empPT + empAway;
-  const labourForce = employed + unemp;
+  const employed = get('5') ?? 0;
+  const unemployed = get('8') ?? 0;
+  const labourForce = get('9') ?? employed + unemployed;
 
   return {
-    unemploymentRate:  labourForce > 0 ? (unemp / labourForce) * 100 : 0,
-    participationRate: total > 0 ? (labourForce / total) * 100 : 0,
-    employmentRate:    total > 0 ? (employed / total) * 100 : 0,
+    unemploymentRate:  labourForce > 0 ? (unemployed / labourForce) * 100 : 0,
+    participationRate: (labourForce / total) * 100,
+    employmentRate:    (employed / total) * 100,
     dataYear: 2021,
+    employed: Math.round(employed),
+    unemployed: Math.round(unemployed),
+    labourForce: Math.round(labourForce),
+    persons15Plus: Math.round(total),
   };
 }
 
@@ -981,6 +974,11 @@ export async function fetchG15(lgaCode: string): Promise<SchoolAttendanceData | 
 
 // ─── G49: Non-School Qualifications ──────────────────────────────────────────
 
+/**
+ * Level of highest non-school qualification. `total` is the table total: persons
+ * with a non-school qualification, incl. level not stated — it does NOT include
+ * people with no non-school qualification (derive that from persons 15+ in G01).
+ */
 export interface QualificationData {
   postgrad: number;
   grad_diploma: number;
@@ -988,104 +986,66 @@ export interface QualificationData {
   adv_diploma: number;
   cert3_4: number;
   cert1_2: number;
-  no_qualification: number;
+  cert_nfd: number;
+  inadequately_described: number;
   not_stated: number;
   total: number;
 }
 
-function buildQualificationData(parts: {
-  postgrad: number;
-  grad_diploma: number;
-  bachelor: number;
-  adv_diploma: number;
-  cert3_4: number;
-  cert1_2: number;
-  no_qualification: number;
-  not_stated: number;
-  total: number;
-}): QualificationData | null {
-  if (parts.total === 0) return null;
+/**
+ * QALLP codes (CL_C21_QALLP02 / CL_C16_QALLP): 1 postgraduate, 2 graduate diploma
+ * and certificate, 3 bachelor, 4 advanced diploma and diploma, 51 certificate III
+ * and IV, 52 certificate I and II, 50 certificate nfd, 0 inadequately described;
+ * not stated is _N (2021) / Z (2016); total is _T (2021) / TOT (2016).
+ */
+export function decodeQualifications(
+  get: (qallp: string) => number | null,
+  codes: { notStated: string; total: string },
+): QualificationData | null {
+  const total = get(codes.total) ?? 0;
+  if (total === 0) return null;
+  const n = (code: string) => Math.round(get(code) ?? 0);
 
   return {
-    postgrad: Math.round(parts.postgrad),
-    grad_diploma: Math.round(parts.grad_diploma),
-    bachelor: Math.round(parts.bachelor),
-    adv_diploma: Math.round(parts.adv_diploma),
-    cert3_4: Math.round(parts.cert3_4),
-    cert1_2: Math.round(parts.cert1_2),
-    no_qualification: Math.round(parts.no_qualification),
-    not_stated: Math.round(parts.not_stated),
-    total: Math.round(parts.total),
+    postgrad: n('1'),
+    grad_diploma: n('2'),
+    bachelor: n('3'),
+    adv_diploma: n('4'),
+    cert3_4: n('51'),
+    cert1_2: n('52'),
+    cert_nfd: n('50'),
+    inadequately_described: n('0'),
+    not_stated: n(codes.notStated),
+    total: Math.round(total),
   };
 }
 
 export async function fetchG49(lgaCode: string): Promise<QualificationData | null> {
-  // C21_G49_LGA: Non-school qualifications × age × sex by LGA
-  // QALLP codes (confirmed from ABS API, SEXP=3 AGEP=_T):
-  //   1  = Postgraduate degree
-  //   2  = Graduate diploma / Graduate certificate
-  //   3  = Bachelor degree
-  //   51 = Advanced diploma / Diploma
-  //   4  = Certificate III / IV
-  //   52 = Certificate I / II
-  //   0  = No non-school qualification
-  //   _N = Not stated / inadequately described
-  //   _T = Total
+  // C21_G49_LGA: Non-school qualification level × age × sex; SEXP=3, AGEP=_T.
   const url = `${ABS_BASE}/C21_G49_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
-
-  const get = (code: string) =>
-    lookupValue(data, { QALLP: code, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021') ?? 0;
-
-  const pg   = get('1');
-  const gd   = get('2');
-  const bach = get('3');
-  const adv  = get('51');
-  const c34  = get('4');
-  const c12  = get('52');
-  const nq   = get('0');
-  const ns   = get('_N');
-  const total = get('_T');
-
-  return buildQualificationData({
-    postgrad: pg,
-    grad_diploma: gd,
-    bachelor: bach,
-    adv_diploma: adv,
-    cert3_4: c34,
-    cert1_2: c12,
-    no_qualification: nq,
-    not_stated: ns,
-    total,
-  });
+  return decodeQualifications(
+    (qallp) => lookupValue(data, { QALLP: qallp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021'),
+    { notStated: '_N', total: '_T' },
+  );
 }
 
 export async function fetchG49_2016(lgaCode: string): Promise<QualificationData | null> {
-  // ABS_C16_G49_LGA: Non-school qualification by occupation by sex (2016)
-  // Use OCCP_C16=Z (all occupations) and SEX_ABS=3 (persons).
-  const url = `${ABS_BASE}/ABS_C16_G49_LGA?startPeriod=2016&endPeriod=2016&dimensionAtObservation=AllDimensions`;
+  // ABS_C16_G46_LGA: 2016 non-school qualification level × age × sex — the same
+  // universe as 2021 G49. (ABS_C16_G49_LGA, used previously, is qualification ×
+  // occupation: employed persons only, and has no parent-level codes.)
+  const url = `${ABS_BASE}/ABS_C16_G46_LGA?startPeriod=2016&endPeriod=2016&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
 
   const data = parseSdmxXml(xml);
-
-  const get = (code: string) =>
-    lookupValue(data, { QALLP_C16: code, SEX_ABS: '3', OCCP_C16: 'Z', LGA_2016: lgaCode }, '2016') ?? 0;
-
-  return buildQualificationData({
-    postgrad: get('1'),
-    grad_diploma: get('2'),
-    bachelor: get('3'),
-    adv_diploma: get('51'),
-    cert3_4: get('4'),
-    cert1_2: get('52'),
-    no_qualification: get('0'),
-    not_stated: get('_N'),
-    total: get('TOT'),
-  });
+  return decodeQualifications(
+    (qallp) => lookupValue(data, { QALLP_C16: qallp, SEX_ABS: '3', AGE: 'TOT', LGA_2016: lgaCode }, '2016'),
+    { notStated: 'Z', total: 'TOT' },
+  );
 }
 
 // ─── G34: Number of Motor Vehicles ────────────────────────────────────────────
@@ -1099,32 +1059,34 @@ export interface VehicleData {
 }
 
 export async function fetchG34(lgaCode: string): Promise<VehicleData | null> {
-  // C21_G34_LGA: Number of motor vehicles (VEHD) by dwelling structure (DWTSTRD)
-  // VEHD codes: 0=no vehicles, 1=1 vehicle, 2=2 vehicles, 3=3 or more, _T=total
+  // C21_G34_LGA: Number of motor vehicles per dwelling (dimensions VEHD, SUM, REGION).
   const url = `${ABS_BASE}/C21_G34_LGA?startPeriod=2021&endPeriod=2021&dimensionAtObservation=AllDimensions`;
   const xml = await fetchWithRetry(url);
   if (!xml) return null;
   const data = parseSdmxXml(xml);
+  return decodeG34((vehd) => lookupValue(data, { VEHD: vehd, SUM: 'D', REGION: lgaCode }, '2021'));
+}
 
-  const get = (vehd: string) =>
-    lookupValue(data, { VEHD: vehd, DWTSTRD: '_T', REGION: lgaCode }, '2021')
-    ?? sumValues(data, { VEHD: vehd, REGION: lgaCode }, '2021');
-
-  const none  = get('0');
-  const one   = get('1');
-  const two   = get('2');
-  const three = get('3');
-  const total = get('_T');
-
-  const computed = none + one + two + three;
-  if (total === 0 && computed === 0) return null;
+/**
+ * VEHD codes (CL_C21_VEHD01): 0, 1, 2, 3 vehicles, 4 four or more; V_T = total
+ * dwellings with vehicle count stated (excludes _N not stated), used as the
+ * denominator so shares sum to 100%.
+ */
+export function decodeG34(get: (vehd: string) => number | null): VehicleData | null {
+  const none  = get('0') ?? 0;
+  const one   = get('1') ?? 0;
+  const two   = get('2') ?? 0;
+  const threePlus = (get('3') ?? 0) + (get('4') ?? 0);
+  const computed = none + one + two + threePlus;
+  const total = get('V_T') ?? computed;
+  if (total === 0) return null;
 
   return {
     noCar:          Math.round(none),
     oneCar:         Math.round(one),
     twoCars:        Math.round(two),
-    threePlusCars:  Math.round(three),
-    totalDwellings: Math.round(total > 0 ? total : computed),
+    threePlusCars:  Math.round(threePlus),
+    totalDwellings: Math.round(total),
   };
 }
 
