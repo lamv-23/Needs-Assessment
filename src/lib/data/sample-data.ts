@@ -1,4 +1,5 @@
 import type { GTFSFrequencyData } from '@/lib/gtfs-frequency';
+import type { HTSTravelSurveySummary } from '@/lib/hts-parser';
 import { OFFICIAL_FALLBACKS } from './official-fallback-data';
 
 export interface DemographicsData {
@@ -39,6 +40,8 @@ export interface TransportData {
   ptStops?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
   ptRoutes?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
   ptFrequency?: GTFSFrequencyData & { departuresPer1000Residents: number | null };
+  /** All-purpose weekday travel, TfNSW Household Travel Survey (Sydney GMA LGAs only). */
+  travelSurvey?: HTSTravelSurveySummary;
 }
 
 export interface EconomyData {
