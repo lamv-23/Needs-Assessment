@@ -2,14 +2,14 @@
  * Build-time SQLite database (data/build.db, gitignored).
  *
  * Holds the large intermediate tables the SA2 catchment pipeline derives its
- * committed outputs from (sa2_cache, mesh_blocks, and later
- * gtfs_stop_frequency). The app never reads it and it never goes into the
+ * committed outputs from (sa2_cache, mesh_blocks, gtfs_stop_frequency). The app never reads it and it never goes into the
  * committed data/cache.db. Override the location with BUILD_DB_PATH.
  */
 
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import type { StopFrequencyRow } from './gtfs-frequency';
 
 let db: Database.Database | null = null;
 let dbPath: string | null = null;
@@ -51,6 +51,17 @@ export function getBuildDb(): Database.Database {
       persons INTEGER NOT NULL,
       lat REAL,
       lng REAL
+    );
+
+    -- Weekday 07:00-09:00 departures for every stop in the GTFS bundle (0 where none), with the
+    -- stop's location and mode from the same bundle so catchments need no other stop source.
+    CREATE TABLE IF NOT EXISTS gtfs_stop_frequency (
+      stop_id TEXT PRIMARY KEY,
+      service_date TEXT NOT NULL,
+      am_peak_departures INTEGER NOT NULL,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      mode TEXT NOT NULL
     );
   `);
   return db;
@@ -105,4 +116,17 @@ export function upsertMeshBlocks(rows: readonly MeshBlockRow[], batchSize = MESH
     for (const row of batch) stmt.run(row);
   });
   for (let i = 0; i < rows.length; i += batchSize) insertBatch(rows.slice(i, i + batchSize));
+}
+
+/** Replace the whole gtfs_stop_frequency table with `rows`, in one transaction. */
+export function replaceGtfsStopFrequency(rows: readonly StopFrequencyRow[]): void {
+  const db = getBuildDb();
+  const stmt = db.prepare(`
+    INSERT INTO gtfs_stop_frequency (stop_id, service_date, am_peak_departures, lat, lng, mode)
+    VALUES (@stop_id, @service_date, @am_peak_departures, @lat, @lng, @mode)
+  `);
+  db.transaction(() => {
+    db.prepare('DELETE FROM gtfs_stop_frequency').run();
+    for (const row of rows) stmt.run(row);
+  })();
 }

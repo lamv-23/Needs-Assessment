@@ -4,6 +4,7 @@ import {
   countPeakDepartures,
   summariseFrequency,
   frequencyBenchmarks,
+  toStopFrequencyRows,
   FREQUENT_DEPARTURES_THRESHOLD,
 } from '../lib/gtfs-frequency';
 
@@ -116,5 +117,28 @@ describe('frequencyBenchmarks', () => {
     expect(b.greaterSydney.frequentStopShare).toBe(50);
     expect(b.nsw.totalStops).toBe(8);
     expect(b.nsw.frequentStopShare).toBe(25);
+  });
+});
+
+describe('toStopFrequencyRows', () => {
+  const stops = [
+    { stopId: 'a', lat: -33.77, lng: 150.91, mode: 'bus' },
+    { stopId: 'b', lat: -33.8, lng: 151.0, mode: 'train' },
+  ];
+
+  it('gives every stop a row, with 0 departures where it has none, all on the same service date', () => {
+    expect(toStopFrequencyRows(stops, new Map([['a', 9]]), '20261027')).toEqual([
+      { stop_id: 'a', service_date: '20261027', am_peak_departures: 9, lat: -33.77, lng: 150.91, mode: 'bus' },
+      { stop_id: 'b', service_date: '20261027', am_peak_departures: 0, lat: -33.8, lng: 151.0, mode: 'train' },
+    ]);
+  });
+
+  it('ignores departures for stops that are not listed and accepts any iterable', () => {
+    const rows = toStopFrequencyRows(new Set(stops).values(), new Map([['a', 3], ['zzz', 50]]), '20261027');
+    expect(rows.map(r => [r.stop_id, r.am_peak_departures])).toEqual([['a', 3], ['b', 0]]);
+  });
+
+  it('returns no rows for no stops', () => {
+    expect(toStopFrequencyRows([], new Map([['a', 9]]), '20261027')).toEqual([]);
   });
 });

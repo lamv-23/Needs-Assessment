@@ -1,12 +1,20 @@
 /**
  * Build-time database (data/build.db): opened lazily at BUILD_DB_PATH, with the
- * sa2_cache and mesh_blocks tables created on first use. Uses a temp file, never data/build.db.
+ * sa2_cache, mesh_blocks and gtfs_stop_frequency tables created on first use. Uses a temp file, never data/build.db.
  */
 
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getBuildDb, upsertSa2Cache, getSa2Cache, upsertMeshBlocks, type MeshBlockRow } from '../lib/build-db';
+import {
+  getBuildDb,
+  upsertSa2Cache,
+  getSa2Cache,
+  upsertMeshBlocks,
+  replaceGtfsStopFrequency,
+  type MeshBlockRow,
+} from '../lib/build-db';
+import type { StopFrequencyRow } from '../lib/gtfs-frequency';
 
 describe('build-db', () => {
   let dir: string;
@@ -88,6 +96,43 @@ describe('build-db', () => {
     it('accepts an empty list', () => {
       upsertMeshBlocks([]);
       expect(count()).toBe(0);
+    });
+  });
+
+  describe('gtfs_stop_frequency', () => {
+    const stop = (id: string, over: Partial<StopFrequencyRow> = {}): StopFrequencyRow => ({
+      stop_id: id,
+      service_date: '20261027',
+      am_peak_departures: 4,
+      lat: -33.77,
+      lng: 150.91,
+      mode: 'bus',
+      ...over,
+    });
+    const all = () => getBuildDb().prepare('SELECT * FROM gtfs_stop_frequency ORDER BY stop_id').all();
+
+    it('creates the table with every column required', () => {
+      const cols = getBuildDb().prepare("PRAGMA table_info('gtfs_stop_frequency')").all() as { name: string; notnull: number; pk: number }[];
+      expect(cols.map((c) => c.name)).toEqual(['stop_id', 'service_date', 'am_peak_departures', 'lat', 'lng', 'mode']);
+      expect(cols.filter((c) => c.pk === 1).map((c) => c.name)).toEqual(['stop_id']);
+      expect(cols.filter((c) => c.notnull === 1).map((c) => c.name)).toEqual(['service_date', 'am_peak_departures', 'lat', 'lng', 'mode']);
+    });
+
+    it('stores each row, including stops with no departures', () => {
+      replaceGtfsStopFrequency([stop('s1'), stop('s2', { am_peak_departures: 0, mode: 'train' })]);
+      expect(all()).toEqual([stop('s1'), stop('s2', { am_peak_departures: 0, mode: 'train' })]);
+    });
+
+    it('replaces the earlier contents rather than adding to them', () => {
+      replaceGtfsStopFrequency([stop('s1'), stop('s2')]);
+      replaceGtfsStopFrequency([stop('s3', { service_date: '20261103' })]);
+      expect(all()).toEqual([stop('s3', { service_date: '20261103' })]);
+    });
+
+    it('leaves the earlier contents untouched when a row is rejected', () => {
+      replaceGtfsStopFrequency([stop('s1')]);
+      expect(() => replaceGtfsStopFrequency([stop('s2'), stop('s2')])).toThrow();
+      expect(all()).toEqual([stop('s1')]);
     });
   });
 });

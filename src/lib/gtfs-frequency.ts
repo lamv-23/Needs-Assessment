@@ -3,7 +3,8 @@
  *
  * Counts scheduled weekday AM-peak (07:00–09:00) departures per stop from a
  * GTFS schedule, then summarises per LGA. Used by scripts/seed-gtfs.ts to
- * store the 'GTFS_FREQUENCY' dataset in tfnsw_cache.
+ * store the 'GTFS_FREQUENCY' dataset in tfnsw_cache and the per-stop counts in
+ * the build database (gtfs_stop_frequency).
  *
  * A stop is "frequent" when it has at least FREQUENT_DEPARTURES_THRESHOLD
  * departures in the 2-hour window, i.e. a combined service every 15 minutes
@@ -218,4 +219,30 @@ export function summariseFrequency(
     frequentStopsByMode,
     source: 'tfnsw_gtfs',
   };
+}
+
+/** One gtfs_stop_frequency row: a stop's AM-peak departures with its location and mode. */
+export interface StopFrequencyRow {
+  stop_id: string;
+  service_date: string;
+  am_peak_departures: number;
+  lat: number;
+  lng: number;
+  mode: string;
+}
+
+/**
+ * One row per stop, 0 departures where `departures` has none, all on the same
+ * service date. `departures` is keyed by the same `stopId` the rows carry.
+ */
+export function toStopFrequencyRows(
+  stops: Iterable<{ stopId: string; lat: number; lng: number; mode: string }>,
+  departures: Map<string, number>,
+  serviceDate: string,
+): StopFrequencyRow[] {
+  const rows: StopFrequencyRow[] = [];
+  for (const { stopId, lat, lng, mode } of stops) {
+    rows.push({ stop_id: stopId, service_date: serviceDate, am_peak_departures: departures.get(stopId) ?? 0, lat, lng, mode });
+  }
+  return rows;
 }
