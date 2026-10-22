@@ -17,6 +17,7 @@ npm run seed -- --lga lga_sydney   # fetch ABS for a single LGA
 npm run seed:g62         # re-fetch Census journey-to-work (G62/G59/B46) for all LGAs
 npm run seed:transport   # HTS commute time, ABS commute distance, station patronage, crash trends (~2 min, needs gtfs_stops)
 npm run build:fallbacks  # refresh bundled official-fallback-data.ts from live data + Greater Sydney benchmark (run after any seed)
+npm run build:needs      # rebuild the LGA needs-assessment indicator snapshot (src/lib/data/needs-indicators-data.ts); run after build:fallbacks
 
 npm run parse:population  # regenerate src/lib/data/nsw-projections-data.ts from XLSX
 npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV
@@ -110,7 +111,7 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 - POST `/api/admin/refresh` with `{ action: 'seed_static' | 'seed_abs' | 'seed_transport', lgaId? }` to enqueue a refresh job
 - Jobs are processed by the refresh worker (`npm run worker:refresh`) / inline runner using `src/lib/seed-runner.ts`; `transport` runs `src/lib/official-transport-seed.ts` (same as `npm run seed:transport`). GTFS stops are CLI-only (`npm run seed:gtfs`)
 - Auto-refresh: when `auto_refresh_enabled` is `true`, the worker queues `abs` / `transport` jobs once `abs_refresh_interval_days` / `tfnsw_refresh_interval_days` have passed (`dueScheduledRefreshes` in `src/lib/refresh-jobs.ts`)
-- After refreshing data that ships in the bundle, run `npm run build:fallbacks` and commit
+- After refreshing data that ships in the bundle, run `npm run build:fallbacks`, then `npm run build:needs` (run after `build:fallbacks`: it reads the same live data), and commit
 
 ## SQLite Schema (`data/cache.db`)
 | Table | Key | Content |

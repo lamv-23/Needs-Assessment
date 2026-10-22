@@ -22,6 +22,7 @@
     "seed:gtfs": "tsx scripts/seed-gtfs.ts",
     "seed:transport": "tsx scripts/seed-official-transport.ts",
     "build:fallbacks": "tsx scripts/build-fallbacks.ts",
+    "build:needs": "tsx scripts/build-needs-indicators.ts",
     "seed:commute-times": "tsx scripts/seed-commute-times.ts",
     "seed:infrastructure": "tsx scripts/seed-infrastructure.ts",
     "seed:osm-stops": "tsx scripts/seed-osm-stops.ts",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@tanstack/react-table": "^8.21.0",
+    "@turf/area": "^7.4.0",
     "@types/adm-zip": "^0.5.8",
     "@types/better-sqlite3": "^7.6.12",
     "@types/jest": "^30.0.0",
