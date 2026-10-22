@@ -39,7 +39,7 @@ import {
   GROWTH_SERVICE_CAPTION, indicatorTable, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, SA2_MAP_CAPTION,
   SA2_MAP_TITLE, SA2_TABLE_CAPTION, sa2Table, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
-import { SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD } from '@/lib/needs/sa2';
+import { SA2_RANKED_CRITERIA, SA2_SHARE_THRESHOLD } from '@/lib/needs/sa2';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
 import { QUADRANT_SCATTERS, RADAR_AXES, type QuadrantSpec } from '@/lib/needs/project-need';
 import type { NeedsMode, Universe } from '@/lib/needs/types';
@@ -95,9 +95,9 @@ const LGA_NAMES = new Map(NEEDS_SNAPSHOT.records.map(r => [r.areaId, r.name]));
 
 const SA2_INTRO =
   `The SA2s (ABS Statistical Areas Level 2) with at least ${Math.round(SA2_SHARE_THRESHOLD * 100)}% of their residents in a `
-  + `selected LGA, each scored against the NSW SA2s with ${SA2_LOW_POPULATION} or more residents, whatever the comparison `
-  + 'group above. SA2 scores use the indicators available for SA2s, so they cover the transport and socio-economic '
-  + 'domains only: there are no growth indicators for SA2s.';
+  + `selected LGA, each scored against the NSW SA2s ${SA2_RANKED_CRITERIA}, whatever the comparison group above. `
+  + 'SA2 scores use the indicators available for SA2s, so they cover the transport and socio-economic domains only: '
+  + 'there are no growth indicators for SA2s.';
 const SA2_ERROR = 'The SA2 data could not be loaded. Reload the page to try again.';
 // Why a map figure is left out of the Word export (P2-R19, R22)
 const SA2_DATA_FAILED = 'the SA2 data could not be loaded';

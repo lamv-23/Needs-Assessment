@@ -4,8 +4,8 @@ import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { SA2_AREAS } from '@/lib/data/sa2-areas';
 import { INDICATORS } from '@/lib/needs/indicators';
 import {
-  assessSa2s, extractSa2Indicators, isRankedSa2, rankSa2s, SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD, sa2Pockets,
-  sa2RankText, sa2sForLgas, topSa2s,
+  assessSa2s, extractSa2Indicators, isRankedSa2, rankSa2s, SA2_LOW_POPULATION, SA2_RANKED_CRITERIA, SA2_SHARE_THRESHOLD,
+  sa2Pockets, sa2RankText, sa2sForLgas, topSa2s,
 } from '@/lib/needs/sa2';
 import { needPercentile } from '@/lib/needs/scoring';
 import type { AreaAssessment, IndicatorId, Sa2Assessed, Sa2NeedsFile, Sa2Record } from '@/lib/needs/types';
@@ -112,6 +112,10 @@ describe('sa2sForLgas', () => {
 });
 
 describe('rankSa2s', () => {
+  test('P2-R21: the ranked SA2s are described by both criteria, so "No usual address" (11,371 residents) is not miscounted', () => {
+    expect(SA2_RANKED_CRITERIA).toBe('with 100 or more residents and a place on the map');
+  });
+
   test('ranks every ranked SA2 on its overall score: 1 is the highest need, ties share the better rank', () => {
     const tied = makeSa2('10000009', Object.fromEntries(SA2_IDS.map(id => [id, 5])), { name: 'Tied' });
     const ranking = rankSa2s(file([...ramp(), tied]));

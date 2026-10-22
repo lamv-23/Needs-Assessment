@@ -3,7 +3,7 @@ import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from './indi
 import { buildInsights, isKeyNeed, keyNeedText, WFH_CAVEAT, type KeyNeed } from './insights';
 import { nameList } from './insight-chart-data';
 import {
-  MAX_POCKETS, rankSa2s, SA2_INDICATOR_IDS, SA2_LOW_POPULATION, SA2_POCKET_SHARE, SA2_SHARE_THRESHOLD, sa2Pockets,
+  MAX_POCKETS, rankSa2s, SA2_INDICATOR_IDS, SA2_POCKET_SHARE, SA2_RANKED_CRITERIA, SA2_SHARE_THRESHOLD, sa2Pockets,
 } from './sa2';
 import { KEY_NEED_PERCENTILE, SA2_UNIVERSE_LABEL, SMALL_GROUP_SIZE } from './scoring';
 import type {
@@ -252,10 +252,8 @@ function sa2Note(file: Sa2NeedsFile): NarrativeParagraph {
   return paragraph(
     'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near AM-peak '
     + 'public transport by straight-line distance, so they cover the transport and socio-economic domains and not '
-    + 'growth. '
-    + `SA2s are ranked against the ${rankSa2s(file).ranked} ${SA2_UNIVERSE_LABEL} with ${SA2_LOW_POPULATION} or more `
-    + `residents, and an SA2 is listed for an LGA when at least ${Math.round(SA2_SHARE_THRESHOLD * 100)}% of its `
-    + 'residents live there.',
+    + `growth. SA2s are ranked against the ${rankSa2s(file).ranked} ${SA2_UNIVERSE_LABEL} ${SA2_RANKED_CRITERIA}, and an `
+    + `SA2 is listed for an LGA when at least ${Math.round(SA2_SHARE_THRESHOLD * 100)}% of its residents live there.`,
   );
 }
 

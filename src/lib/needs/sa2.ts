@@ -20,6 +20,12 @@ import type {
 /** An SA2 with fewer residents than this is not ranked and is no other SA2's peer: shown as "Low population". */
 export const SA2_LOW_POPULATION = 100;
 
+/**
+ * The SA2s every SA2 is ranked against, as written after "NSW SA2s" (P2-R21): "No usual address" has more than 100
+ * residents but no place on the map, so it is not ranked and "with 100 or more residents" alone would miscount.
+ */
+export const SA2_RANKED_CRITERIA = `with ${SA2_LOW_POPULATION} or more residents and a place on the map`;
+
 /** An SA2 is in an LGA's drill-down when at least this share of its located residents live in the LGA. */
 export const SA2_SHARE_THRESHOLD = 0.1;
 

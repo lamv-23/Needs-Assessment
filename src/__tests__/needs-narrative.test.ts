@@ -1074,7 +1074,8 @@ describe('buildNarrative: pockets of need (SA2s)', () => {
       'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near AM-peak '
       + 'public transport by straight-line distance, so they cover the transport and socio-economic domains and not '
       + 'growth. '
-      + 'SA2s are ranked against the 50 NSW SA2s with 100 or more residents, and an SA2 is listed for an LGA when at '
+      + 'SA2s are ranked against the 50 NSW SA2s with 100 or more residents and a place on the map, and an SA2 is '
+      + 'listed for an LGA when at '
       + 'least 10% of its residents live there.',
     );
   });

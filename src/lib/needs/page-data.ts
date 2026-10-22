@@ -4,8 +4,8 @@ import { CATCHMENT_NOTE, INDICATOR_BY_ID, INDICATORS, SOURCES } from './indicato
 import { mismatchChartData, trendData } from './insight-chart-data';
 import { carDependencySources, WFH_CAVEAT_CITATION } from './insights';
 import {
-  drillDownSa2s, lgaShareText, rankSa2s, SA2_INDICATOR_IDS, SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD, sa2RankText,
-  topSa2s,
+  drillDownSa2s, lgaShareText, rankSa2s, SA2_INDICATOR_IDS, SA2_LOW_POPULATION, SA2_RANKED_CRITERIA,
+  SA2_SHARE_THRESHOLD, sa2RankText, topSa2s,
 } from './sa2';
 import type {
   AreaAssessment, IndicatorDef, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, Sa2Assessed, Sa2NeedsFile,
@@ -178,8 +178,8 @@ export function sa2Table(file: Sa2NeedsFile, assessment: Pick<NeedsAssessment, '
   const notes = [
     `${shown}, by overall SA2 need score. An SA2 is in the selection when at least `
       + `${Math.round(SA2_SHARE_THRESHOLD * 100)}% of its residents live in a selected LGA. SA2 scores cover the `
-      + `transport and socio-economic domains only and are ranked against the ${ranking.ranked} NSW SA2s with `
-      + `${SA2_LOW_POPULATION} or more residents.`,
+      + `transport and socio-economic domains only and are ranked against the ${ranking.ranked} NSW SA2s `
+      + `${SA2_RANKED_CRITERIA}.`,
     ...(unranked.length > 0
       ? [`Not ranked (fewer than ${SA2_LOW_POPULATION} residents, or no score): ${unranked.join(', ')}.`]
       : []),

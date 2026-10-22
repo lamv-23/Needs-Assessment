@@ -336,7 +336,7 @@ describe('sa2Table', () => {
     ]);
     expect(rows[4].lgas).toBe('Blacktown (71%), Cumberland (29%)');
     expect(notes[0]).toMatch(/^All 5 ranked SA2s in the selection, by overall SA2 need score\./);
-    expect(notes[0]).toContain('ranked against the 50 NSW SA2s with 100 or more residents');
+    expect(notes[0]).toContain('ranked against the 50 NSW SA2s with 100 or more residents and a place on the map.');
     expect(notes[1]).toBe('Not ranked (fewer than 100 residents, or no score): Prospect Reservoir.');
   });
 
