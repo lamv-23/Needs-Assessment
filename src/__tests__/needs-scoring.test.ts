@@ -6,6 +6,7 @@ import {
 import type {
   AreaAssessment, IndicatorId, IndicatorValue, LgaIndicatorRecord, NeedDomain, PeerGroup,
 } from '@/lib/needs/types';
+import { EMPTY_SERIES } from './fixtures/needs';
 
 type Values = Partial<Record<IndicatorId, number | null>>;
 
@@ -18,7 +19,7 @@ function makeValues(values: Values): Record<IndicatorId, IndicatorValue> {
 function makeRecord(areaId: string, values: Values, extra: Partial<LgaIndicatorRecord> = {}): LgaIndicatorRecord {
   return {
     areaId, name: areaId, region: 'Hunter', population: 100000, densityPerKm2: 500,
-    peerGroup: 'regional_city', values: makeValues(values), ...extra,
+    peerGroup: 'regional_city', values: makeValues(values), series: EMPTY_SERIES, ...extra,
   };
 }
 

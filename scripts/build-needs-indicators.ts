@@ -2,7 +2,9 @@
 /**
  * Build the bundled needs-assessment snapshot: the 16 indicator values for every
  * NSW LGA, plus the name, region, population, density and peer group the
- * percentile engine needs.
+ * percentile engine needs, and the time series the Part B insights draw on
+ * (extractSeries(): car dependency by Census year, crashes, ERP history, 2041
+ * population, AM-peak departures, 12-month approvals, jobs).
  *
  *   src/lib/data/needs-indicators-data.ts — NEEDS_SNAPSHOT
  *
@@ -12,7 +14,7 @@
  * public/geo/lga-nsw.json, so it is not the bundled integer populationDensity
  * (which reads 0 for 34 rural LGAs, and is far below the real density for many
  * metro LGAs). The file is written one record per line with non-integer numbers
- * rounded to 4 dp, to stay under 150 KB.
+ * rounded to 4 dp, to stay under 400 KB.
  *
  * Provenance: a live result's meta.sampleFields lists the fields that fell back
  * to bundled official data (src/lib/data/official-fallback-data.ts). Fallback
@@ -32,7 +34,7 @@ import {
   getLiveDemographicsData, getLiveTransportData, getLiveEconomyData, getLiveGrowthData,
   type DataMeta,
 } from '../src/lib/data/live-data';
-import { extractIndicators } from '../src/lib/needs/extract';
+import { extractIndicators, extractSeries } from '../src/lib/needs/extract';
 import { INDICATORS } from '../src/lib/needs/indicators';
 import { peerGroupFor } from '../src/lib/needs/peer-groups';
 import type { IndicatorId, LgaIndicatorRecord, NeedsSnapshot, PeerGroup } from '../src/lib/needs/types';
@@ -43,7 +45,7 @@ const YEAR = 2021;
 
 const GEO_PATH = path.join(process.cwd(), 'public/geo/lga-nsw.json');
 const OUTPUT_PATH = path.join(process.cwd(), 'src/lib/data/needs-indicators-data.ts');
-const SIZE_TARGET_BYTES = 150 * 1024;
+const SIZE_TARGET_BYTES = 400 * 1024;
 // Non-integer values (percentages, densities) are written to this many decimals to keep the file small.
 const DECIMALS = 4;
 
@@ -121,12 +123,14 @@ async function build(): Promise<void> {
     const metas: Record<Bundle, DataMeta> = {
       demographics: demographics.meta, transport: transport.meta, economy: economy.meta, growth: growth.meta,
     };
-    const values = extractIndicators({
+    const bundle = {
       demographics: demographics.data,
       transport: transport.data,
       economy: economy.data,
       growth: growth.data,
-    });
+    };
+    const values = extractIndicators(bundle);
+    const series = extractSeries(bundle);
     for (const def of INDICATORS) {
       const fields = Object.entries(INDICATOR_SOURCE_FIELDS[def.id]) as [Bundle, string[]][];
       const any = (test: (meta: DataMeta, field: string) => boolean) =>
@@ -148,6 +152,7 @@ async function build(): Promise<void> {
       densityPerKm2,
       peerGroup: peerGroupFor({ areaId: lga.id, population, densityPerKm2 }),
       values,
+      series,
     });
   }
 

@@ -1,4 +1,4 @@
-import type { IndicatorId, IndicatorValue, LiveBundle } from './types';
+import type { IndicatorId, IndicatorValue, InsightSeries, LiveBundle } from './types';
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 
@@ -23,6 +23,12 @@ const latest = <T extends { year: number }>(items: T[]): T | undefined =>
 function populationIn(series: { year: number; population: number }[], year: number): number | null {
   const entry = series.find(p => p.year === year && isNum(p.population) && p.population > 0);
   return entry ? entry.population : null;
+}
+
+/** A year's job count, ignoring entries that are not a positive number. */
+function jobsIn(series: { year: number; jobs: number }[], year: number): number | null {
+  const entry = series.find(j => j.year === year && isNum(j.jobs) && j.jobs > 0);
+  return entry ? entry.jobs : null;
 }
 
 /** Growth from base to target as a ratio: the numerator is the increase, the denominator the base. */
@@ -69,7 +75,6 @@ export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, Indic
     ? ratio(age65to74.male + age65to74.female + age75plus.male + age75plus.female, population, 100)
     : missing();
 
-  const jobsIn = (year: number) => growthData.employmentGrowth.find(j => j.year === year && isNum(j.jobs) && j.jobs > 0)?.jobs ?? null;
   // Base year 2021: ERP history, else the 2021 projection
   const populationBase = populationIn(growthData.populationHistory, 2021) ?? populationIn(growthData.populationProjections, 2021);
 
@@ -95,7 +100,60 @@ export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, Indic
     indigenous_share: ratio(demographics.indigenousPopulation, population, 100),
 
     pop_growth_2041: growth(populationBase, populationIn(growthData.populationProjections, 2041)),
-    job_growth_2041: growth(jobsIn(2021), jobsIn(2041)),
+    job_growth_2041: growth(jobsIn(growthData.employmentGrowth, 2021), jobsIn(growthData.employmentGrowth, 2041)),
     approvals_per_1000: ratio(growthData.rollingAnnualApprovals, population, 1000),
+  };
+}
+
+const CENSUS_YEARS = [2011, 2016, 2021] as const;
+
+/** Building approvals over the latest 12 months and the 12 before; null unless the latest 24 months are consecutive. */
+function approvalsWindows(
+  periods: { year: number; month: number; residentialCount: number }[] | undefined,
+): Pick<InsightSeries, 'approvalsLast12' | 'approvalsPrev12'> {
+  const none = { approvalsLast12: null, approvalsPrev12: null };
+  const months = (periods ?? [])
+    .filter(p => isNum(p.year) && Number.isInteger(p.month) && p.month >= 1 && p.month <= 12 && isNum(p.residentialCount))
+    .map(p => ({ index: p.year * 12 + p.month - 1, count: p.residentialCount }))
+    .sort((a, b) => a.index - b.index)
+    .slice(-24);
+  if (months.length < 24 || months.some((m, i) => i > 0 && m.index - months[i - 1].index !== 1)) return none;
+  const total = (window: typeof months) => window.reduce((sum, m) => sum + m.count, 0);
+  return { approvalsLast12: total(months.slice(12)), approvalsPrev12: total(months.slice(0, 12)) };
+}
+
+/** Turn one LGA's live data into the time series the Part B insights draw on. */
+export function extractSeries(bundle: LiveBundle): InsightSeries {
+  const { transport, growth: growthData } = bundle;
+
+  // Same definition as car_dependency: work from home excluded. modeShareTrend's car share is of all workers.
+  const carDependencyByYear = CENSUS_YEARS.flatMap(year => {
+    const point = transport.modeShareTrend.find(p => p.year === year);
+    return point && isNum(point.car) && isNum(point.wfh) && point.wfh < 100
+      ? [{ year, value: (point.car * 100) / (100 - point.wfh) }]
+      : [];
+  });
+
+  const crashesByYear = (transport.crashTrend ?? [])
+    .filter(c => isNum(c.year) && isNum(c.totalCrashes))
+    .map(c => ({ year: c.year, total: c.totalCrashes }))
+    .sort((a, b) => a.year - b.year);
+
+  const populationHistory = growthData.populationHistory
+    .filter(p => isNum(p.year) && isNum(p.population) && p.population > 0)
+    .map(p => ({ year: p.year, population: p.population }))
+    .sort((a, b) => a.year - b.year);
+
+  const amPeak = transport.ptFrequency?.amPeakDepartures;
+
+  return {
+    carDependencyByYear,
+    crashesByYear,
+    populationHistory,
+    population2041: populationIn(growthData.populationProjections, 2041),
+    amPeakDepartures: isNum(amPeak) ? amPeak : null,
+    ...approvalsWindows(growthData.buildingApprovals),
+    jobs2021: jobsIn(growthData.employmentGrowth, 2021),
+    jobs2041: jobsIn(growthData.employmentGrowth, 2041),
   };
 }

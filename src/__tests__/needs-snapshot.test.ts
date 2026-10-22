@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { peerGroupFor } from '@/lib/needs/peer-groups';
 
@@ -52,4 +54,14 @@ const EXPECTED_TZP24_LGAS = 43;
 
 test('job growth coverage matches the TZP24 source', () => {
   expect(NEEDS_SNAPSHOT.records.filter(r => r.values.job_growth_2041.value !== null).length).toBe(EXPECTED_TZP24_LGAS);
+});
+
+test('snapshot: car dependency coverage by year', () => {
+  const has = (y: number) => NEEDS_SNAPSHOT.records.filter(r => r.series.carDependencyByYear.some(p => p.year === y)).length;
+  expect([has(2011), has(2016), has(2021)]).toEqual([107, 123, 128]);
+});
+
+test('snapshot stays small', () => {
+  const file = path.join(__dirname, '../lib/data/needs-indicators-data.ts');
+  expect(fs.statSync(file).size).toBeLessThan(400_000);
 });

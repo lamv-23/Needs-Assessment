@@ -1,5 +1,5 @@
 import { INDICATORS, INDICATOR_BY_ID, DOMAIN_LABELS } from '@/lib/needs/indicators';
-import { extractIndicators } from '@/lib/needs/extract';
+import { extractIndicators, extractSeries } from '@/lib/needs/extract';
 import type { IndicatorId } from '@/lib/needs/types';
 import { makeBundle } from './fixtures/needs';
 
@@ -165,5 +165,126 @@ describe('extractIndicators', () => {
     expect(extractIndicators(makeBundle({ growth: { populationHistory: [] } })).pop_growth_2041.value).toBeNull();
     expect(extractIndicators(makeBundle({ growth: { employmentGrowth: [{ year: 2021, jobs: 140000 }] } })).job_growth_2041.value).toBeNull();
     expect(extractIndicators(makeBundle({ growth: { employmentGrowth: [] } })).job_growth_2041.value).toBeNull();
+  });
+});
+
+describe('extractSeries', () => {
+  /** n consecutive months ending at endYear/endMonth, with a count of 1, 2, 3 ... oldest to newest. */
+  function months(n: number, endYear = 2025, endMonth = 12) {
+    return Array.from({ length: n }, (_, i) => {
+      const index = endYear * 12 + (endMonth - 1) - (n - 1 - i);
+      return { year: Math.floor(index / 12), month: (index % 12) + 1, residentialCount: i + 1 };
+    });
+  }
+  const sum = (from: number, to: number) => (from + to) * (to - from + 1) / 2;
+
+  test('car dependency by year excludes WFH', () => {
+    const s = extractSeries(makeBundle({
+      transport: {
+        modeShareTrend: [
+          { year: 2011, car: 70, train: 8, bus: 5, active: 5, wfh: 5 },
+          { year: 2021, car: 60, train: 5, bus: 3, active: 4, wfh: 25 },
+        ],
+      },
+    }));
+    expect(s.carDependencyByYear).toHaveLength(2);
+    expect(s.carDependencyByYear[0].year).toBe(2011);
+    expect(s.carDependencyByYear[0].value).toBeCloseTo(73.684, 3);
+    expect(s.carDependencyByYear[1]).toEqual({ year: 2021, value: 80 });
+  });
+
+  test('car dependency by year omits years with no data, never 0', () => {
+    const point = (year: number, car: number, wfh: number) => ({ year, car, train: 0, bus: 0, active: 0, wfh });
+    const s = extractSeries(makeBundle({
+      transport: {
+        modeShareTrend: [
+          point(2011, 70, 100),                                   // everyone works from home: no denominator
+          point(2016, undefined as unknown as number, 10),        // car share missing
+          point(2021, 54, 10),
+        ],
+      },
+    }));
+    expect(s.carDependencyByYear).toEqual([{ year: 2021, value: 60 }]);
+  });
+
+  test('car dependency by year is sorted and limited to the Census years', () => {
+    const point = (year: number, car: number) => ({ year, car, train: 0, bus: 0, active: 0, wfh: 0 });
+    const s = extractSeries(makeBundle({
+      transport: { modeShareTrend: [point(2021, 60), point(2019, 99), point(2011, 50), point(2016, 55)] },
+    }));
+    expect(s.carDependencyByYear).toEqual([
+      { year: 2011, value: 50 }, { year: 2016, value: 55 }, { year: 2021, value: 60 },
+    ]);
+    expect(extractSeries(makeBundle()).carDependencyByYear).toEqual([]);
+  });
+
+  test('crashes by year come from crashTrend in year order, skipping years with no count', () => {
+    const s = extractSeries(makeBundle({
+      transport: {
+        crashTrend: [
+          { year: 2023, totalCrashes: 1000, fatalCrashes: 9, injuryCrashes: 540 },
+          { year: 2022, totalCrashes: 900, fatalCrashes: 8, injuryCrashes: 500 },
+          { year: 2024, totalCrashes: undefined as unknown as number, fatalCrashes: 0, injuryCrashes: 0 },
+        ],
+      },
+    }));
+    expect(s.crashesByYear).toEqual([{ year: 2022, total: 900 }, { year: 2023, total: 1000 }]);
+    expect(extractSeries(makeBundle({ transport: { crashTrend: undefined } })).crashesByYear).toEqual([]);
+  });
+
+  test('population history is the ERP series in year order; 2041 population and AM-peak departures are single values', () => {
+    const s = extractSeries(makeBundle({
+      growth: { populationHistory: [{ year: 2022, population: 410000 }, { year: 2021, population: 400000 }] },
+    }));
+    expect(s.populationHistory).toEqual([{ year: 2021, population: 400000 }, { year: 2022, population: 410000 }]);
+    expect(s.population2041).toBe(600000);
+    expect(s.amPeakDepartures).toBe(4800);
+  });
+
+  test('missing 2041 population and AM-peak departures are null, a genuine zero is kept', () => {
+    const missing = extractSeries(makeBundle({ growth: { populationProjections: [] }, transport: { ptFrequency: undefined } }));
+    expect(missing.population2041).toBeNull();
+    expect(missing.amPeakDepartures).toBeNull();
+    expect(extractSeries(makeBundle({ transport: { ptFrequency: { amPeakDepartures: 0 } } })).amPeakDepartures).toBe(0);
+  });
+
+  test('jobs in 2021 and 2041', () => {
+    expect(extractSeries(makeBundle())).toMatchObject({ jobs2021: 140000, jobs2041: 210000 });
+    const s = extractSeries(makeBundle({ growth: { employmentGrowth: [{ year: 2021, jobs: 140000 }] } }));
+    expect(s).toMatchObject({ jobs2021: 140000, jobs2041: null });
+    expect(extractSeries(makeBundle({ growth: { employmentGrowth: [] } }))).toMatchObject({ jobs2021: null, jobs2041: null });
+  });
+
+  test('approvals need 24 months', () => {
+    const short = extractSeries(makeBundle({ growth: { buildingApprovals: months(23) } }));
+    expect(short.approvalsLast12).toBeNull();
+    expect(short.approvalsPrev12).toBeNull();
+
+    const full = extractSeries(makeBundle({ growth: { buildingApprovals: months(24) } }));
+    expect(full.approvalsPrev12).toBe(sum(1, 12));
+    expect(full.approvalsLast12).toBe(sum(13, 24));
+
+    const absent = extractSeries(makeBundle());
+    expect([absent.approvalsLast12, absent.approvalsPrev12]).toEqual([null, null]);
+  });
+
+  test('approvals use the 24 most recent months, whatever the order', () => {
+    const shuffled = [...months(30)].reverse();
+    const s = extractSeries(makeBundle({ growth: { buildingApprovals: shuffled } }));
+    expect(s.approvalsPrev12).toBe(sum(7, 18));
+    expect(s.approvalsLast12).toBe(sum(19, 30));
+  });
+
+  test('approvals are null when the latest 24 months have a gap, and a genuine zero is kept', () => {
+    const gap = months(25).filter((_, i) => i !== 5);              // 24 entries spanning 25 months
+    const gapped = extractSeries(makeBundle({ growth: { buildingApprovals: gap } }));
+    expect([gapped.approvalsLast12, gapped.approvalsPrev12]).toEqual([null, null]);
+
+    const old = months(30).filter((_, i) => i !== 2);               // the gap is older than the latest 24 months
+    expect(extractSeries(makeBundle({ growth: { buildingApprovals: old } })).approvalsLast12).toBe(sum(19, 30));
+
+    const zeros = months(24).map(m => ({ ...m, residentialCount: 0 }));
+    const s = extractSeries(makeBundle({ growth: { buildingApprovals: zeros } }));
+    expect([s.approvalsLast12, s.approvalsPrev12]).toEqual([0, 0]);
   });
 });

@@ -32,6 +32,24 @@ export interface IndicatorDef {
 /** `value` is null when the source is missing or the denominator is zero; never 0. */
 export interface IndicatorValue { value: number | null; numerator?: number; denominator?: number }
 
+/** The time series behind the Part B insights. Missing values are `null` or omitted from an array, never 0. */
+export interface InsightSeries {
+  /** Car share of commuters who travel to a workplace, (car ÷ (100 − wfh)) × 100, for the Census years that have data. */
+  carDependencyByYear: { year: 2011 | 2016 | 2021; value: number }[];
+  /** Total crashes per year (TfNSW). */
+  crashesByYear: { year: number; total: number }[];
+  /** Estimated resident population per year (ABS ERP). */
+  populationHistory: { year: number; population: number }[];
+  population2041: number | null;
+  /** Weekday 7-9am departures from all stops in the LGA. */
+  amPeakDepartures: number | null;
+  /** Residential building approvals: the latest 12 months and the 12 before; null unless 24 consecutive months exist. */
+  approvalsLast12: number | null;
+  approvalsPrev12: number | null;
+  jobs2021: number | null;
+  jobs2041: number | null;
+}
+
 export interface LgaIndicatorRecord {
   areaId: string;
   name: string;
@@ -40,10 +58,12 @@ export interface LgaIndicatorRecord {
   densityPerKm2: number;
   peerGroup: PeerGroup;
   values: Record<IndicatorId, IndicatorValue>;
+  series: InsightSeries;
 }
 
-/** A record that may describe a combined selection, which can span several peer groups. */
-export type AssessableRecord = Omit<LgaIndicatorRecord, 'peerGroup'> & { peerGroup: PeerGroup | null };
+/** A record that may describe a combined selection, which can span several peer groups and has no series until they are aggregated. */
+export type AssessableRecord =
+  Omit<LgaIndicatorRecord, 'peerGroup' | 'series'> & { peerGroup: PeerGroup | null; series?: InsightSeries };
 
 /** Comparison universe: all NSW LGAs, Greater Sydney LGAs, the same region, or the same peer group. */
 export type Universe = 'nsw' | 'gsyd' | 'region' | 'peer';
