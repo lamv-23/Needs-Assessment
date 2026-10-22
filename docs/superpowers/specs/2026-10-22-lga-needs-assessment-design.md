@@ -150,7 +150,7 @@ Medians are computed per panel. Quadrant findings compare each area against its 
 - "{Subject} is in the high-growth, low-service group: population growth to 2041 of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
 - "{Subject} is in the high-disadvantage, low-service group: a SEIFA IRSD score of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
 
-Severity is the mean of the two need percentiles ÷ 100.
+Severity is the mean of the area's two need percentiles within its panel group (R52), ÷ 100.
 
 Formatting:
 - {x} and {mx} use `formatValue`, with its unit.
