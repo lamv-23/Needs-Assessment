@@ -1,5 +1,6 @@
 import { displayScore, formatValue } from './format';
-import { INDICATOR_BY_ID, INDICATORS } from './indicators';
+import { INDICATOR_BY_ID, INDICATORS, SOURCES } from './indicators';
+import { WFH_CAVEAT_CITATION } from './insights';
 import type {
   AreaAssessment, IndicatorDef, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, SourceRef,
 } from './types';
@@ -9,11 +10,12 @@ import type {
 const ALL_INDICATOR_IDS = INDICATORS.map(def => def.id);
 
 /**
- * Every source behind the page's indicators, unique on the full reference and in registry order.
- * A source's position here is its citation number in the narrative and in the sources list.
+ * Every source the page cites: the indicators' sources, unique on the full reference and in registry order,
+ * then the two only the insights cite (ABS ERP and the 2021 Census lockdown caveat). A source's position here
+ * is its citation number in the narrative and in the sources list.
  */
 export const NEEDS_SOURCES: SourceRef[] = Array.from(
-  new Map(INDICATORS.map(def => [def.source.full, def.source])).values(),
+  new Map([...INDICATORS.map(def => def.source), SOURCES.erp, WFH_CAVEAT_CITATION].map(s => [s.full, s])).values(),
 );
 
 /** 1-based citation number of `source`; 0 when it is not one of the page's sources. */

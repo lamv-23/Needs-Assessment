@@ -10,7 +10,7 @@ import {
 } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
 import type {
-  IndicatorId, IndicatorValue, Insight, InsightSeries, LgaIndicatorRecord, NeedsMode, Universe,
+  IndicatorDef, IndicatorId, IndicatorValue, Insight, InsightSeries, LgaIndicatorRecord, NeedsMode, Universe,
 } from '@/lib/needs/types';
 import { EMPTY_SERIES } from './fixtures/needs';
 
@@ -310,16 +310,26 @@ describe('jobsHousing', () => {
 
 describe('buildInsights', () => {
   test('buildInsights: mismatch text', () => {
-    const insights = buildInsights(assess(['lga_blacktown']));
-    const m = carDependencyMismatch(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records)!;
+    // Camden: the metropolitan LGA furthest above its expected value (z 1.47 on the 2026-10-22 snapshot)
+    const insights = buildInsights(assess(['lga_camden']));
+    const m = carDependencyMismatch(snapshotRecord('lga_camden'), NEEDS_SNAPSHOT.records)!;
     expect(m.usable).toBe(true);
+    expect(m.z).toBeGreaterThanOrEqual(1);
     const [mismatch] = of(insights, 'mismatch');
     expect(mismatch.text).toBe(
-      `Blacktown's car dependency (${formatValue(CAR, m.actual)}) is ${formatDiff(CAR, Math.abs(m.residual))} higher than expected `
+      `Camden's car dependency (${formatValue(CAR, m.actual)}) is ${formatDiff(CAR, Math.abs(m.residual))} higher than expected `
       + `for its level of frequent public transport service (model across 34 metropolitan LGAs, R² ${m.fit.r2.toFixed(2)}).`,
     );
     expect(mismatch.severity).toBeCloseTo(Math.min(1, Math.abs(m.z) / 2), 10);
     expect(mismatch.citations.map(c => c.short)).toEqual(['ABS Census 2021 G62', 'TfNSW GTFS']);
+  });
+
+  test('a usable mismatch under one residual SD is not an insight, but carDependencyMismatch still returns it', () => {
+    const m = carDependencyMismatch(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records)!;
+    expect(m.usable).toBe(true);
+    expect(Math.abs(m.z)).toBeGreaterThan(0.5);
+    expect(Math.abs(m.z)).toBeLessThan(1);                    // 6.0 pp ÷ 8.8 pp = 0.69
+    expect(of(buildInsights(assess(['lga_blacktown'])), 'mismatch')).toEqual([]);
   });
 
   test('non-metropolitan mismatch text, with a negative residual', () => {
@@ -336,21 +346,10 @@ describe('buildInsights', () => {
     expect(mismatch.citations.map(c => c.short)).toEqual(['ABS Census 2021 G62', 'ABS Census 2021 G01']);
   });
 
-  test('no mismatch insight when the residual rounds to 0.0 pp', () => {
-    // A point on the other LGAs' fitted line leaves the line unchanged, so its residual is 0.
-    const records = nonMetroRecords().filter(r => r.areaId !== 'lga_test_target');
-    const fit = expectedCarDependencyModel(records, 'non_metro');
-    const population = 123456;
-    records.push(makeRecord('lga_test_on_line', {
-      population, values: { car_dependency: { value: fit.intercept + fit.slope * Math.log(population) } },
-    }));
-    expect(carDependencyMismatch(records[records.length - 1], records)!.residual).toBeCloseTo(0, 10);
-    expect(of(buildInsights(assess(['lga_test_on_line'], 'separate', 'nsw', records)), 'mismatch')).toEqual([]);
-  });
-
   test('buildInsights: growth vs service text', () => {
     const insights = buildInsights(assess(['lga_blacktown']));
     const g = growthVsService(snapshotRecord('lga_blacktown'))!;
+    expect(g.extraDeparturesNeeded).toBeGreaterThanOrEqual(1000);           // so rounded to the nearest 100
     const extra = (Math.round(g.extraDeparturesNeeded / 100) * 100).toLocaleString('en-AU');
     const [growth] = of(insights, 'growth_service');
     expect(growth.text).toBe(
@@ -362,6 +361,26 @@ describe('buildInsights', () => {
     expect(growth.citations.length).toBeGreaterThan(0);
   });
 
+  test('extra departures: nearest 10 below 1,000, nearest 100 from 1,000; none when they round to 0', () => {
+    const texts = (amPeakDepartures: number, latestErp: number, population2041: number) => of(buildInsights(assess(
+      ['lga_test_g'], 'separate', 'nsw',
+      [makeRecord('lga_test_g', {
+        name: 'Testville',
+        series: { populationHistory: [{ year: 2025, population: latestErp }], population2041, amPeakDepartures },
+      })],
+    )), 'growth_service').map(i => i.text);
+
+    expect(texts(1200, 400000, 430000)).toEqual([   // 1,200 × 0.075 = 90
+      "If AM-peak service stays at today's level, departures per 1,000 residents in Testville fall from 3.0 to 2.8 by 2041; "
+      + "holding today's rate needs about 90 more AM-peak departures.",
+    ]);
+    expect(texts(1000, 400000, 797600)[0]).toContain('needs about 990 more AM-peak departures.');     // 994
+    expect(texts(1000, 400000, 1000000)[0]).toContain('needs about 1,500 more AM-peak departures.');  // 1,500
+    expect(texts(1000, 400000, 893600)[0]).toContain('needs about 1,200 more AM-peak departures.');   // 1,234
+    expect(texts(20, 1000, 1200)).toEqual([]);   // 4 more rounds to 0 (although 20.0 → 16.7 per 1,000)
+    expect(texts(70, 1000, 1100)[0]).toContain('needs about 10 more AM-peak departures.');            // 7
+  });
+
   test('no growth vs service insight where the population is projected to fall', () => {
     const shrinking = NEEDS_SNAPSHOT.records.find(r => {
       const g = growthVsService(r);
@@ -370,14 +389,21 @@ describe('buildInsights', () => {
     expect(of(buildInsights(assess([shrinking.areaId])), 'growth_service')).toEqual([]);
   });
 
+  /** The median clause of a rate trend (R43): a signed median with units, or "no median change" when it shows as 0. */
+  const medianClause = (def: IndicatorDef, median: number, universeLabel: string) => (
+    Number(Math.abs(median).toFixed(def.decimals)) === 0
+      ? `compared with no median change across ${universeLabel}.`
+      : `compared with a median change of ${median > 0 ? '+' : '−'}${formatDiff(def, Math.abs(median))} across ${universeLabel}.`
+  );
+
   test('car trend text carries the WFH caveat citation', () => {
     const a = assess(['lga_blacktown']);
     const [car] = trends(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records).filter(t => t.metric === 'car_dependency');
     const [insight] = of(buildInsights(a), 'trend').filter(i => i.id.endsWith(':car_dependency'));
-    const faster = Math.abs(car.change) > Math.abs(car.universeMedianChange!) ? 'faster' : 'slower';
+    expect(car.universeMedianChange!).toBeGreaterThan(0.05);
     expect(insight.text).toBe(
       `Blacktown's car dependency changed from ${formatValue(CAR, car.from.value)} (2011) to ${formatValue(CAR, car.to.value)} (2021), `
-      + `${faster} than the median change of ${formatDiff(CAR, car.universeMedianChange!)} across NSW LGAs.`,
+      + `compared with a median change of +${formatDiff(CAR, car.universeMedianChange!)} across NSW LGAs.`,
     );
     expect(insight.citations).toContainEqual(WFH_CAVEAT_CITATION);
     expect(insight.citations).toContainEqual(CAR.source);
@@ -387,22 +413,44 @@ describe('buildInsights', () => {
     const insights = of(buildInsights(assess(['lga_blacktown'], 'separate', 'gsyd')), 'trend');
     const all = trends(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records.filter(r => METRO_IDS.includes(r.areaId)));
     const text = (metric: string) => insights.find(i => i.id.endsWith(`:${metric}`))!.text;
-    const speed = (t: (typeof all)[number]) => (Math.abs(t.change) > Math.abs(t.universeMedianChange!) ? 'faster' : 'slower');
 
     const crash = all.find(t => t.metric === 'crash_rate')!;
     const crashDef = INDICATOR_BY_ID.crash_rate;
     expect(text('crash_rate')).toBe(
       `Blacktown's road crashes per 10,000 residents changed from ${formatValue(crashDef, crash.from.value)} (2020) `
-      + `to ${formatValue(crashDef, crash.to.value)} (2024), ${speed(crash)} than the median change of `
-      + `${formatDiff(crashDef, crash.universeMedianChange!)} across Greater Sydney LGAs.`,
+      + `to ${formatValue(crashDef, crash.to.value)} (2024), `
+      + medianClause(crashDef, crash.universeMedianChange!, 'Greater Sydney LGAs'),
     );
     const approvals = all.find(t => t.metric === 'approvals')!;
     const approvalsDef = INDICATOR_BY_ID.approvals_per_1000;
     expect(text('approvals')).toBe(
       `Blacktown's dwelling approvals per 1,000 residents changed from ${formatValue(approvalsDef, approvals.from.value)} `
-      + `(previous 12 months) to ${formatValue(approvalsDef, approvals.to.value)} (last 12 months), ${speed(approvals)} `
-      + `than the median change of ${formatDiff(approvalsDef, approvals.universeMedianChange!)} across Greater Sydney LGAs.`,
+      + `(previous 12 months) to ${formatValue(approvalsDef, approvals.to.value)} (last 12 months), `
+      + medianClause(approvalsDef, approvals.universeMedianChange!, 'Greater Sydney LGAs'),
     );
+  });
+
+  test('the median change carries its sign; one that shows as zero is "no median change" (R43)', () => {
+    /** Testville's approvals go from 2 to 10 per 1,000; two other LGAs change as given. */
+    const approvalsText = (other: { population: number; prev: number; last: number }) => {
+      const records = [
+        makeRecord('lga_test_s', { name: 'Testville', population: 1000, series: { approvalsPrev12: 2, approvalsLast12: 10 } }),
+        ...['lga_test_a', 'lga_test_b'].map(id => makeRecord(id, {
+          population: other.population, series: { approvalsPrev12: other.prev, approvalsLast12: other.last },
+        })),
+      ];
+      return of(buildInsights(assess(['lga_test_s'], 'separate', 'nsw', records)), 'trend')[0].text;
+    };
+    const opening = "Testville's dwelling approvals per 1,000 residents changed from 2.0 per 1,000 (previous 12 months) "
+      + 'to 10.0 per 1,000 (last 12 months), ';
+    expect(approvalsText({ population: 1000, prev: 5, last: 4 }))
+      .toBe(`${opening}compared with a median change of −1.0 per 1,000 across NSW LGAs.`);
+    expect(approvalsText({ population: 1000, prev: 4, last: 6 }))
+      .toBe(`${opening}compared with a median change of +2.0 per 1,000 across NSW LGAs.`);
+    expect(approvalsText({ population: 1000, prev: 3, last: 3 }))
+      .toBe(`${opening}compared with no median change across NSW LGAs.`);
+    expect(approvalsText({ population: 100000, prev: 100, last: 102 }))   // +0.02 shows as 0.0
+      .toBe(`${opening}compared with no median change across NSW LGAs.`);
   });
 
   describe('population trend text (R39)', () => {
@@ -429,6 +477,18 @@ describe('buildInsights', () => {
       );
       expect(populationText(1.27, 1.19)).toBe(
         "Testville's population grew by 1.3% a year between 2021 and 2025, in line with the 1.2% a year projected for 2021–2041.",
+      );
+    });
+
+    test('a projection that shows as 0.0% a year is a flat population (R42)', () => {
+      expect(populationText(0.5, 0.02)).toBe(
+        "Testville's population grew by 0.5% a year between 2021 and 2025, against a flat population projected for 2021–2041.",
+      );
+      expect(populationText(-0.3, -0.03)).toBe(
+        "Testville's population fell by 0.3% a year between 2021 and 2025, against a flat population projected for 2021–2041.",
+      );
+      expect(populationText(0.02, 0)).toBe(
+        "Testville's population grew by 0.0% a year between 2021 and 2025, against a flat population projected for 2021–2041.",
       );
     });
 
@@ -484,10 +544,10 @@ describe('buildInsights', () => {
   });
 
   test('a combined area is "The combined area" in every insight', () => {
-    const a = assess(['lga_blacktown', 'lga_penrith'], 'combined', 'gsyd');
+    const a = assess(['lga_camden', 'lga_hills'], 'combined', 'gsyd');
     const insights = buildInsights(a);
     expect(insights.every(i => i.areaId === 'combined')).toBe(true);
-    expect(insights.some(i => i.text.includes('Blacktown') || i.text.includes('Penrith'))).toBe(false);
+    expect(insights.some(i => i.text.includes('Camden') || i.text.includes('Hills'))).toBe(false);
     expect(insights.find(i => i.id.endsWith(':car_dependency') && i.kind === 'trend')!.text)
       .toMatch(/^The combined area's car dependency changed from /);
     expect(insights.find(i => i.id.endsWith(':population_growth'))!.text).toMatch(/^The combined area's population /);

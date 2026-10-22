@@ -1,11 +1,13 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
-import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
+import { INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
+import { buildInsights, WFH_CAVEAT_CITATION } from '@/lib/needs/insights';
+import { buildNarrative } from '@/lib/needs/narrative';
 import {
   citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorExcelRows, indicatorTable,
   indicatorTableNote, NEEDS_SOURCES, sameSelection, sourceNumber, stripIndicatorIds,
 } from '@/lib/needs/page-data';
-import type { AreaAssessment, IndicatorId, IndicatorScore } from '@/lib/needs/types';
+import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Universe } from '@/lib/needs/types';
 
 const score = (id: IndicatorId, overrides: Partial<IndicatorScore> = {}): IndicatorScore => ({
   id, value: 1, percentile: 50, keyNeed: false, approximate: false, partial: false, ...overrides,
@@ -171,6 +173,25 @@ describe('sources', () => {
 
   test('every indicator source has a number', () => {
     for (const def of INDICATORS) expect(sourceNumber(def.source)).toBeGreaterThan(0);
+  });
+
+  test('the 14 indicator sources come first, then ABS ERP and the WFH caveat', () => {
+    expect(NEEDS_SOURCES).toHaveLength(16);
+    expect(NEEDS_SOURCES.slice(-2)).toEqual([SOURCES.erp, WFH_CAVEAT_CITATION]);
+  });
+
+  test('every source an insight or a narrative paragraph cites has a number, and every number is cited', () => {
+    const selections: [string[], NeedsMode, Universe][] = [
+      [['lga_blacktown', 'lga_newcastle', 'lga_sydney', 'lga_brewarrina'], 'separate', 'nsw'],
+      [['lga_camden', 'lga_hills'], 'combined', 'gsyd'],
+      [['lga_broken_hill', 'lga_bourke'], 'separate', 'region'],
+    ];
+    const cited = selections.flatMap(([areaIds, mode, universe]) => {
+      const a = runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe });
+      return [...buildInsights(a), ...buildNarrative(a).flatMap(s => s.paragraphs)].flatMap(p => p.citations);
+    });
+    for (const source of cited) expect(sourceNumber(source)).toBeGreaterThan(0);
+    expect(new Set(cited.map(s => s.full))).toEqual(new Set(NEEDS_SOURCES.map(s => s.full)));
   });
 });
 

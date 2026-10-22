@@ -30,6 +30,12 @@ export function formatValue(def: IndicatorDef, value: number | null): string {
   }
 }
 
+/** A difference with an explicit sign, "+1.2 pp" or "−0.4 per 10,000"; null when it shows as zero. */
+export function formatSignedDiff(def: IndicatorDef, diff: number): string | null {
+  if (Number(Math.abs(diff).toFixed(def.decimals)) === 0) return null;
+  return `${diff > 0 ? '+' : '−'}${formatDiff(def, Math.abs(diff))}`;
+}
+
 /** "Blacktown's", "Blue Mountains'". */
 export function possessive(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`;

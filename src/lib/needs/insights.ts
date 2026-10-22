@@ -1,6 +1,6 @@
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { aggregateRecords } from './aggregate';
-import { formatDiff, formatValue, inSentence, possessive } from './format';
+import { formatDiff, formatSignedDiff, formatValue, inSentence, possessive } from './format';
 import { INDICATOR_BY_ID, SOURCES } from './indicators';
 import { universeRecords } from './scoring';
 import type {
@@ -60,6 +60,8 @@ type SeriesRecord = LgaIndicatorRecord | AggregatedRecord;
 // A mismatch model is shown only with enough LGAs and a strong enough fit (spec).
 const MIN_MODEL_N = 20;
 const MIN_MODEL_R2 = 0.3;
+/** A residual of at least this many residual SDs is flagged, and only a flagged one is an insight (R41). */
+const MISMATCH_FLAG_Z = 1;
 /** Actual and projected population growth this close (percentage points a year) are "in line". */
 const IN_LINE_PP = 0.1;
 const BASE_YEAR = 2021;
@@ -388,10 +390,7 @@ const TREND_WORDING: Record<Exclude<TrendMetric, 'population_growth'>, RateWordi
 
 const POPULATION_CITATIONS = [SOURCES.erp, SOURCES.populationProjections];
 
-/**
- * "Faster" and "slower" compare the size of the change with the size of the median change, so a fall larger than
- * the median fall is faster.
- */
+/** R43: the median change is stated with its sign, or as "no median change" when it shows as zero. */
 function trendText(
   subject: Subject,
   trend: TrendResult,
@@ -399,17 +398,20 @@ function trendText(
   median: number,
   universeLabel: string,
 ): string {
-  const pace = Math.abs(trend.change) > Math.abs(median) ? 'faster' : 'slower';
+  const signedMedian = formatSignedDiff(def, median);
+  const comparison = signedMedian === null
+    ? `compared with no median change across ${universeLabel}`
+    : `compared with a median change of ${signedMedian} across ${universeLabel}`;
   return `${subject.owner} ${label} changed from ${formatValue(def, trend.from.value)} (${trend.from.label}) `
-    + `to ${formatValue(def, trend.to.value)} (${trend.to.label}), ${pace} than the median change of `
-    + `${formatDiff(def, median)} across ${universeLabel}.`;
+    + `to ${formatValue(def, trend.to.value)} (${trend.to.label}), ${comparison}.`;
 }
 
 /**
  * R39: "{Name}'s population grew by {a}% a year between 2021 and {latestYear}, {faster than|slower than|in line
  * with} the {p}% a year projected for 2021–2041", in line when |a − p| < 0.1. A falling population "fell by" its
  * rate (never "grew by" a negative one); when only one of the two falls, the projection is stated "against" the
- * actual rate; when both fall, the projection is a "decline" and faster means falling faster.
+ * actual rate; when both fall, the projection is a "decline" and faster means falling faster. A projection that
+ * shows as 0.0% a year is "a flat population" (R42).
  */
 function populationTrendText(subject: Subject, trend: TrendResult, latestYear: number): string {
   const actual = trend.from.value;
@@ -421,7 +423,9 @@ function populationTrendText(subject: Subject, trend: TrendResult, latestYear: n
   const inLine = Math.abs(actual - projected) < IN_LINE_PP;
 
   let comparison: string;
-  if (inLine || falls(actual) === falls(projected)) {
+  if (Number(projected.toFixed(1)) === 0) {
+    comparison = `against a flat population ${projection}`;
+  } else if (inLine || falls(actual) === falls(projected)) {
     const faster = falls(actual) ? actual < projected : actual > projected;
     const pace = inLine ? 'in line with' : faster ? 'faster than' : 'slower than';
     comparison = `${pace} the ${percent(projected)} a year ${falls(projected) ? 'decline ' : ''}${projection}`;
@@ -430,6 +434,12 @@ function populationTrendText(subject: Subject, trend: TrendResult, latestYear: n
   }
   return `${subject.owner} population ${falls(actual) ? 'fell' : 'grew'} by ${percent(actual)} a year `
     + `between ${BASE_YEAR} and ${latestYear}, ${comparison}.`;
+}
+
+/** Extra departures as stated: to the nearest 10 below 1,000 and to the nearest 100 from 1,000 (R44). */
+function roundDepartures(extra: number): number {
+  const step = extra < 1000 ? 10 : 100;
+  return Math.round(extra / step) * step;
 }
 
 function growthServiceText(subject: Subject, g: GrowthServiceResult, extra: number): string {
@@ -471,8 +481,11 @@ const INSIGHTS_BY_KIND: Record<Insight['kind'], (c: AreaContext) => Insight[]> =
 
   mismatch: ({ area, record, subject, records }) => {
     const m = carDependencyMismatch(record, records);
-    // A residual that rounds to 0.0 pp is not "higher" or "lower" than expected.
-    if (!m || !m.usable || Number(Math.abs(m.residual).toFixed(CAR.decimals)) === 0) return [];
+    // Smaller residuals are shown only on the mismatch chart. One that rounds to 0.0 pp is not "higher" or
+    // "lower" than expected (possible only with a near-perfect fit).
+    if (!m || !m.usable || Math.abs(m.z) < MISMATCH_FLAG_Z || Number(Math.abs(m.residual).toFixed(CAR.decimals)) === 0) {
+      return [];
+    }
     return [{
       id: `mismatch:${area.areaId}`,
       areaId: area.areaId,
@@ -504,10 +517,11 @@ const INSIGHTS_BY_KIND: Record<Insight['kind'], (c: AreaContext) => Insight[]> =
   growth_service: ({ area, record, subject }) => {
     const g = growthVsService(record);
     if (!g) return [];
-    const extra = Math.round(g.extraDeparturesNeeded / 100) * 100;
+    const extra = roundDepartures(g.extraDeparturesNeeded);
     const shown = (per1000: number) => per1000.toFixed(DEPARTURES.decimals);
-    // Only a fall in service per resident that shows: not for a shrinking population, nor "about 0 more".
-    if (extra < 100 || shown(g.per1000Now) === shown(g.per1000In2041)) return [];
+    // Not for a shrinking population, nor "about 0 more"; and never "fall from 10.0 to 10.0", which only an
+    // area of over 100,000 residents needing very few extra departures could produce.
+    if (extra <= 0 || shown(g.per1000Now) === shown(g.per1000In2041)) return [];
     return [{
       id: `growth_service:${area.areaId}`,
       areaId: area.areaId,
@@ -538,9 +552,9 @@ const KIND_ORDER: Insight['kind'][] = ['key_need', 'mismatch', 'trend', 'growth_
  * Cited findings for every assessed area, most severe first. Severity (0-1): key need = percentile ÷ 100;
  * mismatch = |z| ÷ 2; trend = |change − universe median change| ÷ (2 × the universe's IQR of changes);
  * growth against service = 2 × the fall in departures per 1,000 as a share; jobs-housing = 2 × |change in jobs
- * per resident|; each capped at 1. Ties keep kind order (as KIND_ORDER), then area order. Mismatches are left
- * out when the model is too weak to use. Nothing is drawn from missing data. A combined selection of two or
- * more LGAs is "the combined area" throughout.
+ * per resident|; each capped at 1. Ties keep kind order (as KIND_ORDER), then area order. A mismatch is an
+ * insight only when the model is usable and |z| ≥ 1. Nothing is drawn from missing data. A combined selection
+ * of two or more LGAs is "the combined area" throughout.
  */
 export function buildInsights(a: NeedsAssessment): Insight[] {
   const combined = a.mode === 'combined' && a.memberIds.length >= 2;
