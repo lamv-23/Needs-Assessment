@@ -25,7 +25,10 @@
 - Missing values stay `null` end to end and render as **"No data"**. Never coerce to 0. `/compare`'s `?? 0` pattern is the bug to avoid.
 - Need percentile is the mid-rank `(countLess + 0.5 × countEqual) ÷ n × 100` in "more need" order.
 - Bands: ≥ 80 `Very high` · ≥ 60 `High` · ≥ 40 `Moderate` · < 40 `Lower`. Key need = percentile ≥ 80.
-- A domain score is `null` when fewer than half of its indicators have values. A universe with n < 5 is `smallGroup`.
+- A domain score is `null` when fewer than half of its **scored** indicators have values. A universe with n < 5 is `smallGroup`.
+- Weights are equal (indicators within a domain, and domains overall). `indigenous_share` is context only (`scored: false`).
+- The Word export uses plain default styling: Calibri 11 and built-in heading styles.
+- **User decisions (2026-10-22):** Indigenous share is context only; weights are equal; Word styling is the plain default; execution is subagent-driven, delivered as stacked draft PRs (Part A → Part B → Phase 2).
 - The generated data files carry an `// Auto-generated … Do not edit by hand` header, like `greater-sydney-benchmark.ts`.
 - Leave `scripts/build-fallbacks.ts`, `official-fallback-data.ts` and the header `AreaSelector` behaviour unchanged.
 
@@ -95,6 +98,7 @@
     unit: '%' | 'km' | 'per 1,000' | 'per 10,000' | 'score';
     direction: 'higher' | 'lower';            // which value means MORE need
     aggregation: 'ratio' | 'weighted';        // ratio: Σnum/Σden×scale; weighted: population-weighted mean
+    scored: boolean;                          // false = context only: shown with a percentile, excluded from domain/overall scores and key needs
     scale: number;                            // 100, 1000, 10000, or 1 for weighted
     decimals: number;
     source: SourceRef;
@@ -138,6 +142,9 @@
 
   ```ts
   test('registry has 16 indicators with unique ids and a source each', ...)
+  test('indigenous_share is the only unscored indicator', () => {
+    expect(INDICATORS.filter(d => !d.scored).map(d => d.id)).toEqual(['indigenous_share']);
+  });
   test('older residents and Indigenous share', () => {
     const v = extractIndicators(makeBundle());
     expect(v.older_residents).toMatchObject({ value: 10, numerator: 40000, denominator: 400000 });
@@ -308,6 +315,7 @@
   expect([bandFor(80), bandFor(79.9), bandFor(60), bandFor(40), bandFor(39.9)]).toEqual(['Very high','High','High','Moderate','Lower']);
   test('null value → null percentile, not key need', ...)
   test('domain score is null when fewer than half its indicators have values', ...) // transport: 2 of 6 → null; 3 of 6 → mean of the 3
+  test('unscored indicators get a percentile but do not affect scores or key needs', ...) // indigenous_share at p95: percentile 95, keyNeed false, socio score unchanged
   test('overall is the mean of non-null domain scores', ...)
   test('keyNeed when percentile >= 80', ...)
   test('universes from the real snapshot', () => {
@@ -740,7 +748,7 @@
   3. One Heading 2 per domain, with its paragraphs.
   4. "Indicators" Heading 2 and a native Word table with the same columns as `IndicatorTable`.
   5. "Figures" Heading 2. Each figure is an `ImageRun` scaled to at most 16 cm wide with the aspect ratio kept, followed by an italic caption "Figure n. {title}. Source: {caption}".
-  6. Data notes.
+  6. Data notes, including the fixed method sentence: "Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. Aboriginal and Torres Strait Islander share is shown for context and is not scored."
   7. Sources: unique `SourceRef.full` values, numbered to match the citations.
 
   Use Calibri at 11 pt. Text and tables stay editable.

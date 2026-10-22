@@ -22,8 +22,9 @@
 ## Global Constraints
 
 - Every ABS code must be checked against the official codelist (`/rest/dataflow/ABS/<ID>?references=all&detail=referencepartial`) before use, as `CLAUDE.md` requires. Each new decoder gets a test in `src/__tests__/abs-decoders*.test.ts`, and one SA2 is verified against ABS QuickStats.
-- New SQLite tables (`sa2_cache`, `mesh_blocks`, `gtfs_stop_frequency`) are **build-time only**: written and read by scripts.
-  - The app reads `public/data/sa2-needs.json` and `tfnsw_cache` only. `tfnsw_cache` already exists for both repository drivers, so no Postgres migration is needed.
+- New SQLite tables (`sa2_cache`, `mesh_blocks`, `gtfs_stop_frequency`) are **build-time only** and live in a separate, gitignored **`data/build.db`** (user decision 2026-10-22), opened through `src/lib/build-db.ts`. They never go into the committed 17 MB `data/cache.db`.
+  - Committed outputs are `public/data/sa2-needs.json`, `CATCHMENT_COVERAGE` rows in `cache.db`'s `tfnsw_cache`, and the regenerated `needs-indicators-data.ts`.
+  - The app reads only those. `tfnsw_cache` already exists for both repository drivers, so no Postgres migration is needed.
 - Constants:
   - `FREQUENT_DEPARTURES_THRESHOLD` (8) from `src/lib/gtfs-frequency.ts`.
   - `CATCHMENT_RADIUS_M = { train: 800, metro: 800, ferry: 800, lightRail: 400, bus: 400 }`.
@@ -106,7 +107,11 @@
 ### Task 2: SA2 Census indicators
 
 **Files:**
-- Modify: `src/lib/db.ts`. Add `CREATE TABLE IF NOT EXISTS sa2_cache (sa2_code TEXT NOT NULL, dataset TEXT NOT NULL, data_json TEXT NOT NULL, fetched_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (sa2_code, dataset))` and `upsertSa2Cache` / `getSa2Cache` helpers next to the `abs_cache` ones.
+- Create: `src/lib/build-db.ts`.
+  - `getBuildDb()` opens `data/build.db` with better-sqlite3 (WAL), created on first use. `BUILD_DB_PATH` overrides the path.
+  - It creates `CREATE TABLE IF NOT EXISTS sa2_cache (sa2_code TEXT NOT NULL, dataset TEXT NOT NULL, data_json TEXT NOT NULL, fetched_at TEXT NOT NULL DEFAULT (datetime('now')), PRIMARY KEY (sa2_code, dataset))`.
+  - It exports `upsertSa2Cache` and `getSa2Cache`.
+- Modify: `.gitignore` (add `data/build.db*`).
 - Modify: `src/lib/abs-fetchers.ts`. Export a pure decoder for each table still decoded inline (G18 need for assistance, SEIFA, and any other in the list below) without changing behaviour.
 - Create: `src/lib/abs-sa2-fetchers.ts`, `scripts/seed-sa2.ts`
 - Modify: `package.json` (add a `"seed:sa2": "tsx scripts/seed-sa2.ts"` script)
@@ -145,7 +150,7 @@
 ### Task 3: Mesh blocks with population and LGA
 
 **Files:**
-- Modify: `src/lib/db.ts`. Add `CREATE TABLE IF NOT EXISTS mesh_blocks (mb_code TEXT PRIMARY KEY, sa2_code TEXT NOT NULL, lga_id TEXT, persons INTEGER NOT NULL, lat REAL NOT NULL, lng REAL NOT NULL)` and a batch upsert helper.
+- Modify: `src/lib/build-db.ts`. Add `CREATE TABLE IF NOT EXISTS mesh_blocks (mb_code TEXT PRIMARY KEY, sa2_code TEXT NOT NULL, lga_id TEXT, persons INTEGER NOT NULL, lat REAL NOT NULL, lng REAL NOT NULL)` and a batch upsert helper.
 - Create: `src/lib/mesh-blocks.ts`, `scripts/seed-mesh-blocks.ts`
 - Modify: `package.json` (add a `"seed:mesh-blocks": "tsx scripts/seed-mesh-blocks.ts"` script; usage `npm run seed:mesh-blocks -- --counts <path-to-xlsx>`)
 - Test: `src/__tests__/mesh-blocks.test.ts`
@@ -190,7 +195,7 @@
 ### Task 4: Persist per-stop AM-peak departures
 
 **Files:**
-- Modify: `src/lib/db.ts`. Add `CREATE TABLE IF NOT EXISTS gtfs_stop_frequency (stop_id TEXT PRIMARY KEY, service_date TEXT NOT NULL, am_peak_departures INTEGER NOT NULL)` and `replaceGtfsStopFrequency(rows)`, which clears and inserts in one transaction.
+- Modify: `src/lib/build-db.ts`. Add `CREATE TABLE IF NOT EXISTS gtfs_stop_frequency (stop_id TEXT PRIMARY KEY, service_date TEXT NOT NULL, am_peak_departures INTEGER NOT NULL)` and `replaceGtfsStopFrequency(rows)`, which clears and inserts in one transaction. Stops themselves stay in `cache.db`'s `gtfs_stops`, and `build-catchments` reads both databases.
 - Modify: `scripts/seed-gtfs.ts`. After `allPeakDepartures` is built (next to the `GTFS_FREQUENCY` upserts, around line 759), write every stop in `gtfs_stops`, using 0 for stops with no departures.
 - Test: `src/__tests__/gtfs-frequency.test.ts`
 
@@ -268,12 +273,12 @@
 **Files:**
 - Modify: `src/lib/needs/types.ts`.
   - `IndicatorId` gains `frequent_service_catchment` and `any_service_catchment`.
-  - `IndicatorDef` gains `levels: ('lga' | 'sa2')[]` and `scored: boolean`.
+  - `IndicatorDef` gains `levels: ('lga' | 'sa2')[]`. (`scored` already exists from Part A; `indigenous_share` stays unscored at both levels.)
 - Modify: `src/lib/needs/indicators.ts`.
   - The two new indicators are transport, ↓, `ratio` (frequentPersons ÷ persons × 100), source "ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line)".
   - Set `frequent_stop_share.scored = false`.
   - Set `levels` per the spec.
-- Modify: `src/lib/needs/scoring.ts`. Skip unscored indicators in domain scores, and skip domains with no scored indicators at the record's level.
+- Modify: `src/lib/needs/scoring.ts`. Skip domains with no scored indicators at the record's level. Unscored indicators are already skipped, from Part A.
 - Modify: `src/lib/data/live-data.ts`. Attach `catchment?: { frequentShare: number | null; anyShare: number | null; persons: number; frequentPersons: number; anyPersons: number }` to `TransportData`, from `tfnsw_cache` `CATCHMENT_COVERAGE`.
 - Modify: `src/lib/needs/extract.ts`.
 - Create: `src/lib/needs/sa2.ts`, `scripts/build-sa2-needs.ts`
@@ -295,8 +300,7 @@
 - [ ] **Step 1: Write failing tests**
 
   ```ts
-  test('registry: catchment indicators scored, frequent_stop_share unscored', ...)
-  test('unscored indicators are ignored by domain scores', ...)
+  test('registry: catchment indicators scored; frequent_stop_share and indigenous_share unscored', ...)
   test('SA2 assessments have no growth domain', ...)          // domains.map(d => d.domain) equals ['transport', 'socio']
   test('low-population SA2s are excluded from peers and get null percentiles', ...)
   test('sa2sForLgas applies the 10% share threshold and dedupes', ...)   // SA2 with {a: .85, b: .15} appears once for [a, b] and once for [b]; SA2 with {a: .95, b: .05} is absent for [b]
@@ -326,7 +330,7 @@
 - Modify: `src/lib/needs/narrative.ts` (add a `'pockets'` section), `src/lib/needs/types.ts`, `src/app/needs/page.tsx`, `src/lib/needs/docx-export.ts`
 - Modify: `CLAUDE.md`
   - Commands: `fetch:sa2-boundaries`, `seed:sa2`, `seed:mesh-blocks`, `build:catchments`, `build:sa2-needs`, and the run order.
-  - SQLite schema: `sa2_cache`, `mesh_blocks`, `gtfs_stop_frequency`, and `CATCHMENT_COVERAGE` in `tfnsw_cache`.
+  - SQLite schema: a new `data/build.db` subsection (gitignored, build-time) listing `sa2_cache`, `mesh_blocks` and `gtfs_stop_frequency`, plus `CATCHMENT_COVERAGE` in `cache.db`'s `tfnsw_cache`.
   - Data Sources rows for the ABS ArcGIS services and Mesh Block Counts.
 - Test: `src/__tests__/needs-narrative.test.ts`, `src/__tests__/needs-docx.test.ts`
 

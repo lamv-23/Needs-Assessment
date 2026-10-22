@@ -37,7 +37,7 @@ Need direction: **↑** means a higher value is more need; **↓** means a lower
 | `needs_assistance` | socio | People needing assistance | needsAssistance ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G18 |
 | `limited_english` | socio | Limited English proficiency | limitedEnglish ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G13 |
 | `older_residents` | socio | Residents aged 65+ | (65–74 + 75+ persons) ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G01 |
-| `indigenous_share` | socio | Aboriginal and Torres Strait Islander residents | indigenousPopulation ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G01 |
+| `indigenous_share` | socio | Aboriginal and Torres Strait Islander residents | indigenousPopulation ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G01 — **context only, not scored** (user decision 2026-10-22) |
 | `pop_growth_2041` | growth | Population growth 2021–41 | (pop 2041 ÷ pop 2021 − 1) × 100 | ↑ | NSW DPE projections |
 | `job_growth_2041` | growth | Job growth 2021–41 | (jobs 2041 ÷ jobs 2021 − 1) × 100 | ↑ | TfNSW TZP24 |
 | `approvals_per_1000` | growth | Dwelling approvals per 1,000 residents (last 12 months) | rollingAnnualApprovals ÷ population × 1,000 | ↑ | ABS Building Approvals |
@@ -65,8 +65,11 @@ The four domains are **transport** (Transport disadvantage), **socio** (Socio-ec
   | `rural` | Rural and remote | not metro and population < 15,000 | 52 |
 
   Counts come from the 2026-10-22 cache. Boundary rounding may move one LGA.
-- **Domain score:** the mean of the need percentiles available in that domain. It is `null` when fewer than half of the domain's indicators have a value.
+- **Scored and context indicators.** Context indicators (`scored: false`, currently `indigenous_share`) still get a value and a percentile and appear everywhere, but they are excluded from domain scores, overall scores and key needs.
+- **Weights are equal** (user decision 2026-10-22): every scored indicator within a domain, and every domain within the overall score. The Word export's data notes state this.
+- **Domain score:** the mean of the scored need percentiles available in that domain. It is `null` when fewer than half of the domain's scored indicators have a value.
 - **Overall score:** the mean of the non-null domain scores.
+- **Word export:** plain default styling (Calibri 11, built-in heading styles), so it takes on the styles of whatever template it is pasted into.
 - **Bands:** ≥ 80 Very high · ≥ 60 High · ≥ 40 Moderate · < 40 Lower.
 - **Flags:** an indicator with a need percentile ≥ 80 is a *key need*.
 - **Missing values** stay `null` all the way to the UI and the docx, shown as "No data". They are never treated as 0.
