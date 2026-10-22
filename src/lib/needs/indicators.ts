@@ -28,9 +28,10 @@ export const SOURCES = {
     full: 'Transport for NSW, GTFS timetable data: weekday 7-9am departures per stop',
     url: 'https://opendata.transport.nsw.gov.au',
   },
-  // P2-R3: the residents (mesh blocks) and the stops with service (GTFS) behind the walking catchments
+  // P2-R3: the residents (mesh blocks) and the stops with service (GTFS) behind the walking catchments. P2-R13: the
+  // short name joins them with "+", since "; " separates the sources of a figure caption.
   catchments: {
-    short: 'ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments)',
+    short: 'ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)',
     full: 'Australian Bureau of Statistics, Mesh Block Counts, 2021 (Census usual residents by mesh block); Transport for '
       + 'NSW, GTFS timetable data: weekday 7-9am departures per stop. Residents whose mesh block centroid is within a '
       + 'straight-line distance of 800 m (train, metro, ferry) or 400 m (bus, light rail) of a stop with frequent '

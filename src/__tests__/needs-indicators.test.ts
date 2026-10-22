@@ -48,7 +48,7 @@ describe('indicator registry', () => {
       });
       expect(INDICATOR_BY_ID[id].label).toContain('(straight-line distance)');
     }
-    expect(SOURCES.catchments.short).toBe('ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments)');
+    expect(SOURCES.catchments.short).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
     expect(SOURCES.catchments.full).toContain('straight-line distance');
   });
 

@@ -454,7 +454,7 @@ describe('buildNarrative: data notes', () => {
   test('missing notes cite the sources of the indicators concerned', () => {
     const notes = section(buildNarrative(makeAssessment([blacktown()])), 'notes');
     const missing = notes.paragraphs.find(p => p.text.startsWith('No data is available for residents near'));
-    expect(missing?.citations.map(c => c.short)).toEqual(['ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments)']);
+    expect(missing?.citations.map(c => c.short)).toEqual(['ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)']);
   });
 
   test('the WFH caveat is included when car dependency is shown, citing its source', () => {

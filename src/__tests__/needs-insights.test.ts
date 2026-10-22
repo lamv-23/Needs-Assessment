@@ -452,7 +452,7 @@ describe('buildInsights', () => {
     expect(mismatch.text).toContain('R² 0.63');
     expect(mismatch.severity).toBeCloseTo(Math.min(1, Math.abs(m.z) / 2), 10);
     expect(mismatch.citations.map(c => c.short)).toEqual([
-      'ABS Census 2021 G62', 'ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments)',
+      'ABS Census 2021 G62', 'ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)',
     ]);
   });
 

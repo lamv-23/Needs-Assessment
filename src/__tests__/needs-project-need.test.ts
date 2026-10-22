@@ -94,7 +94,7 @@ describe('RADAR_AXES', () => {
 
   test('the radar caption cites the straight-line catchments for the service gap (P2-R12)', () => {
     expect(figureCaption(RADAR_AXES.map(a => a.id))).toBe(
-      'ABS Census 2021 G62; ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments); ABS Census 2021 G34; '
+      'ABS Census 2021 G62; ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments); ABS Census 2021 G34; '
       + 'ABS SEIFA 2021; NSW DPE projections',
     );
   });

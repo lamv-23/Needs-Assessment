@@ -603,7 +603,7 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
   }
   if (catchment) {
     liveFields.push('catchment');
-    sources.push('ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments)');
+    sources.push('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
   } else {
     sampleFields.push('catchment');
   }

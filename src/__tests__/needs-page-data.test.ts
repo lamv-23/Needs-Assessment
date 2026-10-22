@@ -48,31 +48,8 @@ describe('figureCaption', () => {
   });
 });
 
-/**
- * The numbered sources a caption names, in order; null when part of it is not one. Captions join short names with
- * "; ", and the catchment source's short name contains "; " itself (P2-R3), so names are matched longest first.
- */
-function captionSources(caption: string): string[] | null {
-  const shorts = NEEDS_SOURCES.map(s => s.short).sort((a, b) => b.length - a.length);
-  const found: string[] = [];
-  let rest = caption;
-  while (rest.length > 0) {
-    const name = shorts.find(s => rest === s || rest.startsWith(`${s}; `));
-    if (name === undefined) return null;
-    found.push(name);
-    rest = rest.slice(name.length).replace(/^; /, '');
-  }
-  return found;
-}
-
 describe('insight figure captions', () => {
   const short = (...sources: Array<{ short: string }>) => sources.map(s => s.short).join('; ');
-
-  test('captionSources reads a short name that contains "; " as one source', () => {
-    expect(captionSources(short(SOURCES.g62, SOURCES.catchments, SOURCES.g01)))
-      .toEqual([SOURCES.g62.short, SOURCES.catchments.short, SOURCES.g01.short]);
-    expect(captionSources('ABS Census 2021 G62; Not a source')).toBeNull();
-  });
 
   test('the mismatch figure cites car dependency and the predictor of each setting drawn', () => {
     // P2-R4: the metro predictor is the frequent-service catchment
@@ -89,7 +66,7 @@ describe('insight figure captions', () => {
   test('the mismatch caption covers the sources the mismatch findings cite', () => {
     for (const ids of [['lga_blacktown', 'lga_newcastle'], ['lga_camden', 'lga_hills'], ['lga_broken_hill', 'lga_bourke']]) {
       const a = assess(ids);
-      const caption = captionSources(mismatchCaption(a));
+      const caption = mismatchCaption(a).split('; ');
       for (const insight of buildInsights(a).filter(i => i.kind === 'mismatch')) {
         for (const citation of insight.citations) expect(caption).toContain(citation.short);
       }
@@ -118,8 +95,7 @@ describe('insight figure captions', () => {
     const shorts = new Set(NEEDS_SOURCES.map(s => s.short));
     const trends = trendsCaption(assess(['lga_blacktown']));
     for (const caption of [trends, GROWTH_SERVICE_CAPTION, JOBS_HOUSING_CAPTION, mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))]) {
-      expect(captionSources(caption)).not.toBeNull();
-      for (const name of captionSources(caption)!) expect(shorts).toContain(name);
+      for (const name of caption.split('; ')) expect(shorts).toContain(name);
     }
   });
 });
@@ -300,6 +276,11 @@ describe('sources', () => {
   test('the 15 indicator sources come first, then ABS ERP, the 2011 and 2016 travel to work tables and the WFH caveat', () => {
     expect(NEEDS_SOURCES).toHaveLength(19);
     expect(NEEDS_SOURCES.slice(-4)).toEqual([SOURCES.erp, SOURCES.b46, SOURCES.g59, WFH_CAVEAT_CITATION]);
+  });
+
+  test('P2-R13: no short name contains "; ", the separator of a figure caption\'s sources', () => {
+    expect(NEEDS_SOURCES.filter(s => s.short.includes('; ')).map(s => s.short)).toEqual([]);
+    expect(SOURCES.catchments.short).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
   });
 
   test('P2-R3: the straight-line catchment source has a citation number, after TfNSW GTFS', () => {
