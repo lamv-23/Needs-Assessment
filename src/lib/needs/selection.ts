@@ -49,3 +49,39 @@ export function serializeNeedsParams(p: Pick<NeedsParams, 'areaIds' | 'mode' | '
   if (p.universe !== DEFAULT_UNIVERSE) parts.push(`universe=${p.universe}`);
   return parts.join('&');
 }
+
+export type SelectionState = Pick<NeedsParams, 'areaIds' | 'mode' | 'universe'>;
+
+/**
+ * A selection the user has made that the URL has not caught up with yet. `router.replace` is async, so
+ * `useSearchParams` keeps returning the old query until the navigation commits; the next click must start
+ * from `value`, not from that stale query.
+ */
+export interface PendingSelection {
+  value: SelectionState;
+  /** Queries of the navigations still in flight, oldest first. */
+  issued: string[];
+}
+
+/** Applies `patch` on top of the pending selection (or, with none, the committed one) and records its query. */
+export function issueSelection(
+  committed: SelectionState,
+  pending: PendingSelection | null,
+  patch: Partial<SelectionState>,
+): PendingSelection {
+  const base = pending?.value ?? { areaIds: committed.areaIds, mode: committed.mode, universe: committed.universe };
+  const value = { ...base, ...patch };
+  return { value, issued: [...(pending?.issued ?? []), serializeNeedsParams(value)] };
+}
+
+/**
+ * Called when the committed URL changes. Keeps the pending selection while one of our later navigations
+ * is still in flight, and drops it once the last has landed or when the URL changed some other way
+ * (back button, a link).
+ */
+export function settleSelection(pending: PendingSelection | null, committed: SelectionState): PendingSelection | null {
+  if (!pending) return null;
+  const landed = pending.issued.indexOf(serializeNeedsParams(committed));
+  if (landed === -1 || landed === pending.issued.length - 1) return null;
+  return { ...pending, issued: pending.issued.slice(landed + 1) };
+}

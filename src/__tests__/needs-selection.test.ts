@@ -1,5 +1,7 @@
 import { SAMPLE_AREAS, NSW_REGIONS, lgasInRegion } from '@/lib/data/sample-areas';
-import { parseNeedsParams, serializeNeedsParams } from '@/lib/needs/selection';
+import {
+  issueSelection, parseNeedsParams, serializeNeedsParams, settleSelection, type SelectionState,
+} from '@/lib/needs/selection';
 
 describe('parseNeedsParams', () => {
   test('keeps valid LGA ids, de-duplicates, and reports invalid ids in URL order', () => {
@@ -83,5 +85,60 @@ describe('NSW regions', () => {
     expect(NSW_REGIONS).toHaveLength(10);
     const lgaRegions = new Set(SAMPLE_AREAS.filter(a => a.type === 'lga').map(a => a.region));
     for (const region of lgaRegions) expect(NSW_REGIONS).toContain(region);
+  });
+});
+
+describe('optimistic selection while navigation is pending', () => {
+  const committed: SelectionState = { areaIds: [], mode: 'separate', universe: 'nsw' };
+  /** What the multi-select shows (and computes its next onChange from) at a given moment. */
+  const view = (pending: ReturnType<typeof issueSelection> | null): SelectionState => pending?.value ?? committed;
+
+  test('two picks before the first navigation commits both survive', () => {
+    // The committed URL is still empty for both clicks; each click starts from what the user sees.
+    const afterA = issueSelection(committed, null, { areaIds: [...view(null).areaIds, 'lga_sydney'] });
+    const afterB = issueSelection(committed, afterA, { areaIds: [...view(afterA).areaIds, 'lga_penrith'] });
+    expect(afterB.value.areaIds).toEqual(['lga_sydney', 'lga_penrith']);
+    expect(afterB.issued).toEqual(['lgas=lga_sydney', 'lgas=lga_sydney,lga_penrith']);
+  });
+
+  test('a quick remove after a quick add composes', () => {
+    const afterAdd = issueSelection(committed, null, { areaIds: ['lga_sydney', 'lga_penrith'] });
+    const afterRemove = issueSelection(committed, afterAdd, {
+      areaIds: view(afterAdd).areaIds.filter(id => id !== 'lga_sydney'),
+    });
+    expect(afterRemove.value.areaIds).toEqual(['lga_penrith']);
+  });
+
+  test('patches to different fields in one tick compose', () => {
+    const afterMode = issueSelection(committed, null, { mode: 'combined' });
+    const afterUniverse = issueSelection(committed, afterMode, { universe: 'gsyd' });
+    expect(afterUniverse.value).toEqual({ areaIds: [], mode: 'combined', universe: 'gsyd' });
+  });
+
+  test('the base is the committed selection when nothing is pending, and extra committed fields do not leak', () => {
+    const withInvalid = { ...committed, areaIds: ['lga_sydney'], invalidIds: ['lga_x'] };
+    const issued = issueSelection(withInvalid, null, { mode: 'combined' });
+    expect(issued.value).toEqual({ areaIds: ['lga_sydney'], mode: 'combined', universe: 'nsw' });
+    expect(issued.issued).toEqual(['lgas=lga_sydney&mode=combined']);
+  });
+
+  test('an intermediate commit keeps the pending selection; the last one clears it', () => {
+    const afterA = issueSelection(committed, null, { areaIds: ['lga_sydney'] });
+    const afterB = issueSelection(committed, afterA, { areaIds: ['lga_sydney', 'lga_penrith'] });
+
+    const afterFirstCommit = settleSelection(afterB, { ...committed, areaIds: ['lga_sydney'] });
+    expect(afterFirstCommit?.value.areaIds).toEqual(['lga_sydney', 'lga_penrith']);
+    expect(afterFirstCommit?.issued).toEqual(['lgas=lga_sydney,lga_penrith']);
+
+    expect(settleSelection(afterFirstCommit, { ...committed, areaIds: ['lga_sydney', 'lga_penrith'] })).toBeNull();
+  });
+
+  test('a commit we did not issue (back button, link) discards the pending selection', () => {
+    const afterA = issueSelection(committed, null, { areaIds: ['lga_sydney'] });
+    expect(settleSelection(afterA, { ...committed, areaIds: ['lga_blacktown'] })).toBeNull();
+  });
+
+  test('settling with nothing pending is a no-op', () => {
+    expect(settleSelection(null, committed)).toBeNull();
   });
 });
