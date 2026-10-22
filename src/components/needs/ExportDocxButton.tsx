@@ -14,14 +14,15 @@ interface ExportDocxButtonProps {
   sections: NarrativeSection[];
   /** The page's SA2 table for the selection, exported as a native table; null while the SA2 file is not loaded. */
   sa2Table?: Sa2TableData | null;
-  /** Data the document needs that is still loading ("SA2 data"): until it arrives the button waits, disabled. */
+  /** What the document needs that is still loading ("SA2 data", "map boundaries"): until then the button waits, disabled. */
   waitingFor?: string | null;
 }
 
 /**
  * Downloads the assessment as an editable Word document: the findings, native tables, every figure that can be
- * rendered, data notes and sources. A figure that cannot be rendered (collapsed) is left out and named, so the user can
- * expand it and export again. The Word library is loaded only when the button is clicked.
+ * rendered, data notes and sources. A figure that cannot be rendered is left out and named with why: its data or map
+ * boundaries could not be loaded, or it is collapsed and can be expanded for another export (R22, P2-R19). The Word
+ * library is loaded only when the button is clicked.
  *
  * The figures are captured from the live page, so a selection changed during the export would put pictures of the new
  * selection in a document whose text and table describe the old one. The export is therefore dropped, with a message,

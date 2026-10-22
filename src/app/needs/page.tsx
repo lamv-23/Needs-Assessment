@@ -21,10 +21,12 @@ import GrowthServiceChart from '@/components/needs/GrowthServiceChart';
 import JobsHousingChart from '@/components/needs/JobsHousingChart';
 import Sa2RankingTable from '@/components/needs/Sa2RankingTable';
 import CatchmentChart from '@/components/needs/CatchmentChart';
+import { useBoundaries } from '@/hooks/useBoundaries';
 import { useNeedsSelection } from '@/hooks/useNeedsSelection';
 import { useSa2Needs } from '@/hooks/useSa2Needs';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
+import { LGA_BOUNDARIES_URL, SA2_BOUNDARIES_URL } from '@/lib/needs/boundaries';
 import { INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { TREND_FIGURE_SUBTITLE } from '@/lib/needs/insight-chart-data';
 import {
@@ -33,9 +35,9 @@ import {
 } from '@/lib/needs/excel-data';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  CATCHMENT_CAPTION, CATCHMENT_TITLE, comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION,
-  indicatorTable, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, SA2_TABLE_CAPTION,
-  sa2Table, stripIndicatorIds, trendsCaption,
+  CATCHMENT_CAPTION, CATCHMENT_TITLE, comparisonLabel, exportWaitingFor, figureCaption, formatNeedsDate,
+  GROWTH_SERVICE_CAPTION, indicatorTable, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, SA2_MAP_CAPTION,
+  SA2_MAP_TITLE, SA2_TABLE_CAPTION, sa2Table, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
 import { SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD } from '@/lib/needs/sa2';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
@@ -97,6 +99,9 @@ const SA2_INTRO =
   + 'group above. SA2 scores use the indicators available for SA2s, so they cover the transport and socio-economic '
   + 'domains only: there are no growth indicators for SA2s.';
 const SA2_ERROR = 'The SA2 data could not be loaded. Reload the page to try again.';
+// Why a map figure is left out of the Word export (P2-R19, R22)
+const SA2_DATA_FAILED = 'the SA2 data could not be loaded';
+const BOUNDARIES_FAILED = 'the map boundaries could not be loaded';
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
@@ -147,6 +152,21 @@ function NeedsContent() {
   const sa2 = useSa2Needs();
   const sa2File = sa2.file;
   const sa2Failed = sa2.error !== null && sa2File === null;
+  // The maps' boundaries load here, not in the maps, so the Word export waits for them and leaves out a map whose
+  // boundaries could not be loaded (P2-R19). The SA2 boundaries (1.2 MB) are fetched only once an area is selected.
+  const hasAreas = assessment.areas.length > 0;
+  const lgaBoundaries = useBoundaries(LGA_BOUNDARIES_URL);
+  const sa2Boundaries = useBoundaries(hasAreas ? SA2_BOUNDARIES_URL : null);
+  const sa2MapBoundaries = useMemo(
+    () => (sa2Boundaries.boundaries && lgaBoundaries.boundaries
+      ? { sa2: sa2Boundaries.boundaries, lga: lgaBoundaries.boundaries }
+      : null),
+    [sa2Boundaries.boundaries, lgaBoundaries.boundaries],
+  );
+  const sa2BoundariesFailed = sa2Boundaries.error !== null || lgaBoundaries.error !== null;
+  let sa2MapUnavailable: string | null = null;
+  if (sa2Failed) sa2MapUnavailable = SA2_DATA_FAILED;
+  else if (sa2BoundariesFailed) sa2MapUnavailable = BOUNDARIES_FAILED;
   const sections = useMemo(
     () => buildNarrative(assessment, sa2File ? { file: sa2File } : undefined),
     [assessment, sa2File],
@@ -177,7 +197,6 @@ function NeedsContent() {
   );
 
   const { areas } = assessment;
-  const hasAreas = areas.length > 0;
   const keyFindings = sections.find(s => s.id === 'key_findings');
   const summary = sections.find(s => s.id === 'summary');
   const furtherFindings = sections.find(s => s.id === 'insights');
@@ -244,8 +263,12 @@ function NeedsContent() {
               assessment={assessment}
               sections={sections}
               sa2Table={sa2Rows}
-              // The document waits for the SA2 file; if it failed, its figure is left out and named (P2-R5, R22)
-              waitingFor={sa2.isLoading ? 'SA2 data' : null}
+              // The document waits for the SA2 file and the map boundaries; a map whose data or boundaries failed is
+              // left out and named (P2-R5, P2-R19, R22)
+              waitingFor={exportWaitingFor({
+                sa2Data: sa2.isLoading,
+                boundaries: lgaBoundaries.isLoading || sa2Boundaries.isLoading,
+              })}
             />
           </div>
         </div>
@@ -279,9 +302,15 @@ function NeedsContent() {
           title="Need map"
           subtitle="Overall need score of every NSW LGA. Click an LGA to add it to, or remove it from, the selection."
           caption={allSources}
+          unavailable={lgaBoundaries.error ? BOUNDARIES_FAILED : null}
           {...excel.map}
         >
-          <NeedsMap assessment={assessment} onToggle={toggleArea} />
+          <NeedsMap
+            assessment={assessment}
+            onToggle={toggleArea}
+            boundaries={lgaBoundaries.boundaries}
+            failed={lgaBoundaries.error !== null}
+          />
         </ChartWrapper>
 
         {hasAreas && (
@@ -407,12 +436,18 @@ function NeedsContent() {
               title={SA2_MAP_TITLE}
               subtitle="Overall need of each SA2 in the selected LGAs as a percentile among NSW SA2s, with the selected LGAs outlined."
               caption={SA2_MAP_CAPTION}
-              unavailable={sa2Failed ? 'the SA2 data could not be loaded' : null}
+              unavailable={sa2MapUnavailable}
               {...excel.sa2Map}
             >
-              {sa2File
-                ? <Sa2NeedsMap file={sa2File} lgaIds={assessment.memberIds} lgaNames={LGA_NAMES} />
-                : <Sa2Pending failed={sa2Failed} height={SA2_MAP_HEIGHT} />}
+              {sa2File ? (
+                <Sa2NeedsMap
+                  file={sa2File}
+                  lgaIds={assessment.memberIds}
+                  lgaNames={LGA_NAMES}
+                  boundaries={sa2MapBoundaries}
+                  failed={sa2BoundariesFailed}
+                />
+              ) : <Sa2Pending failed={sa2Failed} height={SA2_MAP_HEIGHT} />}
             </ChartWrapper>
 
             <ChartWrapper

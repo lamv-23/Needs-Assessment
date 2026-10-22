@@ -7,7 +7,7 @@ import { CATCHMENT_NOTE, INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/need
 import { buildInsights, WFH_CAVEAT_CITATION } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  CATCHMENT_TITLE, citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
+  CATCHMENT_TITLE, citationSegments, comparisonLabel, exportWaitingFor, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
   GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
   SA2_TABLE_CAPTION, SA2_TABLE_COLUMNS, SA2_TABLE_SIZE, sa2Table, sourceNumber, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
@@ -379,6 +379,15 @@ describe('SA2 table columns and source (P2-R18)', () => {
 
   test('the source caption names the sources of the SA2 indicators behind the scores (R31)', () => {
     expect(SA2_TABLE_CAPTION).toBe(figureCaption(SA2_INDICATOR_IDS));
+  });
+});
+
+describe('exportWaitingFor (P2-R5, P2-R19)', () => {
+  test('the Word export waits for the SA2 file, then for the map boundaries', () => {
+    expect(exportWaitingFor({ sa2Data: true, boundaries: true })).toBe('SA2 data');
+    expect(exportWaitingFor({ sa2Data: false, boundaries: true })).toBe('map boundaries');
+    expect(exportWaitingFor({ sa2Data: true, boundaries: false })).toBe('SA2 data');
+    expect(exportWaitingFor({ sa2Data: false, boundaries: false })).toBeNull();
   });
 });
 

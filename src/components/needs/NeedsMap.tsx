@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import ChoroplethMapDirect from '@/components/maps/ChoroplethMapDirect';
 import { escapeHtml, NEED_STEPS, NeedMapLegend, NSW_CENTRE, NSW_ZOOM, SELECTED_OUTLINE } from '@/components/needs/mapParts';
-import { LGA_BOUNDARIES_URL, loadBoundaries } from '@/lib/needs/boundaries';
 import { NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
 import { describeMapScore, mapScores, mapUniverseNote } from '@/lib/needs/map-data';
 import type { NeedsAssessment } from '@/lib/needs/types';
@@ -18,33 +17,21 @@ const colorForNeed = (score: number | undefined) => needColor(score ?? null);
 /**
  * Every NSW LGA shaded by its overall need score against the assessment's comparison universe;
  * the selected LGAs are outlined and the view is fitted to them (all of NSW when none is selected).
- * Clicking an LGA calls `onToggle` with its area id. Load it with
- * `dynamic(() => import(...), { ssr: false })`: Leaflet needs the DOM.
+ * Clicking an LGA calls `onToggle` with its area id. The page loads the LGA boundaries (`useBoundaries`, P2-R19), so
+ * the Word export can wait for them. Load it with `dynamic(() => import(...), { ssr: false })`: Leaflet needs the DOM.
  */
 export default function NeedsMap({
   assessment,
   onToggle,
+  boundaries,
+  failed,
 }: {
   assessment: NeedsAssessment;
   onToggle: (areaId: string) => void;
+  /** The LGA boundaries; null while they load or when they could not be loaded (`failed`). */
+  boundaries: FeatureCollection | null;
+  failed: boolean;
 }) {
-  const [boundaries, setBoundaries] = useState<FeatureCollection | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let current = true;
-    loadBoundaries(LGA_BOUNDARIES_URL)
-      .then((collection) => {
-        if (current) setBoundaries(collection);
-      })
-      .catch((error) => {
-        console.error('Failed to load LGA boundaries:', error);
-        if (current) setFailed(true);
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
 
   // Keyed on the snapshot and universe, not the assessment: toggling the selection must not rebuild the map layer.
   const { records, universe, memberIds } = assessment;

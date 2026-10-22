@@ -6,6 +6,7 @@ import {
   buildNeedsDocument, captureFigures, figureLayout, skippedFiguresMessage, type DocxFigure, type NeedsDocxInput,
 } from '@/lib/needs/docx-export';
 import { DOMAIN_LABELS, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { figureSkipError, skipReasonOf } from '@/lib/needs/figure-skip';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
   CATCHMENT_CAPTION, CATCHMENT_TITLE, citationSegments, comparisonLabel, exportFileName, exportTitle, indicatorTable,
@@ -620,7 +621,15 @@ describe('captureFigures', () => {
     title, caption: `${title} source`, capture: async () => ({ png: PNG_1X1, widthPx: 30, heightPx: 20 }),
   });
   const collapsed = (title: string) => ({
-    title, caption: '', capture: async () => { throw new Error(`Figure "${title}" is not rendered (collapsed or unmounted)`); },
+    title, caption: '',
+    capture: async () => { throw figureSkipError('collapsed', `Figure "${title}" is not rendered (collapsed or unmounted)`); },
+  });
+  const unavailable = (title: string) => ({
+    title, caption: '',
+    capture: async () => { throw figureSkipError('unavailable', `Figure "${title}" is unavailable: the map boundaries could not be loaded`); },
+  });
+  const broken = (title: string) => ({
+    title, caption: '', capture: async () => { throw new Error('toBlob failed'); },
   });
 
   let warn: jest.SpyInstance;
@@ -638,11 +647,21 @@ describe('captureFigures', () => {
   test('a figure that cannot be rendered is skipped by title and the others still export, renumbered', async () => {
     const { captured, skipped } = await captureFigures([ok('A'), collapsed('B'), ok('C'), collapsed('D')]);
     expect(captured.map(f => f.title)).toEqual(['A', 'C']);
-    expect(skipped).toEqual(['B', 'D']);
+    expect(skipped).toEqual([{ title: 'B', reason: 'collapsed' }, { title: 'D', reason: 'collapsed' }]);
     expect(skippedFiguresMessage(skipped)).toBe('Expand these figures and export again: B, D');
     const { xml } = await documentParts(inputFor(assess(['lga_blacktown']), captured));
     expect(paragraphs(xml).filter(p => p.style === 'Caption').map(p => p.text))
       .toEqual(['Figure 1. A. Source: A source', 'Figure 2. C. Source: C source']);
+  });
+
+  test('P2-R19: each skipped figure keeps why: unavailable (data or boundaries not loaded), collapsed, or failed', async () => {
+    const { captured, skipped } = await captureFigures([unavailable('Need map'), collapsed('Trends'), broken('Radar'), ok('A')]);
+    expect(captured.map(f => f.title)).toEqual(['A']);
+    expect(skipped).toEqual([
+      { title: 'Need map', reason: 'unavailable' },
+      { title: 'Trends', reason: 'collapsed' },
+      { title: 'Radar', reason: 'failed' },
+    ]);
   });
 
   test('captures one figure at a time', async () => {
@@ -660,6 +679,49 @@ describe('captureFigures', () => {
     });
     await captureFigures([slow('A'), slow('B'), slow('C')]);
     expect(overlap).toBe(false);
+  });
+});
+
+describe('skippedFiguresMessage (R22, P2-R19)', () => {
+  test('nothing skipped: no message', () => {
+    expect(skippedFiguresMessage([])).toBeNull();
+  });
+
+  test('an unavailable figure states why it is missing instead of asking to expand it', () => {
+    expect(skippedFiguresMessage([
+      { title: 'SA2 need map', reason: 'unavailable' }, { title: 'Need map', reason: 'unavailable' },
+    ])).toBe('These figures could not be loaded and were left out: SA2 need map, Need map.');
+  });
+
+  test('collapsed figures keep the original wording', () => {
+    expect(skippedFiguresMessage([{ title: 'Trends', reason: 'collapsed' }]))
+      .toBe('Expand these figures and export again: Trends');
+  });
+
+  test('a figure that failed to render is named as such', () => {
+    expect(skippedFiguresMessage([{ title: 'Radar', reason: 'failed' }]))
+      .toBe('These figures could not be rendered and were left out: Radar. Export again to retry.');
+  });
+
+  test('several reasons: one sentence each, unavailable first, collapsed last', () => {
+    expect(skippedFiguresMessage([
+      { title: 'Trends', reason: 'collapsed' }, { title: 'SA2 need map', reason: 'unavailable' },
+      { title: 'Radar', reason: 'failed' },
+    ])).toBe(
+      'These figures could not be loaded and were left out: SA2 need map. '
+      + 'These figures could not be rendered and were left out: Radar. Export again to retry. '
+      + 'Expand these figures and export again: Trends',
+    );
+  });
+
+  test('skipReasonOf reads the reason of a figureSkipError; any other error is a failure', () => {
+    expect(skipReasonOf(figureSkipError('unavailable', 'x'))).toBe('unavailable');
+    expect(skipReasonOf(figureSkipError('collapsed', 'x'))).toBe('collapsed');
+    expect(figureSkipError('collapsed', 'not rendered')).toBeInstanceOf(Error);
+    expect(figureSkipError('collapsed', 'not rendered').message).toBe('not rendered');
+    expect(skipReasonOf(new Error('boom'))).toBe('failed');
+    expect(skipReasonOf('boom')).toBe('failed');
+    expect(skipReasonOf(null)).toBe('failed');
   });
 });
 

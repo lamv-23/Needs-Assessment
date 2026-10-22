@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import ChoroplethMapDirect from '@/components/maps/ChoroplethMapDirect';
 import { escapeHtml, NEED_STEPS, NeedMapLegend, NSW_CENTRE, NSW_ZOOM, SELECTED_OUTLINE } from '@/components/needs/mapParts';
-import { LGA_BOUNDARIES_URL, loadBoundaries, SA2_BOUNDARIES_URL } from '@/lib/needs/boundaries';
 import { NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
 import { LOW_POPULATION_REASON, SA2_MAP_NOTE, sa2MapEntries, type Sa2MapEntry } from '@/lib/needs/map-data';
 import { SA2_LOW_POPULATION } from '@/lib/needs/sa2';
@@ -28,35 +27,24 @@ const colorForNeed = (value: number | undefined) =>
 /**
  * The SA2s in the drill-down of the selected LGAs (`sa2MapEntries`), each shaded by the need percentile of its overall
  * SA2 score among NSW SA2s, low-population SA2s in grey, with the selected LGAs outlined and the view fitted to the
- * SA2s. Load it with `dynamic(() => import(...), { ssr: false })`: Leaflet needs the DOM.
+ * SA2s. The page loads the SA2 and LGA boundaries (`useBoundaries`, P2-R19), so the Word export can wait for them.
+ * Load it with `dynamic(() => import(...), { ssr: false })`: Leaflet needs the DOM.
  */
 export default function Sa2NeedsMap({
   file,
   lgaIds,
   lgaNames,
+  boundaries,
+  failed,
 }: {
   file: Sa2NeedsFile;
   lgaIds: string[];
   /** LGA names by area id, for the tooltips. */
   lgaNames: Map<string, string>;
+  /** The SA2 and LGA boundaries; null while they load or when either could not be loaded (`failed`). */
+  boundaries: { sa2: FeatureCollection; lga: FeatureCollection } | null;
+  failed: boolean;
 }) {
-  const [boundaries, setBoundaries] = useState<{ sa2: FeatureCollection; lga: FeatureCollection } | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let current = true;
-    Promise.all([loadBoundaries(SA2_BOUNDARIES_URL), loadBoundaries(LGA_BOUNDARIES_URL)])
-      .then(([sa2, lga]) => {
-        if (current) setBoundaries({ sa2, lga });
-      })
-      .catch((error) => {
-        console.error('Failed to load SA2 or LGA boundaries:', error);
-        if (current) setFailed(true);
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
 
   // Keyed on the LGAs, not the array: a new assessment of the same selection must not rebuild the map layer.
   const lgaKey = lgaIds.join('|');
@@ -93,7 +81,7 @@ export default function Sa2NeedsMap({
   if (!shaded || !outlines) {
     return (
       <div className="w-full rounded-lg bg-gray-100 flex items-center justify-center" style={{ height: MAP_HEIGHT }}>
-        <p className="text-gray-500 text-sm">{failed ? 'The SA2 boundaries could not be loaded.' : 'Loading map…'}</p>
+        <p className="text-gray-500 text-sm">{failed ? 'The map boundaries could not be loaded.' : 'Loading map…'}</p>
       </div>
     );
   }

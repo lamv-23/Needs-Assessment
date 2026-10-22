@@ -7,8 +7,9 @@ export const SA2_BOUNDARIES_URL = '/geo/sa2-nsw-simple.json';
 const requests = new Map<string, Promise<FeatureCollection>>();
 
 /**
- * A boundary file, fetched and parsed once per page load from one cache keyed by URL, so the need map and the SA2 map
- * share the LGA file. A failed request is dropped from the cache, so the next caller tries again.
+ * A boundary file, fetched and parsed once per page load from one cache keyed by URL, so every caller (the page's
+ * `useBoundaries`, for the need map and the SA2 map) shares one request per file. A failed request is dropped from the
+ * cache, so the next caller tries again.
  */
 export function loadBoundaries(url: string): Promise<FeatureCollection> {
   let request = requests.get(url);

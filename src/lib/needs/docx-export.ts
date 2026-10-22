@@ -3,6 +3,7 @@ import {
   ShadingType, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType,
   type FileChild, type ISectionOptions,
 } from 'docx';
+import { skipReasonOf, type FigureSkipReason, type SkippedFigure } from './figure-skip';
 import { DOMAIN_LABELS } from './indicators';
 import type { NarrativeParagraph, NarrativeSection } from './narrative';
 import {
@@ -36,27 +37,44 @@ export interface CapturableFigure {
 }
 
 /**
- * Renders the figures one by one, in order. A figure that cannot be rendered (collapsed, say) is left out and its
- * title returned in `skipped`, so the document is still made from the rest.
+ * Renders the figures one by one, in order. A figure that cannot be rendered (its data could not be loaded, it is
+ * collapsed, or rendering failed) is left out and returned in `skipped` with why, so the document is still made from
+ * the rest.
  */
-export async function captureFigures(figures: CapturableFigure[]): Promise<{ captured: DocxFigure[]; skipped: string[] }> {
+export async function captureFigures(
+  figures: CapturableFigure[],
+): Promise<{ captured: DocxFigure[]; skipped: SkippedFigure[] }> {
   const captured: DocxFigure[] = [];
-  const skipped: string[] = [];
+  const skipped: SkippedFigure[] = [];
   for (const figure of figures) {
     try {
       const { png, widthPx, heightPx } = await figure.capture();
       captured.push({ title: figure.title, caption: figure.caption, png, widthPx, heightPx });
     } catch (error) {
       console.warn(`Figure "${figure.title}" left out of the Word export:`, error);
-      skipped.push(figure.title);
+      skipped.push({ title: figure.title, reason: skipReasonOf(error) });
     }
   }
   return { captured, skipped };
 }
 
-/** What to tell the user when figures were left out of the export; null when none were. */
-export function skippedFiguresMessage(skipped: string[]): string | null {
-  return skipped.length > 0 ? `Expand these figures and export again: ${skipped.join(', ')}` : null;
+/** One sentence per reason, in this order: what could not be loaded first, what the user can expand last. */
+const SKIP_MESSAGES: Array<[FigureSkipReason, (titles: string) => string]> = [
+  ['unavailable', titles => `These figures could not be loaded and were left out: ${titles}.`],
+  ['failed', titles => `These figures could not be rendered and were left out: ${titles}. Export again to retry.`],
+  ['collapsed', titles => `Expand these figures and export again: ${titles}`],
+];
+
+/**
+ * What to tell the user when figures were left out of the export (R22), saying why (P2-R19): a figure whose data or
+ * boundaries could not be loaded cannot be fixed by expanding it. Null when none were left out.
+ */
+export function skippedFiguresMessage(skipped: SkippedFigure[]): string | null {
+  const sentences = SKIP_MESSAGES.flatMap(([reason, message]) => {
+    const titles = skipped.filter(figure => figure.reason === reason).map(figure => figure.title);
+    return titles.length > 0 ? [message(titles.join(', '))] : [];
+  });
+  return sentences.length > 0 ? sentences.join(' ') : null;
 }
 
 // A4 with 2.5 cm margins: 16.0 cm of text width in portrait, 24.7 cm in landscape.

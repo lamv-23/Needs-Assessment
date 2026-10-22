@@ -312,6 +312,17 @@ export function sameSelection(a: SelectionOf, b: SelectionOf): boolean {
     && a.memberIds.every((id, i) => id === b.memberIds[i]);
 }
 
+/**
+ * What the Word export is waiting for, named on its button ("Loading map boundaries…"): the SA2 file (P2-R5), then the
+ * boundary files of the maps (P2-R19), so no figure is pictured while it still shows a placeholder. Null when nothing
+ * the document needs is loading.
+ */
+export function exportWaitingFor(loading: { sa2Data: boolean; boundaries: boolean }): string | null {
+  if (loading.sa2Data) return 'SA2 data';
+  if (loading.boundaries) return 'map boundaries';
+  return null;
+}
+
 /** Shown, with no download, when the selection changed while the Word export was capturing its figures. */
 export const SELECTION_CHANGED_MESSAGE = 'The selection changed while exporting. Export again.';
 
