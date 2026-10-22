@@ -1,0 +1,101 @@
+import type { IndicatorId, IndicatorValue, LiveBundle } from './types';
+
+const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
+
+/** A missing source or a zero denominator is `null`, never 0. */
+const missing = (): IndicatorValue => ({ value: null });
+
+/** numerator ÷ denominator × scale, keeping both parts so ratios can be summed across LGAs. */
+function ratio(numerator: number | null | undefined, denominator: number | null | undefined, scale: number): IndicatorValue {
+  if (!isNum(numerator) || !isNum(denominator) || denominator <= 0) return missing();
+  return { value: (numerator * scale) / denominator, numerator, denominator };
+}
+
+/** Keep the pipeline's own published value, adding the parts needed to sum it across LGAs. */
+function withParts(value: number | null | undefined, parts: IndicatorValue): IndicatorValue {
+  return isNum(value) && parts.value !== null ? { ...parts, value } : missing();
+}
+
+const latest = <T extends { year: number }>(items: T[]): T | undefined =>
+  items.reduce<T | undefined>((best, item) => (!best || item.year > best.year ? item : best), undefined);
+
+/** A year's population in a series, ignoring entries that are not a positive number. */
+function populationIn(series: { year: number; population: number }[], year: number): number | null {
+  const entry = series.find(p => p.year === year && isNum(p.population) && p.population > 0);
+  return entry ? entry.population : null;
+}
+
+/** Growth from base to target as a ratio: the numerator is the increase, the denominator the base. */
+function growth(base: number | null, target: number | null): IndicatorValue {
+  return isNum(base) && isNum(target) ? ratio(target - base, base, 100) : missing();
+}
+
+/** Turn one LGA's live data into the 16 indicator values. */
+export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, IndicatorValue> {
+  const { demographics, transport, economy, growth: growthData } = bundle;
+  const population = demographics.totalPopulation;
+
+  // Car dependency: car share of commuters who travel to a workplace (work from home excluded)
+  const modeShare = (name: string) => transport.journeyToWork.find(m => m.name === name)?.value;
+  const carDriver = modeShare('Car (driver)');
+  const carPassenger = modeShare('Car (passenger)');
+  const workFromHome = modeShare('Work from home');
+  const carDependency: IndicatorValue =
+    isNum(carDriver) && isNum(carPassenger) && isNum(workFromHome) && workFromHome < 100
+      ? { value: ((carDriver + carPassenger) * 100) / (100 - workFromHome) }
+      : missing();
+
+  // Service frequency: the published (1 dp) values, with the parts needed to aggregate them.
+  // Departures per 1,000 use the latest ERP year, the same denominator the pipeline used.
+  const frequency = transport.ptFrequency;
+  const latestErp = latest(growthData.populationHistory.filter(p => isNum(p.population) && p.population > 0));
+  const frequentStopShare = frequency
+    ? withParts(frequency.frequentStopShare, ratio(frequency.frequentStops, frequency.totalStops, 100))
+    : missing();
+  const departuresPer1000 = frequency
+    ? withParts(frequency.departuresPer1000Residents, ratio(frequency.amPeakDepartures, latestErp?.population, 1000))
+    : missing();
+
+  const latestCrashYear = latest((transport.crashTrend ?? []).filter(c => isNum(c.totalCrashes)));
+
+  const vehicles = transport.vehicleOwnershipRaw;
+  const incomeHouseholds = economy.householdIncomeDistribution
+    ?.reduce((sum, band) => sum + (isNum(band.count) ? band.count : 0), 0);
+
+  const ageGroup = (label: string) => demographics.ageDistribution.find(a => a.ageGroup === label);
+  const age65to74 = ageGroup('65-74');
+  const age75plus = ageGroup('75+');
+  const olderResidents = age65to74 && age75plus
+    ? ratio(age65to74.male + age65to74.female + age75plus.male + age75plus.female, population, 100)
+    : missing();
+
+  const jobsIn = (year: number) => growthData.employmentGrowth.find(j => j.year === year && isNum(j.jobs) && j.jobs > 0)?.jobs ?? null;
+  // Base year 2021: ERP history, else the 2021 projection
+  const populationBase = populationIn(growthData.populationHistory, 2021) ?? populationIn(growthData.populationProjections, 2021);
+
+  return {
+    car_dependency: carDependency,
+    zero_car_households: ratio(vehicles?.noCar, vehicles?.totalDwellings, 100),
+    frequent_stop_share: frequentStopShare,
+    am_peak_departures_per_1000: departuresPer1000,
+    commute_distance_km: isNum(transport.commuteDistance2016?.avgKm)
+      ? { value: transport.commuteDistance2016.avgKm }
+      : missing(),
+    crash_rate: ratio(latestCrashYear?.totalCrashes, population, 10000),
+
+    // SEIFA scores are never 0, so a 0 is an absent value
+    seifa_irsd: isNum(demographics.seifaScore) && demographics.seifaScore > 0
+      ? { value: demographics.seifaScore }
+      : missing(),
+    unemployment_rate: isNum(economy.unemploymentRate) ? { value: economy.unemploymentRate } : missing(),
+    low_income_households: ratio(economy.lowIncomeHouseholds, incomeHouseholds, 100),
+    needs_assistance: ratio(demographics.needsAssistance, population, 100),
+    limited_english: ratio(demographics.limitedEnglish, population, 100),
+    older_residents: olderResidents,
+    indigenous_share: ratio(demographics.indigenousPopulation, population, 100),
+
+    pop_growth_2041: growth(populationBase, populationIn(growthData.populationProjections, 2041)),
+    job_growth_2041: growth(jobsIn(2021), jobsIn(2041)),
+    approvals_per_1000: ratio(growthData.rollingAnnualApprovals, population, 1000),
+  };
+}

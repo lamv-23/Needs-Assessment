@@ -232,6 +232,13 @@ export async function getLiveDemographicsData(areaId: string, year: number): Pro
     sampleFields.push('countriesOfBirth');
   }
 
+  // Aboriginal and/or Torres Strait Islander persons from G01 (A_T)
+  let indigenousPopulation = sample.indigenousPopulation;
+  if (g01 && typeof g01.indigenousPopulation === 'number') {
+    indigenousPopulation = g01.indigenousPopulation;
+    liveFields.push('indigenousPopulation');
+  }
+
   // Median age from G02
   let medianAge = sample.medianAge;
   if (g02?.medianAge && g02.medianAge > 0) {
@@ -344,6 +351,7 @@ export async function getLiveDemographicsData(areaId: string, year: number): Pro
       limitedEnglish,
       disabilityRate,
       needsAssistance,
+      indigenousPopulation,
       familyComposition,
       householdComposition,
     },

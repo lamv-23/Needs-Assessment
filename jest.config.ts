@@ -6,8 +6,8 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  // Exclude Next.js internals and browser-only modules
-  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
+  // Exclude Next.js internals, browser-only modules and shared test fixtures
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/src/__tests__/fixtures/'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: { jsx: 'react' } }],
   },
