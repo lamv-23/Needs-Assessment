@@ -21,7 +21,7 @@ interface ExportDocxButtonProps {
  *
  * The figures are captured from the live page, so a selection changed during the export would put pictures of the new
  * selection in a document whose text and table describe the old one. The export is therefore dropped, with a message,
- * if the selection differs from the one at the click when the figures are done and again before the download.
+ * if the selection changed at all since the click, checked when the figures are done and again before the download.
  */
 export default function ExportDocxButton({ assessment, sections }: ExportDocxButtonProps) {
   const registry = useFigureRegistry();
@@ -29,16 +29,20 @@ export default function ExportDocxButton({ assessment, sections }: ExportDocxBut
   const [message, setMessage] = useState<string | null>(null);
   const hasAreas = assessment.areas.length > 0;
 
-  // The assessment the page shows now, which a running export compares with the one it started from.
+  // Counts every change of the selection the page shows. An export remembers the count at its click, so a selection
+  // changed and changed back (A, B, A) during the export still counts as changed, which comparing A with A would miss.
   const latest = useRef(assessment);
+  const selectionVersion = useRef(0);
   useEffect(() => {
+    if (!sameSelection(latest.current, assessment)) selectionVersion.current += 1;
     latest.current = assessment;
   }, [assessment]);
 
   const handleExport = async () => {
     const started = assessment;
+    const version = selectionVersion.current;
     const figures = registry?.figures() ?? [];
-    const selectionChanged = () => !sameSelection(started, latest.current);
+    const selectionChanged = () => selectionVersion.current !== version;
     setWorking(true);
     setMessage(null);
     try {
