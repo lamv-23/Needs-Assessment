@@ -59,7 +59,8 @@ describe('assessRecord', () => {
     const target = makeRecord('lga_target', { car_dependency: null });
     const a = assessRecord(target, 'nsw', rampPeers(5));
     expect(byId(a, 'car_dependency')).toEqual({
-      id: 'car_dependency', value: null, percentile: null, keyNeed: false, approximate: false, partial: false,
+      id: 'car_dependency', value: null, percentile: null, rank: null, ranked: null, keyNeed: false,
+      approximate: false, partial: false,
     });
   });
 
@@ -202,6 +203,51 @@ describe('assessRecord', () => {
     expect(assessRecord(target, 'nsw', rampPeers(4)).smallGroup).toBe(true);
     expect(assessRecord(target, 'nsw', rampPeers(4)).universeSize).toBe(4);
     expect(assessRecord(target, 'nsw', rampPeers(5)).smallGroup).toBe(false);
+  });
+});
+
+describe('rank and ranked (R57)', () => {
+  /** Eight LGAs whose car dependency is 1..8; `values` replaces some of them. */
+  const eight = (values: Array<number | null> = [1, 2, 3, 4, 5, 6, 7, 8]) =>
+    values.map((v, i) => makeRecord(`lga_${i}`, { car_dependency: v, seifa_irsd: v }));
+  const rankOf = (target: LgaIndicatorRecord, peers: LgaIndicatorRecord[], id: IndicatorId = 'car_dependency') => {
+    const s = byId(assessRecord(target, 'region', peers), id);
+    return [s.rank, s.ranked];
+  };
+
+  test('a group of 8: the most car-dependent ranks 1st, the next 2nd, of 8', () => {
+    const peers = eight();
+    expect(rankOf(peers[7], peers)).toEqual([1, 8]);
+    expect(rankOf(peers[6], peers)).toEqual([2, 8]);
+    expect(rankOf(peers[0], peers)).toEqual([8, 8]);
+  });
+
+  test('direction lower: the lowest SEIFA score ranks 1st', () => {
+    const peers = eight();
+    expect(rankOf(peers[0], peers, 'seifa_irsd')).toEqual([1, 8]);
+    expect(rankOf(peers[7], peers, 'seifa_irsd')).toEqual([8, 8]);
+  });
+
+  test('ties share the better rank', () => {
+    const peers = eight([8, 8, 6, 5, 4, 3, 2, 1]);
+    expect(rankOf(peers[0], peers)).toEqual([1, 8]);
+    expect(rankOf(peers[1], peers)).toEqual([1, 8]);
+    expect(rankOf(peers[2], peers)).toEqual([3, 8]);
+  });
+
+  test('ranked counts the universe LGAs with a value only', () => {
+    const peers = eight([1, 2, null, 4, 5, null, 7, 8]);
+    expect(rankOf(peers[7], peers)).toEqual([1, 6]);
+  });
+
+  test('an area that is not one of the LGAs (combined, benchmark) takes the place it would have among them', () => {
+    const peers = eight();
+    expect(rankOf(makeRecord('combined', { car_dependency: 9 }), peers)).toEqual([1, 8]);
+    expect(rankOf(makeRecord('combined', { car_dependency: 6.5 }), peers)).toEqual([3, 8]);
+  });
+
+  test('no value: no rank', () => {
+    expect(rankOf(makeRecord('lga_target', { car_dependency: null }), eight())).toEqual([null, null]);
   });
 });
 

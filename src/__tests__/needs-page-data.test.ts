@@ -11,7 +11,7 @@ import {
 import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Universe } from '@/lib/needs/types';
 
 const score = (id: IndicatorId, overrides: Partial<IndicatorScore> = {}): IndicatorScore => ({
-  id, value: 1, percentile: 50, keyNeed: false, approximate: false, partial: false, ...overrides,
+  id, value: 1, percentile: 50, rank: 64, ranked: 128, keyNeed: false, approximate: false, partial: false, ...overrides,
 });
 
 /** An area whose indicators carry the given percentiles (the rest have no data). */

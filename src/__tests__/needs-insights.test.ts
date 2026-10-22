@@ -5,8 +5,8 @@ import { runAssessment } from '@/lib/needs/assess';
 import { formatDiff, formatValue } from '@/lib/needs/format';
 import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
 import {
-  buildInsights, carDependencyMismatch, expectedCarDependencyModel, fitLinear, growthVsService, jobsHousing, trends,
-  WFH_CAVEAT_CITATION,
+  buildInsights, carDependencyMismatch, expectedCarDependencyModel, fitLinear, growthVsService, jobsHousing, keyNeedText,
+  trends, WFH_CAVEAT_CITATION,
 } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
 import type {
@@ -74,6 +74,51 @@ function nonMetroRecords(): LgaIndicatorRecord[] {
   }));
   return records;
 }
+
+describe('keyNeedText: rank wording (R57)', () => {
+  const car = (value: number, rank: number, ranked: number) => ({ id: 'car_dependency' as const, value, rank, ranked });
+  const farWest = { universeLabel: 'LGAs in the Far West region', universeSize: 8 };
+  const gsyd = { universeLabel: 'Greater Sydney LGAs', universeSize: 34 };
+
+  test('fewer than 20 ranked: an ordinal of the group size', () => {
+    expect(keyNeedText('Broken Hill', car(91.9, 1, 8), farWest, 77.8))
+      .toBe('On car dependency, Broken Hill (91.9%) ranks 1st of 8 LGAs in the Far West region, '
+        + '14.1 pp above the Greater Sydney figure of 77.8%.');
+    expect(keyNeedText('Broken Hill', car(91.9, 2, 8), farWest, null))
+      .toBe('On car dependency, Broken Hill (91.9%) ranks 2nd of 8 LGAs in the Far West region.');
+    expect(keyNeedText('X', car(50, 3, 19), { universeLabel: 'regional cities', universeSize: 19 }, null))
+      .toBe('On car dependency, X (50.0%) ranks 3rd of 19 regional cities.');
+  });
+
+  test('20 or more ranked: the highest-need k%, k = ceil(100 × rank ÷ ranked)', () => {
+    expect(keyNeedText('Wollondilly', car(91.1, 1, 34), gsyd, null))
+      .toBe('On car dependency, Wollondilly (91.1%) ranks in the highest-need 3% of Greater Sydney LGAs.');
+    // 7 of 34 is 20.6%, which rounds up to 21 (the old mid-rank wording said 19%)
+    expect(keyNeedText('X', car(80, 7, 34), gsyd, null)).toContain('ranks in the highest-need 21% of Greater Sydney LGAs');
+    expect(keyNeedText('X', car(80, 1, 20), { universeLabel: 'NSW LGAs', universeSize: 20 }, null))
+      .toContain('ranks in the highest-need 5% of NSW LGAs');
+  });
+});
+
+describe('key needs on real data (R57)', () => {
+  const keyNeedTexts = (ids: string[], universe: Universe) => of(buildInsights(assess(ids, 'separate', universe)), 'key_need')
+    .map(i => i.text);
+
+  test('Broken Hill in the Far West region (8 LGAs) ranks by ordinal', () => {
+    const texts = keyNeedTexts(['lga_broken_hill'], 'region');
+    expect(texts).toContain('On car dependency, Broken Hill (91.9%) ranks 1st of 8 LGAs in the Far West region, '
+      + '14.2 pp above the Greater Sydney figure of 77.8%.');
+    expect(texts.some(t => t.startsWith('On residents aged 65+, Broken Hill (23.2%) ranks 2nd of 8 LGAs in the Far West region'))).toBe(true);
+    expect(texts.every(t => !t.includes('highest-need'))).toBe(true);
+  });
+
+  test('Wollondilly in Greater Sydney (34 LGAs) is in the highest-need 3%, not 1%', () => {
+    expect(keyNeedTexts(['lga_wollondilly'], 'gsyd')).toContain(
+      'On car dependency, Wollondilly (91.1%) ranks in the highest-need 3% of Greater Sydney LGAs, '
+      + '13.4 pp above the Greater Sydney figure of 77.8%.',
+    );
+  });
+});
 
 describe('fitLinear', () => {
   test('an exact line', () => {

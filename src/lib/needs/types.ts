@@ -77,6 +77,14 @@ export interface IndicatorScore {
   value: number | null;
   /** Need percentile 0-100 (100 = most need), unrounded; null when there is no value to rank. */
   percentile: number | null;
+  /**
+   * Place in need order among the universe LGAs with a value: 1 + the number with more need, so ties share the better
+   * rank. An area that is not one of those LGAs (a combined area, a benchmark) takes the place it would have among
+   * them. Null when there is no value to rank.
+   */
+  rank: number | null;
+  /** The universe LGAs with a value, which `rank` is out of; null when the area itself has no value. */
+  ranked: number | null;
   /** Scored indicator with a need percentile of 80 or more. */
   keyNeed: boolean;
   /** Combined selection: population-weighted mean of a non-additive indicator. */

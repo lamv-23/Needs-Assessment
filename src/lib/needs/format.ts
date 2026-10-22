@@ -36,6 +36,22 @@ export function formatSignedDiff(def: IndicatorDef, diff: number): string | null
   return `${diff > 0 ? '+' : '−'}${formatDiff(def, Math.abs(diff))}`;
 }
 
+/** "1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "112th". */
+export function ordinal(n: number): string {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
 /** "Blacktown's", "Blue Mountains'". */
 export function possessive(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`;

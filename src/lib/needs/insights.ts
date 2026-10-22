@@ -1,6 +1,6 @@
 import { aggregateRecords } from './aggregate';
 import { populationNearest } from './extract';
-import { formatDiff, formatSignedDiff, formatValue, inSentence, possessive } from './format';
+import { formatDiff, formatSignedDiff, formatValue, inSentence, ordinal, possessive } from './format';
 import { INDICATOR_BY_ID, SOURCES } from './indicators';
 import { settingOf } from './peer-groups';
 import { areaQuadrantInsights } from './project-need';
@@ -356,20 +356,38 @@ function subjectFor(area: AreaAssessment, combined: boolean): Subject {
     : { start: area.name, mid: area.name, owner: possessive(area.name) };
 }
 
+/** With fewer LGAs ranked than this, a rank reads as "1st of 8", not as a share ("the highest-need 13%"). */
+export const ORDINAL_RANK_BELOW = 20;
+
+/** An indicator value with its place in need order (`IndicatorScore.rank` of `ranked`). */
+export interface RankedValue { id: IndicatorId; value: number; rank: number; ranked: number }
+
 /**
- * "On {label}, {subject} ({value}) ranks in the highest-need k% of {universeLabel}, {diff} {above|below} the
- * Greater Sydney figure of {gs}." (R19). The Greater Sydney clause is left out when that figure is null.
+ * Where a value ranks (R57): "ranks 1st of 8 {universeLabel}" when fewer than 20 LGAs are ranked, otherwise
+ * "ranks in the highest-need k% of {universeLabel}" with k = ceil(100 × rank ÷ ranked), the true share of the group
+ * at or above it.
+ */
+export function rankPhrase(
+  { rank, ranked }: Pick<RankedValue, 'rank' | 'ranked'>,
+  { universeLabel }: Pick<AreaAssessment, 'universeLabel' | 'universeSize'>,
+): string {
+  return ranked < ORDINAL_RANK_BELOW
+    ? `ranks ${ordinal(rank)} of ${ranked} ${universeLabel}`
+    : `ranks in the highest-need ${Math.ceil((100 * rank) / ranked)}% of ${universeLabel}`;
+}
+
+/**
+ * "On {label}, {subject} ({value}) {rank phrase}, {diff} {above|below} the Greater Sydney figure of {gs}." (R19,
+ * R57). The Greater Sydney clause is left out when that figure is null.
  */
 export function keyNeedText(
   subject: string,
-  need: { id: IndicatorId; value: number; percentile: number },
-  universeLabel: string,
+  need: RankedValue,
+  group: Pick<AreaAssessment, 'universeLabel' | 'universeSize'>,
   greaterSydney: number | null,
 ): string {
   const def = INDICATOR_BY_ID[need.id];
-  const rank = Math.max(1, Math.round(100 - need.percentile));
-  let text = `On ${inSentence(def.label)}, ${subject} (${formatValue(def, need.value)}) `
-    + `ranks in the highest-need ${rank}% of ${universeLabel}`;
+  let text = `On ${inSentence(def.label)}, ${subject} (${formatValue(def, need.value)}) ${rankPhrase(need, group)}`;
   if (greaterSydney !== null) {
     const diff = need.value - greaterSydney;
     const figure = `the Greater Sydney figure of ${formatValue(def, greaterSydney)}`;
@@ -504,17 +522,23 @@ interface AreaContext {
   assessment: NeedsAssessment;
 }
 
-type KeyNeed = IndicatorScore & { value: number; percentile: number };
+/** A key need, with everything its sentence states. */
+export type KeyNeed = IndicatorScore & { value: number; percentile: number; rank: number; ranked: number };
+
+export const isKeyNeed = (s: IndicatorScore): s is KeyNeed => (
+  s.keyNeed && INDICATOR_BY_ID[s.id].scored && s.value !== null && s.percentile !== null && s.rank !== null
+  && s.ranked !== null
+);
 
 const INSIGHTS_BY_KIND: Record<Insight['kind'], (c: AreaContext) => Insight[]> = {
   key_need: ({ area, subject, greaterSydney }) => area.indicators
-    .filter((s): s is KeyNeed => s.keyNeed && INDICATOR_BY_ID[s.id].scored && s.value !== null && s.percentile !== null)
+    .filter(isKeyNeed)
     .map(need => ({
       id: `key_need:${area.areaId}:${need.id}`,
       areaId: area.areaId,
       kind: 'key_need',
       severity: need.percentile / 100,
-      text: keyNeedText(subject.mid, need, area.universeLabel, greaterSydney(need.id)),
+      text: keyNeedText(subject.mid, need, area, greaterSydney(need.id)),
       citations: [INDICATOR_BY_ID[need.id].source],
     })),
 

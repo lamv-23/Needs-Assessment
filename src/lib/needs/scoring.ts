@@ -28,6 +28,14 @@ export function needPercentile(value: number, distribution: number[], direction:
   return ((less + 0.5 * equal) * 100) / distribution.length;
 }
 
+/**
+ * Place of `value` in need order among `distribution`: 1 + the number of values with more need, so ties share the
+ * better rank, and a value that is not one of the distribution's takes the place it would have among them.
+ */
+export function needRank(value: number, distribution: number[], direction: 'higher' | 'lower'): number {
+  return 1 + distribution.filter(other => (direction === 'higher' ? other > value : other < value)).length;
+}
+
 export function bandFor(score: number): NeedBand {
   if (score >= 80) return 'Very high';
   if (score >= 60) return 'High';
@@ -98,13 +106,14 @@ export function assessRecord(
     const distribution = peers
       .map(p => p.values[def.id]?.value ?? null)
       .filter((v): v is number => v !== null);
-    const percentile = value !== null && distribution.length > 0
-      ? needPercentile(value, distribution, def.direction)
-      : null;
+    const ranks = value !== null && distribution.length > 0;
+    const percentile = ranks ? needPercentile(value, distribution, def.direction) : null;
     return {
       id: def.id,
       value,
       percentile,
+      rank: ranks ? needRank(value, distribution, def.direction) : null,
+      ranked: value !== null ? distribution.length : null,
       keyNeed: def.scored && percentile !== null && percentile >= KEY_NEED_PERCENTILE,
       approximate: flags.approximate?.includes(def.id) ?? false,
       partial: flags.partial?.includes(def.id) ?? false,

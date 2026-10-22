@@ -1,6 +1,6 @@
 import { displayScore, inSentence, possessive } from './format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, NEED_DOMAINS } from './indicators';
-import { buildInsights, keyNeedText, WFH_CAVEAT } from './insights';
+import { buildInsights, isKeyNeed, keyNeedText, WFH_CAVEAT, type KeyNeed } from './insights';
 import { KEY_NEED_PERCENTILE } from './scoring';
 import type {
   AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedDomain, NeedsAssessment, SourceRef,
@@ -64,15 +64,10 @@ const scoredIdsWithValue = (area: AreaAssessment, domain?: NeedDomain): Indicato
   })
   .map(s => s.id);
 
-type KeyNeed = IndicatorScore & { value: number; percentile: number };
-
 /** Key needs, highest percentile first (ties keep the registry order). */
 function keyNeeds(area: AreaAssessment, domain?: NeedDomain): KeyNeed[] {
   return area.indicators
-    .filter((s): s is KeyNeed => (
-      s.keyNeed && s.value !== null && s.percentile !== null
-      && (domain === undefined || INDICATOR_BY_ID[s.id].domain === domain)
-    ))
+    .filter((s): s is KeyNeed => isKeyNeed(s) && (domain === undefined || INDICATOR_BY_ID[s.id].domain === domain))
     .sort((a, b) => b.percentile - a.percentile);
 }
 
@@ -108,7 +103,7 @@ function keyNeedSentence(
   wording: Wording,
 ): NarrativeParagraph {
   const subject = wording.combined ? 'the combined area' : area.name;
-  return paragraph(keyNeedText(subject, need, area.universeLabel, greaterSydney), [need.id]);
+  return paragraph(keyNeedText(subject, need, area, greaterSydney), [need.id]);
 }
 
 function domainParagraphs(

@@ -1,6 +1,6 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
-import { displayScore, formatDiff, formatValue } from '@/lib/needs/format';
+import { displayScore, formatDiff, formatValue, ordinal } from '@/lib/needs/format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { buildInsights } from '@/lib/needs/insights';
 import { buildNarrative, narrativeToPlainText, type NarrativeSection } from '@/lib/needs/narrative';
@@ -24,7 +24,7 @@ function makeArea(overrides: Partial<AreaAssessment> = {}, scores: Partial<Recor
     areaId: 'lga_blacktown', name: 'Blacktown', region: 'Greater Sydney', population: 396776,
     peerGroup: 'metro_outer', universe: 'nsw', universeLabel: 'NSW LGAs', universeSize: 128, smallGroup: false,
     indicators: INDICATORS.map(def => ({
-      id: def.id, value: null, percentile: null, keyNeed: false, approximate: false, partial: false,
+      id: def.id, value: null, percentile: null, rank: null, ranked: null, keyNeed: false, approximate: false, partial: false,
       ...scores[def.id],
     })),
     domains: NEED_DOMAINS.map(domain => ({ domain, score: null, band: null, available: 0, total: 0 })),
@@ -47,9 +47,9 @@ function withDomain(area: AreaAssessment, domain: NeedDomain, score: number | nu
 function blacktown(): AreaAssessment {
   const area = makeArea({ overall: 72.4, band: 'High' });
   const listed: IndicatorScore[] = [
-    { id: 'car_dependency', value: 83.8, percentile: 92, keyNeed: true, approximate: false, partial: false },
-    { id: 'zero_car_households', value: 8.2, percentile: 30, keyNeed: false, approximate: false, partial: false },
-    { id: 'frequent_stop_share', value: null, percentile: null, keyNeed: false, approximate: false, partial: false },
+    { id: 'car_dependency', value: 83.8, percentile: 92, rank: 10, ranked: 128, keyNeed: true, approximate: false, partial: false },
+    { id: 'zero_car_households', value: 8.2, percentile: 30, rank: 90, ranked: 128, keyNeed: false, approximate: false, partial: false },
+    { id: 'frequent_stop_share', value: null, percentile: null, rank: null, ranked: null, keyNeed: false, approximate: false, partial: false },
   ];
   return withDomain(withDomain({ ...area, indicators: listed }, 'transport', 64.1, 'High'), 'socio', 41.6, 'Moderate');
 }
@@ -123,6 +123,15 @@ describe('formatDiff', () => {
   });
 });
 
+describe('ordinal (R57)', () => {
+  test('1st, 2nd, 3rd, 4th; 11th to 13th; 21st, 22nd, 23rd; 101st, 111th, 112th', () => {
+    expect([1, 2, 3, 4, 9, 10].map(ordinal)).toEqual(['1st', '2nd', '3rd', '4th', '9th', '10th']);
+    expect([11, 12, 13, 14].map(ordinal)).toEqual(['11th', '12th', '13th', '14th']);
+    expect([21, 22, 23, 24, 32, 43].map(ordinal)).toEqual(['21st', '22nd', '23rd', '24th', '32nd', '43rd']);
+    expect([101, 111, 112, 113, 121, 128].map(ordinal)).toEqual(['101st', '111th', '112th', '113th', '121st', '128th']);
+  });
+});
+
 describe('displayScore', () => {
   test('rounds down, so a shown score never reaches a band threshold its band does not', () => {
     expect(displayScore(59.9)).toBe(59);
@@ -161,11 +170,11 @@ describe('buildNarrative: summary', () => {
 
   test('top 3 key needs by percentile, joined "a, b and c", with acronyms kept upper case', () => {
     const area = makeArea({ overall: 85, band: 'Very high' }, {
-      car_dependency: { value: 90, percentile: 85, keyNeed: true },
-      seifa_irsd: { value: 800, percentile: 99, keyNeed: true },
-      crash_rate: { value: 12, percentile: 95, keyNeed: true },
-      frequent_stop_share: { value: 5, percentile: 90, keyNeed: true },
-      limited_english: { value: 30, percentile: 82, keyNeed: true },
+      car_dependency: { value: 90, percentile: 85, keyNeed: true, rank: 19, ranked: 128 },
+      seifa_irsd: { value: 800, percentile: 99, keyNeed: true, rank: 1, ranked: 128 },
+      crash_rate: { value: 12, percentile: 95, keyNeed: true, rank: 6, ranked: 128 },
+      frequent_stop_share: { value: 5, percentile: 90, keyNeed: true, rank: 12, ranked: 128 },
+      limited_english: { value: 30, percentile: 82, keyNeed: true, rank: 23, ranked: 128 },
     });
     const text = section(buildNarrative(makeAssessment([area])), 'summary').paragraphs[1].text;
     expect(text).toBe(
@@ -176,8 +185,8 @@ describe('buildNarrative: summary', () => {
 
   test('two key needs are joined with "and" only', () => {
     const area = makeArea({ overall: 70, band: 'High' }, {
-      car_dependency: { value: 90, percentile: 85, keyNeed: true },
-      crash_rate: { value: 12, percentile: 95, keyNeed: true },
+      car_dependency: { value: 90, percentile: 85, keyNeed: true, rank: 19, ranked: 128 },
+      crash_rate: { value: 12, percentile: 95, keyNeed: true, rank: 6, ranked: 128 },
     });
     const text = section(buildNarrative(makeAssessment([area])), 'summary').paragraphs[1].text;
     expect(text).toBe('Its most pronounced needs are road crashes per 10,000 residents and car dependency.');
@@ -209,7 +218,7 @@ describe('buildNarrative: summary', () => {
 
   test('the overall sentence cites every scored source used; the key-need list cites just those indicators', () => {
     const area = makeArea({ overall: 72.4, band: 'High' }, {
-      car_dependency: { value: 83.8, percentile: 92, keyNeed: true },
+      car_dependency: { value: 83.8, percentile: 92, keyNeed: true, rank: 10, ranked: 128 },
       seifa_irsd: { value: 950, percentile: 50 },
       indigenous_share: { value: 5, percentile: 20 },
     });
@@ -279,24 +288,24 @@ describe('buildNarrative: domain sections', () => {
 
   test('key needs run from highest percentile down', () => {
     const area = withDomain(makeArea({ overall: 75, band: 'High' }, {
-      car_dependency: { value: 83.8, percentile: 85, keyNeed: true },
-      crash_rate: { value: 9, percentile: 97, keyNeed: true },
+      car_dependency: { value: 83.8, percentile: 85, keyNeed: true, rank: 19, ranked: 128 },
+      crash_rate: { value: 9, percentile: 97, keyNeed: true, rank: 3, ranked: 128 },
     }), 'transport', 70, 'High');
     const sentences = texts(section(buildNarrative(makeAssessment([area])), 'transport')).slice(1);
     expect(sentences[0]).toContain('On road crashes per 10,000 residents, Blacktown (9.0 per 10,000) ranks in the highest-need 3%');
     expect(sentences[1]).toContain('On car dependency, Blacktown (83.8%) ranks in the highest-need 15%');
   });
 
-  test('"highest-need k%" is at least 1%', () => {
+  test('"highest-need k%" is the share of the group at or above the value, rounded up (R57)', () => {
     const area = makeArea({ overall: 75, band: 'High' }, {
-      car_dependency: { value: 99, percentile: 99.8, keyNeed: true },
+      car_dependency: { value: 99, percentile: 98.8, keyNeed: true, rank: 2, ranked: 128 },
     });
-    expect(texts(section(buildNarrative(makeAssessment([area])), 'transport'))[1]).toContain('highest-need 1% of');
+    expect(texts(section(buildNarrative(makeAssessment([area])), 'transport'))[1]).toContain('highest-need 2% of');
   });
 
   test('"below" when the value is under the Greater Sydney figure (a lower-is-more-need indicator)', () => {
     const area = makeArea({ overall: 75, band: 'High' }, {
-      frequent_stop_share: { value: 10, percentile: 95, keyNeed: true },
+      frequent_stop_share: { value: 10, percentile: 95, keyNeed: true, rank: 6, ranked: 128 },
     });
     const assessment = makeAssessment([area]);
     assessment.benchmarks.gsyd = makeArea({ areaId: 'benchmark_gsy', name: 'Greater Sydney' }, {
@@ -310,7 +319,7 @@ describe('buildNarrative: domain sections', () => {
 
   test('SEIFA differences are in points', () => {
     const area = makeArea({ overall: 75, band: 'High' }, {
-      seifa_irsd: { value: 850, percentile: 96, keyNeed: true },
+      seifa_irsd: { value: 850, percentile: 96, keyNeed: true, rank: 5, ranked: 128 },
     });
     const assessment = makeAssessment([area]);
     assessment.benchmarks.gsyd = makeArea({ areaId: 'benchmark_gsy', name: 'Greater Sydney' }, {
@@ -332,7 +341,7 @@ describe('buildNarrative: domain sections', () => {
 
   test('a difference that rounds to nothing is "level with", not "0.0 pp above"', () => {
     const assessment = makeAssessment([makeArea({ overall: 75, band: 'High' }, {
-      car_dependency: { value: 66.32, percentile: 90, keyNeed: true },
+      car_dependency: { value: 66.32, percentile: 90, keyNeed: true, rank: 12, ranked: 128 },
     })]);
     expect(texts(section(buildNarrative(assessment), 'transport'))[1]).toBe(
       'On car dependency, Blacktown (66.3%) ranks in the highest-need 10% of NSW LGAs, '
@@ -342,7 +351,7 @@ describe('buildNarrative: domain sections', () => {
 
   test('the subject is the plain area name, so plural-looking names and indicator labels agree', () => {
     const area = makeArea({ name: 'Blue Mountains', overall: 75, band: 'High' }, {
-      zero_car_households: { value: 6, percentile: 92, keyNeed: true },
+      zero_car_households: { value: 6, percentile: 92, keyNeed: true, rank: 10, ranked: 128 },
     });
     expect(texts(section(buildNarrative(makeAssessment([area])), 'transport'))[1]).toMatch(
       /^On households without a car, Blue Mountains \(6\.0%\) ranks in the highest-need 8% of NSW LGAs/,
@@ -351,7 +360,7 @@ describe('buildNarrative: domain sections', () => {
 
   test('a name ending in s takes an apostrophe only in the summary of several areas', () => {
     const area = makeArea({ name: 'Blue Mountains', overall: 75, band: 'High' }, {
-      car_dependency: { value: 83.8, percentile: 92, keyNeed: true },
+      car_dependency: { value: 83.8, percentile: 92, keyNeed: true, rank: 10, ranked: 128 },
     });
     const other = makeArea({ areaId: 'lga_penrith', name: 'Penrith', overall: 50, band: 'Moderate' });
     expect(texts(section(buildNarrative(makeAssessment([area, other])), 'summary'))[1])
@@ -361,7 +370,7 @@ describe('buildNarrative: domain sections', () => {
   test('separate mode prefixes each area\'s domain line with its name, grouped by area', () => {
     const penrith = withDomain(makeArea(
       { areaId: 'lga_penrith', name: 'Penrith', overall: 50, band: 'Moderate' },
-      { crash_rate: { value: 9, percentile: 97, keyNeed: true } },
+      { crash_rate: { value: 9, percentile: 97, keyNeed: true, rank: 3, ranked: 128 } },
     ), 'transport', 45, 'Moderate');
     const sentences = texts(section(buildNarrative(makeAssessment([blacktown(), penrith])), 'transport'));
     expect(sentences).toEqual([
@@ -661,8 +670,8 @@ describe('buildNarrative: combined area wording', () => {
       { areaId: 'combined', name: 'Blacktown + Newcastle', overall: 55.2, band: 'Moderate' },
       {
         ...withValues(['pop_growth_2041', 'job_growth_2041']),
-        car_dependency: { value: 83.8, percentile: 92, keyNeed: true },
-        limited_english: { value: 4.1, percentile: 84, keyNeed: true },
+        car_dependency: { value: 83.8, percentile: 92, keyNeed: true, rank: 10, ranked: 128 },
+        limited_english: { value: 4.1, percentile: 84, keyNeed: true, rank: 20, ranked: 128 },
       },
     );
     return withDomain(area, 'socio', 60, 'High');
@@ -763,7 +772,10 @@ describe('buildNarrative on real assessments', () => {
           if (!(NEED_DOMAINS as string[]).includes(s.id)) continue;
           for (const p of s.paragraphs.slice(1)) {
             expect(p.citations).toHaveLength(1);
-            expect(p.text).toContain('ranks in the highest-need');
+            // R57: an ordinal for fewer than 20 ranked LGAs, otherwise a share
+            const ordinalForm = / ranks (\d+)(?:st|nd|rd|th) of (\d+) /.exec(p.text);
+            if (ordinalForm) expect(Number(ordinalForm[2])).toBeLessThan(20);
+            else expect(p.text).toMatch(/ ranks in the highest-need \d+% of /);
           }
         }
         // context-only indicator never shown as a need
