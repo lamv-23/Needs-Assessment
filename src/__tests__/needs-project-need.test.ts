@@ -457,11 +457,11 @@ describe('quadrantData', () => {
   const selectedIds = ['lga_blacktown', 'lga_penrith'];
 
   test('an LGA missing either value is not a point', () => {
-    const a = assess(['lga_newcastle']);
+    // Every LGA has both values on real data since R60, so the gap is made: 'lga_hills' has departures but no growth
+    const noGrowth = makeRecord('lga_hills', { values: { am_peak_departures_per_1000: { value: 20 } } });
+    const a = assess(['lga_blacktown'], 'separate', 'nsw', [...fiveRecords(), noGrowth]);
     const d = quadrantData(a, GROWTH_SERVICE);
-    const noGrowth = nonMetroRecords().filter(r => valueOf(r, 'pop_growth_2041') === null);
-    expect(noGrowth.length).toBeGreaterThan(0);
-    for (const r of noGrowth) expect(d.points.map(p => p.areaId)).not.toContain(r.areaId);
+    expect(d.points.map(p => p.areaId)).toEqual(['lga_penrith', 'lga_camden', 'lga_campbelltown', 'lga_liverpool']);
   });
 
   test('the group of the first selected area is the default', () => {
@@ -704,11 +704,11 @@ describe('quadrantInsights', () => {
     expect(equal).toEqual([]);
   });
 
-  test('Lockhart (region) and Cowra (peer), whose growth printed the same as the median, have no growth finding', () => {
+  // Cowra (peer) was a second case until R60 gave five more rural LGAs their projections and moved the median.
+  test('Lockhart (region), whose growth printed the same as the median, has no growth finding', () => {
     const growth = (areaId: string, universe: Universe) => quadrantInsights(assess([areaId], 'separate', universe))
       .filter(i => i.id.endsWith(':growth-service'));
     expect(growth('lga_lockhart', 'region')).toEqual([]);
-    expect(growth('lga_cowra', 'peer')).toEqual([]);
   });
 
   test('severity ranks the area among the LGAs with both values, the set the medians are over (R54)', () => {

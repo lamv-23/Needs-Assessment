@@ -56,6 +56,15 @@ test('job growth coverage matches the TZP24 source', () => {
   expect(NEEDS_SNAPSHOT.records.filter(r => r.values.job_growth_2041.value !== null).length).toBe(EXPECTED_TZP24_LGAS);
 });
 
+// R60: every NSW LGA resolves its NSW DPE projection (Port Macquarie-Hastings, Mid-Coast, Queanbeyan-Palerang,
+// Mid-Western and Cootamundra-Gundagai were lost to a hyphen in the name lookup).
+test('population projections cover every LGA', () => {
+  const missing = (has: (r: (typeof NEEDS_SNAPSHOT.records)[number]) => boolean) =>
+    NEEDS_SNAPSHOT.records.filter(r => !has(r)).map(r => r.areaId);
+  expect(missing(r => r.values.pop_growth_2041.value !== null)).toEqual([]);
+  expect(missing(r => r.series.population2041 !== null)).toEqual([]);
+});
+
 test('snapshot: car dependency coverage by year', () => {
   const has = (y: number) => NEEDS_SNAPSHOT.records.filter(r => r.series.carDependencyByYear.some(p => p.year === y)).length;
   expect([has(2011), has(2016), has(2021)]).toEqual([107, 123, 128]);

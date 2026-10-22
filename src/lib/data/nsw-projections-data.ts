@@ -13672,18 +13672,28 @@ const AREA_TO_PROJECTION_NAME: Record<string, string> = {
 };
 
 /**
+ * A name for comparison: lower case, an `lga_` id prefix dropped, and hyphens, underscores and runs of spaces as one
+ * space, so "Port Macquarie-Hastings", "port macquarie hastings" and "lga_port_macquarie_hastings" are the same.
+ */
+const comparableName = (name: string): string =>
+  name.toLowerCase().trim().replace(/^lga_/, '').replace(/[\s_-]+/g, ' ').trim();
+
+/**
  * Resolve a dashboard area id or display name to the NSW projection lgaName.
+ * Case, hyphens, underscores and spaces are ignored on both sides of the match.
  * Returns undefined if no match is found.
  */
 export function resolveProjectionName(areaIdOrName: string): string | undefined {
-  const key = areaIdOrName.toLowerCase().trim();
+  const raw = areaIdOrName.toLowerCase().trim();
   // 1. Try direct mapping
-  if (AREA_TO_PROJECTION_NAME[key]) return AREA_TO_PROJECTION_NAME[key];
-  // 2. Try exact match in PROJECTION_LGAS (case-insensitive)
-  const exact = PROJECTION_LGAS.find(n => n.toLowerCase() === key);
+  if (AREA_TO_PROJECTION_NAME[raw]) return AREA_TO_PROJECTION_NAME[raw];
+  const key = comparableName(raw);
+  if (!key) return undefined;
+  // 2. Try exact match in PROJECTION_LGAS
+  const exact = PROJECTION_LGAS.find(n => comparableName(n) === key);
   if (exact) return exact;
-  // 3. Try starts-with match
-  const starts = PROJECTION_LGAS.find(n => n.toLowerCase().startsWith(key) || key.startsWith(n.toLowerCase()));
+  // 3. Try starts-with match ("mid western" for "Mid-Western Regional")
+  const starts = PROJECTION_LGAS.find(n => comparableName(n).startsWith(key) || key.startsWith(comparableName(n)));
   if (starts) return starts;
   return undefined;
 }
