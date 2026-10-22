@@ -72,10 +72,20 @@ export function describeMapScore(entry: MapScore | undefined): string {
 /** An SA2 with fewer than 100 residents, which is not ranked. */
 export const LOW_POPULATION_REASON = 'Low population';
 
-/** What the SA2 map's shading is; shown with its legend. */
+/**
+ * What the SA2 map's shading is, shown with its legend: the rank (need percentile) among NSW SA2s, while the tooltip
+ * and the table give the score's band (P2-R20).
+ */
 export const SA2_MAP_NOTE =
-  "Shading shows each SA2's need percentile among NSW SA2s on its overall SA2 need score, which covers the transport "
-  + 'and socio-economic domains only (there are no growth indicators for SA2s); darker means more need.';
+  'Shading shows where each SA2 ranks among NSW SA2s (its need percentile) on its overall SA2 need score, which covers '
+  + 'the transport and socio-economic domains only (there are no growth indicators for SA2s); darker means more need. '
+  + 'The tooltip and the SA2 table show the score and its band.';
+
+/**
+ * The SA2 map's legend, one label per step of the need scale (P2-R20): the shading is the percentile among NSW SA2s, so
+ * the steps are percentile bands, not the score steps of the LGA map.
+ */
+export const SA2_PERCENTILE_BANDS = ['Lowest 20% of NSW SA2s', '20–40%', '40–60%', '60–80%', 'Highest 20%'];
 
 export interface Sa2MapEntry {
   code: string;

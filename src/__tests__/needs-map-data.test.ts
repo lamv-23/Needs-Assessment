@@ -4,9 +4,10 @@ import { runAssessment } from '@/lib/needs/assess';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  NO_COMPARISON_REASON, NO_DATA_REASON, OUTSIDE_GSYD_REASON, SA2_MAP_NOTE, SMALL_GROUP_REASON, describeMapScore, mapScores,
-  mapUniverseNote, sa2MapEntries,
+  NO_COMPARISON_REASON, NO_DATA_REASON, OUTSIDE_GSYD_REASON, SA2_MAP_NOTE, SA2_PERCENTILE_BANDS, SMALL_GROUP_REASON,
+  describeMapScore, mapScores, mapUniverseNote, sa2MapEntries,
 } from '@/lib/needs/map-data';
+import { NEED_SCALE } from '@/lib/needs/colors';
 import { rankSa2s } from '@/lib/needs/sa2';
 import { assessRecord, bandFor, universeRecords } from '@/lib/needs/scoring';
 import type { NeedsAssessment, NeedsMode, Sa2NeedsFile, Universe } from '@/lib/needs/types';
@@ -215,9 +216,15 @@ describe('sa2MapEntries', () => {
     expect(entry.lines).toEqual(['Prospect Reservoir', 'Low population (12 residents): not ranked', 'Residents in Blacktown (100%)']);
   });
 
-  test('the shading note says what it ranks and that SA2s have no growth domain', () => {
-    expect(SA2_MAP_NOTE).toContain('percentile among NSW SA2s');
+  test('the shading note says it is the rank among NSW SA2s, and that the tooltip and table show the score band', () => {
+    expect(SA2_MAP_NOTE).toContain('where each SA2 ranks among NSW SA2s');
     expect(SA2_MAP_NOTE).toContain('no growth indicators');
+    expect(SA2_MAP_NOTE).toContain('The tooltip and the SA2 table show the score and its band.');
+  });
+
+  test('P2-R20: the SA2 legend names percentile bands, one per step of the need scale', () => {
+    expect(SA2_PERCENTILE_BANDS).toEqual(['Lowest 20% of NSW SA2s', '20–40%', '40–60%', '60–80%', 'Highest 20%']);
+    expect(SA2_PERCENTILE_BANDS).toHaveLength(NEED_SCALE.length);
   });
 
   test('on real data: Lord Howe Island and the non-spatial SA2s are in no drill-down, even with every LGA selected', () => {

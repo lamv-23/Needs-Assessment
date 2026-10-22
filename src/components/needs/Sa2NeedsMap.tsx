@@ -3,9 +3,11 @@
 import { useMemo } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import ChoroplethMapDirect from '@/components/maps/ChoroplethMapDirect';
-import { escapeHtml, NEED_STEPS, NeedMapLegend, NSW_CENTRE, NSW_ZOOM, SELECTED_OUTLINE } from '@/components/needs/mapParts';
-import { NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
-import { LOW_POPULATION_REASON, SA2_MAP_NOTE, sa2MapEntries, type Sa2MapEntry } from '@/lib/needs/map-data';
+import { escapeHtml, NeedMapLegend, NSW_CENTRE, NSW_ZOOM, SELECTED_OUTLINE } from '@/components/needs/mapParts';
+import { NEED_SCALE, NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
+import {
+  LOW_POPULATION_REASON, SA2_MAP_NOTE, SA2_PERCENTILE_BANDS, sa2MapEntries, type Sa2MapEntry,
+} from '@/lib/needs/map-data';
 import { SA2_LOW_POPULATION } from '@/lib/needs/sa2';
 import type { Sa2NeedsFile } from '@/lib/needs/types';
 
@@ -14,8 +16,9 @@ const LOW_POPULATION_COLOR = '#9ca3af';
 /** The `need` value that marks a low-population SA2, which has no percentile (percentiles run 0-100). */
 const LOW_POPULATION_VALUE = -1;
 const MAP_HEIGHT = 460;
+// The shading is the percentile among NSW SA2s, so the legend names percentile bands (P2-R20)
 const LEGEND_STEPS = [
-  ...NEED_STEPS,
+  ...NEED_SCALE.map((fill, i) => ({ fill, label: SA2_PERCENTILE_BANDS[i] })),
   { fill: LOW_POPULATION_COLOR, label: `${LOW_POPULATION_REASON} (under ${SA2_LOW_POPULATION} residents)` },
   { fill: NO_DATA_COLOR, label: 'No data' },
 ];
