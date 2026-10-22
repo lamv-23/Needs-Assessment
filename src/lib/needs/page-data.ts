@@ -1,4 +1,5 @@
-import { displayScore, formatValue } from './format';
+import { markedValue, notRankedText, partialBenchmarkNotes, partialBenchmarks, type ValueColumn } from './coverage';
+import { displayScore } from './format';
 import { INDICATOR_BY_ID, INDICATORS, SOURCES } from './indicators';
 import { mismatchChartData } from './insight-chart-data';
 import { WFH_CAVEAT_CITATION } from './insights';
@@ -84,14 +85,16 @@ export function stripIndicatorIds(areas: Pick<AreaAssessment, 'indicators'>[], c
 }
 
 /**
- * One table cell: "83.8% (p91)", "≈ 70.0% (p60)" for a population-weighted value, "No data" when missing.
- * The percentile is floored like every shown score, so a shown p80 always means a key need. Benchmarks
- * pass `withPercentile` false: they are not ranked in the table.
+ * One table cell: "83.8% (p91)", "≈ 70.0% (p60)" for a population-weighted value, "No data" when missing, and
+ * "12.3% (not ranked, n = 2)" for a value with fewer than 5 LGAs with data in its comparison group (R58). The
+ * percentile is floored like every shown score, so a shown p80 always means a key need. Benchmark columns are not
+ * ranked in the table: they show the value, marked "*" when it is made from only some of the benchmark's LGAs (R58).
  */
-export function indicatorCellText(def: IndicatorDef, score: IndicatorScore | undefined, withPercentile: boolean): string {
-  if (!score || score.value === null) return formatValue(def, null);
-  const value = `${score.approximate ? '≈ ' : ''}${formatValue(def, score.value)}`;
-  return withPercentile && score.percentile !== null ? `${value} (p${displayScore(score.percentile)})` : value;
+export function indicatorCellText(def: IndicatorDef, score: IndicatorScore | undefined, column: ValueColumn): string {
+  const value = markedValue(def, score, column);
+  if (column === 'benchmark' || !score || score.value === null) return value;
+  if (score.unranked && score.ranked !== null) return `${value} ${notRankedText(score.ranked)}`;
+  return score.percentile !== null ? `${value} (p${displayScore(score.percentile)})` : value;
 }
 
 export interface IndicatorTableRow {
@@ -108,6 +111,8 @@ export interface IndicatorTableData {
   /** The selected areas, then Greater Sydney, then NSW. */
   columns: string[];
   rows: IndicatorTableRow[];
+  /** Under the table: what each "*" benchmark value is made from (R58); empty when none is marked. */
+  notes: string[];
 }
 
 /** Every indicator against the selected areas (value and percentile), Greater Sydney and NSW (value only). */
@@ -121,9 +126,12 @@ export function indicatorTable(assessment: NeedsAssessment): IndicatorTableData 
       id: def.id,
       domain: def.domain,
       label: def.scored ? def.label : `${def.label} (context)`,
-      cells: scoresByColumn.map((scores, i) => indicatorCellText(def, scores.get(def.id), i < areas.length)),
+      cells: scoresByColumn.map((scores, i) => (
+        indicatorCellText(def, scores.get(def.id), i < areas.length ? 'area' : 'benchmark')
+      )),
       source: def.source.short,
     })),
+    notes: partialBenchmarkNotes(partialBenchmarks(assessment)),
   };
 }
 

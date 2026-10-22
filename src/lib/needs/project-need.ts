@@ -31,7 +31,13 @@ export const TYPICAL_PERCENTILE = 50;
 /** One row per axis: the axis label, the typical ring, and a need percentile (or null: no data) under each series key. */
 export interface RadarRow { axis: string; typical: 50; [series: string]: string | number | null }
 
-export interface RadarSeries { key: string; name: string; isBenchmark: boolean }
+export interface RadarSeries {
+  key: string;
+  name: string;
+  isBenchmark: boolean;
+  /** Axes where the series has a value but it is not ranked (fewer than 5 LGAs with data in its group, R58). */
+  notRanked: string[];
+}
 
 export interface RadarData {
   rows: RadarRow[];
@@ -53,7 +59,7 @@ const BENCHMARK_UNIVERSES: Universe[] = ['nsw', 'gsyd'];
  */
 export function radarData(a: NeedsAssessment): RadarData {
   const shown = a.areas.slice(0, MAX_RADAR_AREAS);
-  const drawn: Array<RadarSeries & { area: AreaAssessment }> = [
+  const drawn: Array<Omit<RadarSeries, 'notRanked'> & { area: AreaAssessment }> = [
     ...shown.map((area, i) => ({ key: `a${i}`, name: area.name, isBenchmark: false, area })),
     ...(BENCHMARK_UNIVERSES.includes(a.universe)
       ? [{ key: GSYD_KEY, name: a.benchmarks.gsyd.name, isBenchmark: true, area: a.benchmarks.gsyd }]
@@ -64,17 +70,31 @@ export function radarData(a: NeedsAssessment): RadarData {
     for (const { key, area } of drawn) row[key] = area.indicators.find(s => s.id === id)?.percentile ?? null;
     return row;
   });
+  const notRankedOf = (area: AreaAssessment) => RADAR_AXES
+    .filter(({ id }) => area.indicators.find(s => s.id === id)?.unranked)
+    .map(({ label }) => label);
   return {
     rows,
-    series: drawn.map(({ key, name, isBenchmark }) => ({ key, name, isBenchmark })),
+    series: drawn.map(({ key, name, isBenchmark, area }) => ({ key, name, isBenchmark, notRanked: notRankedOf(area) })),
     hiddenAreas: a.areas.length - shown.length,
   };
 }
 
-/** The axes each drawn series has no percentile for, for the note under the chart; series without a gap are left out. */
-export function radarGaps({ rows, series }: Pick<RadarData, 'rows' | 'series'>): Array<{ name: string; axes: string[] }> {
+/**
+ * The axes each drawn series has a gap on, for the notes under the chart: those with no data, or (`not_ranked`) those
+ * with a value that is not ranked (R58). Series without such a gap are left out.
+ */
+export function radarGaps(
+  { rows, series }: Pick<RadarData, 'rows' | 'series'>,
+  kind: 'no_data' | 'not_ranked' = 'no_data',
+): Array<{ name: string; axes: string[] }> {
   return series
-    .map(s => ({ name: s.name, axes: rows.filter(row => row[s.key] === null).map(row => row.axis) }))
+    .map(s => ({
+      name: s.name,
+      axes: rows
+        .filter(row => row[s.key] === null && s.notRanked.includes(row.axis) === (kind === 'not_ranked'))
+        .map(row => row.axis),
+    }))
     .filter(gap => gap.axes.length > 0);
 }
 

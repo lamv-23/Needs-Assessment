@@ -1,3 +1,4 @@
+import { markedValue, partialBenchmarkNotes, partialBenchmarks } from './coverage';
 import { INDICATOR_BY_ID, DOMAIN_LABELS, NEED_DOMAINS } from './indicators';
 import { formatValue } from './format';
 import { AREA_PALETTE_SIZE, areaColor, BENCHMARK_COLOR, DOMAIN_COLORS, labelledIds } from './colors';
@@ -236,6 +237,7 @@ export interface StripPoint {
   level: number | null;
 }
 
+/** A benchmark line; `text` is marked "*" when the value is made from only some of the benchmark's LGAs (R58). */
 export interface StripReference { key: 'gsyd' | 'nsw'; name: string; x: number; text: string }
 
 /** Longest name drawn on the strip plot, in characters; longer names end with an ellipsis. */
@@ -252,7 +254,8 @@ function valueText(def: IndicatorDef, value: number | null, approximate: boolean
 
 /**
  * One indicator across NSW: every other LGA as a grey dot, each selected area coloured, the
- * Greater Sydney and NSW values as reference lines. `reversed` flips the axis for indicators where a
+ * Greater Sydney and NSW values as reference lines (marked "*", with a note, when made from only some of their
+ * LGAs). `reversed` flips the axis for indicators where a
  * lower value means more need, so more need is always to the right. Selected areas without a value
  * are listed in `noData`, not plotted. The first few selected areas are named, each on a level where
  * it does not overprint another name for a plot `plotWidthPx` wide; one that fits nowhere is unnamed.
@@ -290,7 +293,7 @@ export function stripData(assessment: NeedsAssessment, indicatorId: IndicatorId,
     const benchmark = assessment.benchmarks[key];
     const score = scoreOf(benchmark);
     if (!score || score.value === null) return [];
-    return [{ key, name: benchmark.name, x: score.value, text: valueText(def, score.value, score.approximate) }];
+    return [{ key, name: benchmark.name, x: score.value, text: markedValue(def, score, 'benchmark') }];
   });
 
   const reversed = def.direction === 'lower';
@@ -322,5 +325,7 @@ export function stripData(assessment: NeedsAssessment, indicatorId: IndicatorId,
     axis,
     noData,
     unnamedCount: selected.filter(p => p.level === null).length,
+    /** Under the plot: what a "*" benchmark line is made from (R58). */
+    notes: partialBenchmarkNotes(partialBenchmarks(assessment, [indicatorId])),
   };
 }

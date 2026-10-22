@@ -75,16 +75,21 @@ export type NeedBand = 'Very high' | 'High' | 'Moderate' | 'Lower';
 export interface IndicatorScore {
   id: IndicatorId;
   value: number | null;
-  /** Need percentile 0-100 (100 = most need), unrounded; null when there is no value to rank. */
+  /** Need percentile 0-100 (100 = most need), unrounded; null when there is no value, or it is `unranked`. */
   percentile: number | null;
   /**
    * Place in need order among the universe LGAs with a value: 1 + the number with more need, so ties share the better
    * rank. An area that is not one of those LGAs (a combined area, a benchmark) takes the place it would have among
-   * them. Null when there is no value to rank.
+   * them. Null when there is no value, or it is `unranked`.
    */
   rank: number | null;
   /** The universe LGAs with a value, which `rank` is out of; null when the area itself has no value. */
   ranked: number | null;
+  /**
+   * The area has a value, but fewer than 5 universe LGAs do (`SMALL_GROUP_SIZE`), so it is not ranked (R58): no
+   * percentile or rank, and it counts towards no domain or overall score and is never a key need.
+   */
+  unranked: boolean;
   /** Scored indicator with a need percentile of 80 or more. */
   keyNeed: boolean;
   /** Combined selection: population-weighted mean of a non-additive indicator. */
@@ -97,7 +102,7 @@ export interface DomainScore {
   domain: NeedDomain;
   score: number | null;
   band: NeedBand | null;
-  /** Scored indicators with a value / scored indicators in the domain. */
+  /** Scored indicators with a ranked value (a percentile) / scored indicators in the domain. */
   available: number;
   total: number;
 }
@@ -130,6 +135,8 @@ export type AggregatedRecord = AssessableRecord & {
   approximate: IndicatorId[];
   /** Indicators where some, but not all, members have no value. */
   partial: IndicatorId[];
+  /** The members each indicator's value is made from (those with a value, and for a ratio both its parts). */
+  withData: Record<IndicatorId, number>;
 };
 
 /** A cited finding about one assessed area, ranked by severity for the key findings. */

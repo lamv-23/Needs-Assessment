@@ -9,6 +9,7 @@ import { CHART_TICK_STYLE, CHART_TOOLTIP_STYLE } from '@/lib/utils';
 import type { NeedsAssessment } from '@/lib/needs/types';
 
 const TICK_STYLE = { ...CHART_TICK_STYLE, fontSize: 12 };
+const NO_SCORE = 'No score';
 const LEGEND_STYLE = { fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, paddingTop: 10 };
 
 /** Area names on the axis of the by-area layout: wrapped to two lines, Greater Sydney in bold. */
@@ -26,7 +27,10 @@ interface LabelProps {
   x?: number; y?: number; width?: number; height?: number; value?: number | string | null; fontSize?: number;
 }
 
-/** Score at the end of a bar, floored like every shown score; "No data" when the domain has no score. */
+/**
+ * Score at the end of a bar, floored like every shown score; "No score" when the domain has none (too few of its
+ * indicators have a value, or are ranked: R58).
+ */
 function ScoreLabel({ x = 0, y = 0, width = 0, height = 0, value, fontSize = 11 }: LabelProps) {
   const missing = typeof value !== 'number';
   return (
@@ -38,7 +42,7 @@ function ScoreLabel({ x = 0, y = 0, width = 0, height = 0, value, fontSize = 11 
       fill={missing ? '#6b7280' : '#111827'}
       fontStyle={missing ? 'italic' : 'normal'}
     >
-      {missing ? 'No data' : displayScore(value)}
+      {missing ? NO_SCORE : displayScore(value)}
     </text>
   );
 }
@@ -110,7 +114,7 @@ export default function DomainScoreChart({ assessment }: { assessment: NeedsAsse
         <Tooltip
           contentStyle={CHART_TOOLTIP_STYLE}
           cursor={{ fill: '#f1f5f9' }}
-          formatter={(value, name) => [typeof value === 'number' ? `${displayScore(value)} / 100` : 'No data', name]}
+          formatter={(value, name) => [typeof value === 'number' ? `${displayScore(value)} / 100` : NO_SCORE, name]}
         />
         <Legend verticalAlign="bottom" wrapperStyle={LEGEND_STYLE} />
         {series.map(s => (

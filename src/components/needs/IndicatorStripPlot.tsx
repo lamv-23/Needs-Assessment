@@ -108,7 +108,7 @@ export default function IndicatorStripPlot({ assessment, indicatorId }: { assess
   // Names are fitted to the plot's measured width, so they re-fit when the chart is resized.
   const [width, setWidth] = useState(DEFAULT_STRIP_PLOT_PX + MARGIN.left + MARGIN.right);
   if (assessment.areas.length === 0) return null;
-  const { def, reversed, others, selected, references, axis, noData, unnamedCount } = stripData(
+  const { def, reversed, others, selected, references, axis, noData, unnamedCount, notes } = stripData(
     assessment, indicatorId, Math.max(width - MARGIN.left - MARGIN.right, 100),
   );
 
@@ -167,6 +167,7 @@ export default function IndicatorStripPlot({ assessment, indicatorId }: { assess
           <p>{unnamedCount} selected {unnamedCount === 1 ? 'area is' : 'areas are'} shown without a name; hover over a dot to see it.</p>
         )}
         {noData.length > 0 && <p>No data for this indicator: {noData.join(', ')}.</p>}
+        {notes.map(note => <p key={note}>{note}</p>)}
       </div>
     </div>
   );

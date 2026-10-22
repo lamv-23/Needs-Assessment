@@ -11,7 +11,8 @@ const BENCHMARK_COLUMNS = 2;
 /**
  * Every indicator against the selected areas ("value (pNN)": the need percentile in their comparison
  * group), Greater Sydney and NSW (value only), grouped by domain, with each indicator's source.
- * `comparison` names the comparison group(s) the percentiles are ranked in.
+ * `comparison` names the comparison group(s) the percentiles are ranked in. The table's notes say what each "*"
+ * benchmark value is made from.
  */
 export default function IndicatorTable({ table, comparison }: { table: IndicatorTableData; comparison: string }) {
   const { columns, rows } = table;
@@ -69,7 +70,10 @@ export default function IndicatorTable({ table, comparison }: { table: Indicator
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-gray-600">{indicatorTableNote(comparison)}</p>
+      <div className="mt-3 space-y-1 text-xs text-gray-600">
+        <p>{indicatorTableNote(comparison)}</p>
+        {table.notes.map(note => <p key={note}>{note}</p>)}
+      </div>
     </div>
   );
 }

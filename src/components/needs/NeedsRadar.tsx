@@ -49,6 +49,7 @@ export default function NeedsRadar({ assessment }: { assessment: NeedsAssessment
   if (assessment.areas.length === 0) return null;
   const { rows, series, hiddenAreas } = data;
   const gaps = radarGaps(data);
+  const notRanked = radarGaps(data, 'not_ranked');
   const ring = typicalLabel(assessment);
   const areas = series.filter(s => !s.isBenchmark);
   const benchmark = series.find(s => s.isBenchmark);
@@ -61,7 +62,12 @@ export default function NeedsRadar({ assessment }: { assessment: NeedsAssessment
           <PolarAngleAxis dataKey="axis" tickSize={24} tick={<AxisTick />} />
           <Tooltip
             contentStyle={CHART_TOOLTIP_STYLE}
-            formatter={(value, name) => [typeof value === 'number' ? `${displayScore(value)} / 100` : 'No data', name]}
+            formatter={(value, name, item) => {
+              if (typeof value === 'number') return [`${displayScore(value)} / 100`, name];
+              const axis = (item?.payload as { axis?: string } | undefined)?.axis ?? '';
+              const notRankedHere = series.some(s => s.name === name && s.notRanked.includes(axis));
+              return [notRankedHere ? 'Not ranked' : 'No data', name];
+            }}
           />
           <Radar
             name={ring}
@@ -124,6 +130,12 @@ export default function NeedsRadar({ assessment }: { assessment: NeedsAssessment
         {gaps.length > 0 && (
           <p>
             No data, so left as gaps in the outline: {andList(gaps.map(g => `${g.name} (${g.axes.join(', ')})`))}.
+          </p>
+        )}
+        {notRanked.length > 0 && (
+          <p>
+            Not ranked, because fewer than 5 LGAs in the comparison group have data, so left as gaps in the
+            outline: {andList(notRanked.map(g => `${g.name} (${g.axes.join(', ')})`))}.
           </p>
         )}
       </ChartNotes>

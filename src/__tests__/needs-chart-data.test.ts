@@ -302,6 +302,20 @@ describe('stripData', () => {
     expect(stripData(a, 'zero_car_households').references[0].text).not.toMatch(/≈/);
   });
 
+  test('a benchmark line from only some of its LGAs is marked *, with the note under the plot (R58)', () => {
+    const a = runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds: ['lga_camden'], mode: 'separate', universe: 'nsw' });
+    const jobs = stripData(a, 'job_growth_2041');
+    expect(jobs.references.map(r => r.text.endsWith('*'))).toEqual([false, true]);
+    expect(jobs.notes).toEqual(['* Based on the 43 of 128 LGAs with data.']);
+    const commute = stripData(a, 'commute_distance_km');
+    expect(commute.references.every(r => r.text.endsWith('*'))).toBe(true);
+    expect(commute.notes).toEqual([
+      '* Average commuting distance, Greater Sydney: based on the 33 of 34 LGAs with data.',
+      '* Average commuting distance, NSW: based on the 127 of 128 LGAs with data.',
+    ]);
+    expect(stripData(a, 'car_dependency').notes).toEqual([]);
+  });
+
   test('combined mode plots the one combined area, with its approximate value marked', () => {
     const s = stripData(assess(['lga_blacktown', 'lga_sydney'], 'combined'), 'car_dependency');
     expect(s.selected).toHaveLength(1);

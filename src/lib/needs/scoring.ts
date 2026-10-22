@@ -93,7 +93,8 @@ const mean = (xs: number[]): number => xs.reduce((sum, x) => sum + x, 0) / xs.le
 /**
  * Scores `target` against `peers` (the records of the chosen universe, which may or may not include
  * the target itself). Equal weights throughout: every scored indicator within a domain, and every
- * domain within the overall score. Context (unscored) indicators get a percentile only.
+ * domain within the overall score. Context (unscored) indicators get a percentile only. An indicator with fewer than
+ * 5 values in the universe is not ranked (R58), so it has no percentile and counts towards no score.
  */
 export function assessRecord(
   target: AssessableRecord,
@@ -106,7 +107,9 @@ export function assessRecord(
     const distribution = peers
       .map(p => p.values[def.id]?.value ?? null)
       .filter((v): v is number => v !== null);
-    const ranks = value !== null && distribution.length > 0;
+    // R58: with fewer than 5 values in the universe a percentile is a handful of points, so the value is not ranked
+    const unranked = value !== null && distribution.length < SMALL_GROUP_SIZE;
+    const ranks = value !== null && !unranked;
     const percentile = ranks ? needPercentile(value, distribution, def.direction) : null;
     return {
       id: def.id,
@@ -114,6 +117,7 @@ export function assessRecord(
       percentile,
       rank: ranks ? needRank(value, distribution, def.direction) : null,
       ranked: value !== null ? distribution.length : null,
+      unranked,
       keyNeed: def.scored && percentile !== null && percentile >= KEY_NEED_PERCENTILE,
       approximate: flags.approximate?.includes(def.id) ?? false,
       partial: flags.partial?.includes(def.id) ?? false,

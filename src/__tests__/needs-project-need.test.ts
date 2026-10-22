@@ -190,6 +190,13 @@ describe('radarGaps', () => {
   test('is empty when nothing is missing', () => {
     expect(radarGaps(radarData(assess(['lga_blacktown'])))).toEqual([]);
   });
+
+  test('a value that is not ranked (fewer than 5 LGAs with data, R58) is a gap of its own kind, not "no data"', () => {
+    const data = radarData(assess(['lga_central_coast'], 'separate', 'region'));
+    expect(data.rows.every(row => row.a0 === null)).toBe(true);
+    expect(radarGaps(data)).toEqual([]);
+    expect(radarGaps(data, 'not_ranked')).toEqual([{ name: 'Central Coast', axes: RADAR_AXES.map(axis => axis.label) }]);
+  });
 });
 
 describe('typicalLabel', () => {

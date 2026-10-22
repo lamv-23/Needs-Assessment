@@ -81,7 +81,7 @@ function aggregateSeries(members: LgaIndicatorRecord[]): InsightSeries {
  * - Weighted indicators are population-weighted means over the members that have a value, and are
  *   flagged `approximate`.
  * - A member with no value is skipped and the indicator is flagged `partial`; if every member lacks
- *   one, the value is null (never 0).
+ *   one, the value is null (never 0). `withData` counts the members each value is made from.
  * - Density is Σ population ÷ Σ area, with each member's area recovered as population ÷ density.
  * - The insight series are rolled up as described at `aggregateSeries`.
  *
@@ -95,6 +95,7 @@ export function aggregateRecords(members: LgaIndicatorRecord[], name: string, ar
   const values = {} as Record<IndicatorId, IndicatorValue>;
   const approximate: IndicatorId[] = [];
   const partial: IndicatorId[] = [];
+  const withData = {} as Record<IndicatorId, number>;
 
   for (const def of INDICATORS) {
     let value: IndicatorValue = { value: null };
@@ -132,6 +133,7 @@ export function aggregateRecords(members: LgaIndicatorRecord[], name: string, ar
     }
 
     values[def.id] = value;
+    withData[def.id] = contributing;
     if (contributing > 0 && contributing < members.length) partial.push(def.id);
   }
 
@@ -147,5 +149,6 @@ export function aggregateRecords(members: LgaIndicatorRecord[], name: string, ar
     memberIds: members.map(m => m.areaId),
     approximate,
     partial,
+    withData,
   };
 }

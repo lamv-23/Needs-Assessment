@@ -59,16 +59,16 @@ describe('assessRecord', () => {
     const target = makeRecord('lga_target', { car_dependency: null });
     const a = assessRecord(target, 'nsw', rampPeers(5));
     expect(byId(a, 'car_dependency')).toEqual({
-      id: 'car_dependency', value: null, percentile: null, rank: null, ranked: null, keyNeed: false,
+      id: 'car_dependency', value: null, percentile: null, rank: null, ranked: null, unranked: false, keyNeed: false,
       approximate: false, partial: false,
     });
   });
 
   test('one score per indicator, in registry order, with unrounded percentiles', () => {
-    const a = assessRecord(makeRecord('lga_target', { car_dependency: 0.5 }), 'nsw', rampPeers(3));
+    const a = assessRecord(makeRecord('lga_target', { car_dependency: 0.5 }), 'nsw', rampPeers(6));
     expect(a.indicators.map(i => i.id)).toEqual(INDICATORS.map(d => d.id));
     expect(byId(a, 'car_dependency').value).toBe(0.5);
-    expect(byId(a, 'car_dependency').percentile).toBeCloseTo(100 / 3, 10); // 1 of 3 below, not 33
+    expect(byId(a, 'car_dependency').percentile).toBeCloseTo(100 / 6, 10); // 1 of 6 below, not 17
   });
 
   test('direction lower: a low SEIFA score means high need', () => {
@@ -80,21 +80,21 @@ describe('assessRecord', () => {
 
   test('the distribution is the peers non-null values only', () => {
     const peers = [
-      makeRecord('p0', { car_dependency: 10 }),
-      makeRecord('p1', { car_dependency: 20 }),
-      makeRecord('p2', { car_dependency: null }),
-      makeRecord('p3', { car_dependency: null }),
+      ...[10, 20, 30, 40].map((v, i) => makeRecord(`p${i}`, { car_dependency: v })),
+      makeRecord('p4', { car_dependency: null }),
+      makeRecord('p5', { car_dependency: null }),
     ];
-    const a = assessRecord(makeRecord('lga_target', { car_dependency: 15 }), 'nsw', peers);
-    expect(byId(a, 'car_dependency').percentile).toBe(50); // 1 of 2 values below, not 1 of 4
+    const a = assessRecord(makeRecord('lga_target', { car_dependency: 25 }), 'nsw', [...peers, makeRecord('p6', { car_dependency: 50 })]);
+    expect(byId(a, 'car_dependency').percentile).toBe(40); // 2 of 5 values below, not 2 of 7
+    expect(byId(a, 'car_dependency').ranked).toBe(5);
   });
 
-  test('no peer values → null percentile even when the target has a value', () => {
+  test('no peer values → not ranked, even when the target has a value', () => {
     const peers = [makeRecord('p0', {}), makeRecord('p1', {})];
     const a = assessRecord(makeRecord('lga_target', { car_dependency: 15 }), 'nsw', peers);
-    expect(byId(a, 'car_dependency').value).toBe(15);
-    expect(byId(a, 'car_dependency').percentile).toBeNull();
-    expect(byId(a, 'car_dependency').keyNeed).toBe(false);
+    expect(byId(a, 'car_dependency')).toMatchObject({
+      value: 15, percentile: null, rank: null, ranked: 0, unranked: true, keyNeed: false,
+    });
   });
 
   test('keyNeed when percentile >= 80', () => {
@@ -248,6 +248,73 @@ describe('rank and ranked (R57)', () => {
 
   test('no value: no rank', () => {
     expect(rankOf(makeRecord('lga_target', { car_dependency: null }), eight())).toEqual([null, null]);
+  });
+});
+
+describe('per-indicator small group (R58)', () => {
+  /** `withJobs` LGAs with job growth 1..n; every LGA has population growth and approvals 1..10. */
+  const peers = (withJobs: number) => Array.from({ length: 10 }, (_, i) => makeRecord(`lga_${i}`, {
+    pop_growth_2041: i + 1, approvals_per_1000: i + 1, job_growth_2041: i < withJobs ? i + 1 : null,
+  }));
+  const target = makeRecord('lga_target', { pop_growth_2041: 10, approvals_per_1000: 10, job_growth_2041: 99 });
+
+  test('fewer than 5 LGAs with a value: no percentile or rank, not a key need, and the count kept', () => {
+    const a = assessRecord(target, 'region', peers(4));
+    expect(byId(a, 'job_growth_2041')).toMatchObject({
+      value: 99, percentile: null, rank: null, ranked: 4, unranked: true, keyNeed: false,
+    });
+    expect(byId(a, 'pop_growth_2041')).toMatchObject({ unranked: false, ranked: 10, rank: 1 });
+  });
+
+  test('5 LGAs with a value are ranked', () => {
+    const a = assessRecord(target, 'region', peers(5));
+    expect(byId(a, 'job_growth_2041')).toMatchObject({ percentile: 100, rank: 1, ranked: 5, unranked: false, keyNeed: true });
+  });
+
+  test('an unranked indicator counts towards no domain or overall score', () => {
+    const growth = domainOf(assessRecord(target, 'region', peers(4)), 'growth');
+    expect(growth.available).toBe(2);
+    expect(growth.score).toBeCloseTo((95 + 95) / 2, 10);
+  });
+
+  test('a value with no peer values is not ranked either', () => {
+    const lone = assessRecord(target, 'region', peers(0));
+    expect(byId(lone, 'job_growth_2041')).toMatchObject({ ranked: 0, unranked: true, percentile: null });
+  });
+
+  test('no value is not "unranked": it is missing', () => {
+    const a = assessRecord(makeRecord('lga_target', {}), 'region', peers(4));
+    expect(byId(a, 'job_growth_2041')).toMatchObject({ value: null, ranked: null, unranked: false });
+  });
+
+  describe('on real data', () => {
+    const records = NEEDS_SNAPSHOT.records;
+    const assessIn = (areaId: string, universe: 'nsw' | 'region') => {
+      const record = records.find(r => r.areaId === areaId)!;
+      return assessRecord(record, universe, universeRecords(records, universe, record));
+    };
+
+    test('job growth in the Hunter region: 2 LGAs with data, so Newcastle is not ranked on it', () => {
+      const newcastle = assessIn('lga_newcastle', 'region');
+      expect(byId(newcastle, 'job_growth_2041')).toMatchObject({ ranked: 2, unranked: true, percentile: null });
+      const growth = domainOf(newcastle, 'growth');
+      expect(growth.available).toBe(2);
+      const ranked = ['pop_growth_2041', 'approvals_per_1000'].map(id => byId(newcastle, id as IndicatorId).percentile!);
+      expect(growth.score).toBeCloseTo((ranked[0] + ranked[1]) / 2, 10);
+    });
+
+    test('job growth against NSW: ranked among the 43 LGAs with data', () => {
+      const camden = assessIn('lga_camden', 'nsw');
+      expect(camden.universeSize).toBe(128);
+      expect(byId(camden, 'job_growth_2041')).toMatchObject({ ranked: 43, unranked: false });
+    });
+
+    test('the Central Coast region (one LGA) ranks nothing, so it has no overall score', () => {
+      const cc = assessIn('lga_central_coast', 'region');
+      expect(cc.indicators.filter(s => s.value !== null).every(s => s.unranked && s.percentile === null)).toBe(true);
+      expect(cc.domains.every(d => d.score === null)).toBe(true);
+      expect(cc.overall).toBeNull();
+    });
   });
 });
 

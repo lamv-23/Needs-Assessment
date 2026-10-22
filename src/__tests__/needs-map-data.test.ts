@@ -2,7 +2,7 @@ import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  NO_COMPARISON_REASON, NO_DATA_REASON, OUTSIDE_GSYD_REASON, describeMapScore, mapScores, mapUniverseNote,
+  NO_COMPARISON_REASON, NO_DATA_REASON, OUTSIDE_GSYD_REASON, SMALL_GROUP_REASON, describeMapScore, mapScores, mapUniverseNote,
 } from '@/lib/needs/map-data';
 import { assessRecord, bandFor, universeRecords } from '@/lib/needs/scoring';
 import type { NeedsAssessment, NeedsMode, Universe } from '@/lib/needs/types';
@@ -101,7 +101,7 @@ describe('mapScores', () => {
     expect(mapScores(assess('gsyd')).get('lga_central_coast')!.score).not.toBeNull();
   });
 
-  test('a group of 2-4 keeps its scores and carries the group size so the tooltip can warn', () => {
+  test('a group of 2-4 ranks nothing (R58), so it has no score and says why', () => {
     // three LGAs moved into a region of their own
     const ids = ['lga_blacktown', 'lga_penrith', 'lga_sydney'];
     const base = assess('region');
@@ -109,9 +109,9 @@ describe('mapScores', () => {
     const scores = mapScores(small);
     for (const id of ids) {
       const r = small.records.find(x => x.areaId === id)!;
-      const expected = assessRecord(r, 'region', universeRecords(small.records, 'region', r));
+      expect(assessRecord(r, 'region', universeRecords(small.records, 'region', r)).overall).toBeNull();
       expect(scores.get(id)).toEqual({
-        score: expected.overall, band: expected.band, noScoreReason: null, universeSize: 3, smallGroup: true,
+        score: null, band: null, noScoreReason: SMALL_GROUP_REASON, universeSize: 3, smallGroup: true,
       });
     }
     // Illawarra-Shoalhaven has exactly 5 LGAs, which is not small
@@ -150,16 +150,9 @@ describe('describeMapScore', () => {
     expect(describeMapScore(undefined)).toBe('No data');
   });
 
-  test('a score from a group of 2-4 carries the size of the group and a caution', () => {
-    expect(describeMapScore({ universeSize: 3, smallGroup: true, score: 59.9, band: 'Moderate', noScoreReason: null }))
-      .toBe('Moderate need · score 59 / 100 (compared with only 3 LGAs — read with caution)');
-    expect(describeMapScore({ universeSize: 2, smallGroup: true, score: 71, band: 'High', noScoreReason: null }))
-      .toBe('High need · score 71 / 100 (compared with only 2 LGAs — read with caution)');
-  });
-
-  test('no caution for a group of 5 or more', () => {
-    expect(describeMapScore({ universeSize: 5, smallGroup: false, score: 71, band: 'High', noScoreReason: null }))
-      .toBe('High need · score 71 / 100');
+  test('a group of 2-4 is not scored (R58)', () => {
+    expect(describeMapScore({ universeSize: 3, smallGroup: true, score: null, band: null, noScoreReason: SMALL_GROUP_REASON }))
+      .toBe('Not scored: fewer than 5 LGAs in its group');
   });
 });
 
@@ -171,16 +164,14 @@ describe('mapUniverseNote', () => {
     expect(mapUniverseNote('peer')).toMatch(/own peer group/);
   });
 
-  test('region and peer views warn about small groups and say a group of one is not scored', () => {
+  test('region and peer views say a group of fewer than 5 is not scored (R58)', () => {
     for (const universe of ['region', 'peer'] as const) {
-      const note = mapUniverseNote(universe);
-      expect(note).toMatch(/groups of fewer than 5 should be read with caution/);
-      expect(note).toMatch(/a group of one is not scored/);
+      expect(mapUniverseNote(universe)).toMatch(/An LGA in a group of fewer than 5 LGAs is not scored\.$/);
     }
   });
 
-  test('NSW and Greater Sydney views carry no small-group warning', () => {
-    expect(mapUniverseNote('nsw')).not.toMatch(/caution/);
-    expect(mapUniverseNote('gsyd')).not.toMatch(/caution/);
+  test('NSW and Greater Sydney views carry no small-group note', () => {
+    expect(mapUniverseNote('nsw')).not.toMatch(/fewer than 5/);
+    expect(mapUniverseNote('gsyd')).not.toMatch(/fewer than 5/);
   });
 });

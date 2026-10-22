@@ -100,6 +100,41 @@ describe('keyNeedText: rank wording (R57)', () => {
   });
 });
 
+describe('keyNeedText: partial coverage (R58)', () => {
+  test('fewer LGAs with data than the group has: "the {n} {group} with data"', () => {
+    const job = (rank: number, ranked: number) => ({ id: 'job_growth_2041' as const, value: 68.4, rank, ranked });
+    expect(keyNeedText('Camden', job(4, 43), { universeLabel: 'NSW LGAs', universeSize: 128 }, null))
+      .toBe('On job growth 2021–41, Camden (68.4%) ranks in the highest-need 10% of the 43 NSW LGAs with data.');
+    expect(keyNeedText('X', job(3, 7), { universeLabel: 'LGAs in the Far West region', universeSize: 8 }, null))
+      .toBe('On job growth 2021–41, X (68.4%) ranks 3rd of the 7 LGAs in the Far West region with data.');
+  });
+
+  test('every LGA of the group with data: the plain group label', () => {
+    const car = { id: 'car_dependency' as const, value: 90, rank: 3, ranked: 8 };
+    expect(keyNeedText('X', car, { universeLabel: 'LGAs in the Far West region', universeSize: 8 }, null))
+      .toBe('On car dependency, X (90.0%) ranks 3rd of 8 LGAs in the Far West region.');
+  });
+});
+
+describe('key needs with partial coverage on real data (R58)', () => {
+  test('Camden\'s job growth ranks among the 43 NSW LGAs with data', () => {
+    const withJobs = NEEDS_SNAPSHOT.records.filter(r => r.values.job_growth_2041.value !== null);
+    const camden = snapshotRecord('lga_camden').values.job_growth_2041.value!;
+    const rank = 1 + withJobs.filter(r => r.values.job_growth_2041.value! > camden).length;
+    expect(withJobs).toHaveLength(43);
+    const [insight] = of(buildInsights(assess(['lga_camden'])), 'key_need').filter(i => i.id.endsWith(':job_growth_2041'));
+    expect(insight.text).toBe(
+      `On job growth 2021–41, Camden (68.4%) ranks in the highest-need ${Math.ceil((100 * rank) / 43)}% `
+      + 'of the 43 NSW LGAs with data, 37.5 pp above the Greater Sydney figure of 30.9%.',
+    );
+  });
+
+  test('an indicator not ranked in its group is never a key need', () => {
+    const insights = buildInsights(assess(['lga_newcastle', 'lga_coffs_harbour'], 'separate', 'region'));
+    expect(of(insights, 'key_need').filter(i => i.id.endsWith(':job_growth_2041'))).toEqual([]);
+  });
+});
+
 describe('key needs on real data (R57)', () => {
   const keyNeedTexts = (ids: string[], universe: Universe) => of(buildInsights(assess(ids, 'separate', universe)), 'key_need')
     .map(i => i.text);
@@ -257,6 +292,7 @@ describe('trends', () => {
       areaId: 's', metric: 'car_dependency',
       from: { label: '2011', value: 70 }, to: { label: '2021', value: 80 },
       change: 10, universeMedianChange: 5,                      // median of 10, 2, 4, 6
+      universeMeasured: 4,                                      // 'd' has no 2011 value (R58)
     });
   });
 
@@ -480,9 +516,11 @@ describe('buildInsights', () => {
     const [car] = trends(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records).filter(t => t.metric === 'car_dependency');
     const [insight] = of(buildInsights(a), 'trend').filter(i => i.id.endsWith(':car_dependency'));
     expect(car.universeMedianChange!).toBeGreaterThan(0.05);
+    // R58: 107 NSW LGAs have a 2011 value, so the median is "across the 107 NSW LGAs with data"
+    expect(car.universeMeasured).toBe(107);
     expect(insight.text).toBe(
       `Blacktown's car dependency changed from ${formatValue(CAR, car.from.value)} (2011) to ${formatValue(CAR, car.to.value)} (2021), `
-      + `compared with a median change of +${formatDiff(CAR, car.universeMedianChange!)} across NSW LGAs.`,
+      + `compared with a median change of +${formatDiff(CAR, car.universeMedianChange!)} across the 107 NSW LGAs with data.`,
     );
     expect(insight.citations).toContainEqual(WFH_CAVEAT_CITATION);
     expect(insight.citations).toContainEqual(CAR.source);

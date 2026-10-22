@@ -303,10 +303,10 @@ function indicatorBlocks(assessment: NeedsAssessment): Array<{ orientation: Figu
           : []),
         wordTable,
         ...(last
-          ? [new Paragraph({
-            spacing: { before: 120 },
-            children: [new TextRun({ text: indicatorTableNote(comparisonLabel(assessment.areas)), size: TABLE_SIZE })],
-          })]
+          ? [indicatorTableNote(comparisonLabel(assessment.areas)), ...table.notes].map((note, n) => new Paragraph({
+            spacing: { before: n === 0 ? 120 : 0 },
+            children: [new TextRun({ text: note, size: TABLE_SIZE })],
+          }))
           : []),
       ],
     };

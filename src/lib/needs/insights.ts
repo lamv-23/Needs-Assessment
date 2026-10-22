@@ -1,4 +1,5 @@
 import { aggregateRecords } from './aggregate';
+import { groupWithData } from './coverage';
 import { populationNearest } from './extract';
 import { formatDiff, formatSignedDiff, formatValue, inSentence, ordinal, possessive } from './format';
 import { INDICATOR_BY_ID, SOURCES } from './indicators';
@@ -45,6 +46,8 @@ export interface TrendResult {
   change: number;
   /** Median change across the universe LGAs measured over the same endpoints; null when none are. */
   universeMedianChange: number | null;
+  /** The universe LGAs measured over the same endpoints, which the median is over. */
+  universeMeasured: number;
 }
 
 export interface GrowthServiceResult {
@@ -300,6 +303,7 @@ function trendsWithSpread(record: SeriesRecord, universe: LgaIndicatorRecord[]):
       to: own.to,
       change: changeIn(own),
       universeMedianChange: changes.length > 0 ? quantile(changes, 0.5) : null,
+      universeMeasured: changes.length,
     };
     return [{ trend, iqr: changes.length > 0 ? quantile(changes, 0.75) - quantile(changes, 0.25) : null }];
   });
@@ -365,15 +369,16 @@ export interface RankedValue { id: IndicatorId; value: number; rank: number; ran
 /**
  * Where a value ranks (R57): "ranks 1st of 8 {universeLabel}" when fewer than 20 LGAs are ranked, otherwise
  * "ranks in the highest-need k% of {universeLabel}" with k = ceil(100 × rank ÷ ranked), the true share of the group
- * at or above it.
+ * at or above it. When only some of the group's LGAs have a value, the group is "the {ranked} {universeLabel} with
+ * data" (R58): "ranks 3rd of the 7 LGAs in the Far West region with data".
  */
 export function rankPhrase(
   { rank, ranked }: Pick<RankedValue, 'rank' | 'ranked'>,
-  { universeLabel }: Pick<AreaAssessment, 'universeLabel' | 'universeSize'>,
+  { universeLabel, universeSize }: Pick<AreaAssessment, 'universeLabel' | 'universeSize'>,
 ): string {
-  return ranked < ORDINAL_RANK_BELOW
-    ? `ranks ${ordinal(rank)} of ${ranked} ${universeLabel}`
-    : `ranks in the highest-need ${Math.ceil((100 * rank) / ranked)}% of ${universeLabel}`;
+  const group = groupWithData(universeLabel, ranked, universeSize);
+  if (ranked >= ORDINAL_RANK_BELOW) return `ranks in the highest-need ${Math.ceil((100 * rank) / ranked)}% of ${group}`;
+  return `ranks ${ordinal(rank)} of ${ranked < universeSize ? group : `${ranked} ${universeLabel}`}`;
 }
 
 /**
@@ -442,15 +447,17 @@ const POPULATION_CITATIONS = [SOURCES.erp, SOURCES.populationProjections];
 /**
  * "{Owner} {label} changed from {from} ({fromLabel}) to {to} ({toLabel}), {comparison}.", or, when the two values
  * show the same, "{Owner} {label} stayed at {to} between {fromLabel} and {toLabel}, {comparison}." (R47).
- * The comparison states the median change with its sign, or "no median change" when it shows as zero (R43).
+ * The comparison states the median change with its sign, or "no median change" when it shows as zero (R43), across
+ * the group, or "the {n} {group} with data" when only some of its LGAs are measured (R58).
  */
 function trendText(
   subject: Subject,
   trend: TrendResult,
   { label, def, period }: RateWording,
   median: number,
-  universeLabel: string,
+  group: Pick<AreaAssessment, 'universeLabel' | 'universeSize'>,
 ): string {
+  const universeLabel = groupWithData(group.universeLabel, trend.universeMeasured, group.universeSize);
   const signedMedian = formatSignedDiff(def, median);
   const comparison = signedMedian === null
     ? `compared with no median change across ${universeLabel}`
@@ -570,7 +577,7 @@ const INSIGHTS_BY_KIND: Record<Insight['kind'], (c: AreaContext) => Insight[]> =
       kind: 'trend',
       severity: iqr > 0 ? Math.min(1, distance / (2 * iqr)) : distance > 0 ? 1 : 0,
       text: wording
-        ? trendText(subject, trend, wording, median, area.universeLabel)
+        ? trendText(subject, trend, wording, median, area)
         // A population trend exists only when the record has an ERP year after 2021
         : populationTrendText(subject, trend, latestPopulation(record.series)!.year),
       citations: wording ? wording.citations : POPULATION_CITATIONS,

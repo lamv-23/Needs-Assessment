@@ -24,8 +24,8 @@ function makeArea(overrides: Partial<AreaAssessment> = {}, scores: Partial<Recor
     areaId: 'lga_blacktown', name: 'Blacktown', region: 'Greater Sydney', population: 396776,
     peerGroup: 'metro_outer', universe: 'nsw', universeLabel: 'NSW LGAs', universeSize: 128, smallGroup: false,
     indicators: INDICATORS.map(def => ({
-      id: def.id, value: null, percentile: null, rank: null, ranked: null, keyNeed: false, approximate: false, partial: false,
-      ...scores[def.id],
+      id: def.id, value: null, percentile: null, rank: null, ranked: null, unranked: false, keyNeed: false,
+      approximate: false, partial: false, ...scores[def.id],
     })),
     domains: NEED_DOMAINS.map(domain => ({ domain, score: null, band: null, available: 0, total: 0 })),
     overall: null, band: null,
@@ -47,9 +47,9 @@ function withDomain(area: AreaAssessment, domain: NeedDomain, score: number | nu
 function blacktown(): AreaAssessment {
   const area = makeArea({ overall: 72.4, band: 'High' });
   const listed: IndicatorScore[] = [
-    { id: 'car_dependency', value: 83.8, percentile: 92, rank: 10, ranked: 128, keyNeed: true, approximate: false, partial: false },
-    { id: 'zero_car_households', value: 8.2, percentile: 30, rank: 90, ranked: 128, keyNeed: false, approximate: false, partial: false },
-    { id: 'frequent_stop_share', value: null, percentile: null, rank: null, ranked: null, keyNeed: false, approximate: false, partial: false },
+    { id: 'car_dependency', value: 83.8, percentile: 92, rank: 10, ranked: 128, unranked: false, keyNeed: true, approximate: false, partial: false },
+    { id: 'zero_car_households', value: 8.2, percentile: 30, rank: 90, ranked: 128, unranked: false, keyNeed: false, approximate: false, partial: false },
+    { id: 'frequent_stop_share', value: null, percentile: null, rank: null, ranked: null, unranked: false, keyNeed: false, approximate: false, partial: false },
   ];
   return withDomain(withDomain({ ...area, indicators: listed }, 'transport', 64.1, 'High'), 'socio', 41.6, 'Moderate');
 }
@@ -195,6 +195,7 @@ describe('buildNarrative: summary', () => {
   test('a context indicator with a high percentile never appears as a key need', () => {
     const area = makeArea({ overall: 50, band: 'Moderate' }, {
       indigenous_share: { value: 30, percentile: 99, keyNeed: false },
+      unemployment_rate: { value: 5, percentile: 50 },
     });
     const sections = buildNarrative(makeAssessment([area]));
     expect(section(sections, 'summary').paragraphs[1].text).toBe('No indicator is in the highest-need 20% of NSW LGAs.');
@@ -591,11 +592,11 @@ describe('buildNarrative: data notes', () => {
     });
   });
 
-  describe('small comparison groups', () => {
+  describe('small comparison groups (R58: nothing is ranked in a group of fewer than 5)', () => {
     test('singular for one LGA', () => {
       const area = makeArea({ smallGroup: true, universeSize: 1, universeLabel: 'LGAs in the Central Coast region' });
       expect(notesOf(makeAssessment([area]))).toContain(
-        'The comparison group (LGAs in the Central Coast region) has only 1 LGA, so percentiles should be read with caution.',
+        'The comparison group (LGAs in the Central Coast region) has only 1 LGA, fewer than 5, so no indicator is ranked.',
       );
     });
 
@@ -603,14 +604,51 @@ describe('buildNarrative: data notes', () => {
       const small = { smallGroup: true, universeSize: 3, universeLabel: 'rural and remote LGAs' };
       const a = makeArea({ areaId: 'lga_a', name: 'A', ...small });
       const b = makeArea({ areaId: 'lga_b', name: 'B', ...small });
-      const caution = notesOf(makeAssessment([a, b])).filter(t => t.includes('read with caution'));
-      expect(caution).toEqual([
-        'The comparison group (rural and remote LGAs) has only 3 LGAs, so percentiles should be read with caution.',
+      const notes = notesOf(makeAssessment([a, b])).filter(t => t.includes('no indicator is ranked'));
+      expect(notes).toEqual([
+        'The comparison group (rural and remote LGAs) has only 3 LGAs, fewer than 5, so no indicator is ranked.',
       ]);
     });
 
     test('not mentioned for a large group', () => {
-      expect(notesOf(makeAssessment([blacktown()])).join('\n')).not.toContain('read with caution');
+      expect(notesOf(makeAssessment([blacktown()])).join('\n')).not.toContain('no indicator is ranked');
+    });
+  });
+
+  describe('indicators with fewer than 5 LGAs with data in the group (R58)', () => {
+    const unranked = (overrides: Partial<AreaAssessment>, ids: IndicatorId[]) => makeArea(
+      { overall: 50, band: 'Moderate', ...overrides },
+      Object.fromEntries(ids.map(id => [id, { value: 5, ranked: 2, unranked: true }])),
+    );
+
+    test('lists the scored indicators that are not ranked, with the group', () => {
+      const area = unranked({ universeLabel: 'LGAs in the Hunter region', universeSize: 9 }, ['job_growth_2041', 'crash_rate']);
+      expect(notesOf(makeAssessment([area]))).toContain(
+        'Some indicators have fewer than 5 LGAs with data in the comparison group (LGAs in the Hunter region) and are not '
+        + 'ranked: road crashes per 10,000 residents and job growth 2021–41.',
+      );
+    });
+
+    test('once per comparison group, and not for context indicators', () => {
+      const hunter = { universeLabel: 'LGAs in the Hunter region', universeSize: 9 };
+      const a = unranked({ areaId: 'lga_a', name: 'A', ...hunter }, ['job_growth_2041', 'indigenous_share']);
+      const b = unranked({ areaId: 'lga_b', name: 'B', ...hunter }, ['job_growth_2041']);
+      const notes = notesOf(makeAssessment([a, b])).filter(t => t.startsWith('Some indicators'));
+      expect(notes).toEqual([
+        'Some indicators have fewer than 5 LGAs with data in the comparison group (LGAs in the Hunter region) and are not '
+        + 'ranked: job growth 2021–41.',
+      ]);
+    });
+
+    test('a small group gets its own note instead', () => {
+      const area = unranked({ smallGroup: true, universeSize: 1, universeLabel: 'LGAs in the Central Coast region' }, ['car_dependency']);
+      const notes = notesOf(makeAssessment([area]));
+      expect(notes.some(t => t.startsWith('Some indicators'))).toBe(false);
+      expect(notes.some(t => t.includes('no indicator is ranked'))).toBe(true);
+    });
+
+    test('nothing is said when every indicator is ranked', () => {
+      expect(notesOf(makeAssessment([blacktown()])).some(t => t.startsWith('Some indicators'))).toBe(false);
     });
   });
 
@@ -773,7 +811,7 @@ describe('buildNarrative on real assessments', () => {
           for (const p of s.paragraphs.slice(1)) {
             expect(p.citations).toHaveLength(1);
             // R57: an ordinal for fewer than 20 ranked LGAs, otherwise a share
-            const ordinalForm = / ranks (\d+)(?:st|nd|rd|th) of (\d+) /.exec(p.text);
+            const ordinalForm = / ranks (\d+)(?:st|nd|rd|th) of (?:the )?(\d+) /.exec(p.text);
             if (ordinalForm) expect(Number(ordinalForm[2])).toBeLessThan(20);
             else expect(p.text).toMatch(/ ranks in the highest-need \d+% of /);
           }
@@ -782,6 +820,23 @@ describe('buildNarrative on real assessments', () => {
         expect(plain.replace(METHOD_SENTENCE, '')).not.toContain('Aboriginal');
       }
     }
+  });
+
+  test('Central Coast against its own region (one LGA): insufficient data, and no "highest-need 20%" claim (R58)', () => {
+    const sections = buildNarrative(run(['lga_central_coast'], 'separate', 'region'));
+    expect(texts(section(sections, 'summary'))).toEqual(['Central Coast has insufficient data for an overall need score.']);
+    expect(texts(section(sections, 'notes'))).toContain(
+      'The comparison group (LGAs in the Central Coast region) has only 1 LGA, fewer than 5, so no indicator is ranked.',
+    );
+    expect(sections.some(s => s.id === 'key_findings' && s.paragraphs.some(p => p.text.includes(' ranks ')))).toBe(false);
+  });
+
+  test('Newcastle against the Hunter region: job growth is not ranked (2 LGAs with data) (R58)', () => {
+    const notes = texts(section(buildNarrative(run(['lga_newcastle'], 'separate', 'region')), 'notes'));
+    expect(notes).toContain(
+      'Some indicators have fewer than 5 LGAs with data in the comparison group (LGAs in the Hunter region) and are not '
+      + 'ranked: job growth 2021–41.',
+    );
   });
 
   test('the Blacktown narrative uses the bundled data', () => {

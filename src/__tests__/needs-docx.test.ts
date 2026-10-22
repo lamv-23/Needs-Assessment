@@ -485,6 +485,15 @@ describe('buildNeedsDocument: indicator table layout', () => {
     expect(tables(xml).map(t => t.filter(r => r.length > 1).length)).toEqual(Array(5).fill(expected.rows.length + 1));
   });
 
+  test('the benchmark notes follow the table note, one paragraph each (R58)', async () => {
+    const assessment = assess(['lga_camden']);
+    const { xml } = await documentParts(inputFor(assessment, []));
+    const texts = paragraphs(xml).map(p => p.text);
+    const at = texts.findIndex(t => t.startsWith('pNN is'));
+    expect(indicatorTable(assessment).notes).toHaveLength(3);
+    expect(texts.slice(at + 1, at + 4)).toEqual(indicatorTable(assessment).notes);
+  });
+
   test('the table note explains the percentiles and the comparison group', async () => {
     const assessment = assess(['lga_blacktown']);
     const { xml } = await documentParts(inputFor(assessment, []));

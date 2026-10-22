@@ -1,7 +1,7 @@
 import { displayScore, inSentence, possessive } from './format';
-import { DOMAIN_LABELS, INDICATOR_BY_ID, NEED_DOMAINS } from './indicators';
+import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from './indicators';
 import { buildInsights, isKeyNeed, keyNeedText, WFH_CAVEAT, type KeyNeed } from './insights';
-import { KEY_NEED_PERCENTILE } from './scoring';
+import { KEY_NEED_PERCENTILE, SMALL_GROUP_SIZE } from './scoring';
 import type {
   AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedDomain, NeedsAssessment, SourceRef,
 } from './types';
@@ -84,16 +84,21 @@ function summaryParagraphs(area: AreaAssessment, wording: Wording): NarrativePar
     : `${subject} has insufficient data for an overall need score.`;
 
   const top = keyNeeds(area).slice(0, MAX_SUMMARY_NEEDS);
-  const needs = top.length > 0
-    ? paragraph(
+  // With no scored indicator ranked (a group of fewer than 5, R58) there is nothing to be in the highest-need 20% of
+  const anyRanked = area.indicators.some(s => isScored(s) && s.percentile !== null);
+  let needs: NarrativeParagraph[] = [];
+  if (top.length > 0) {
+    needs = [paragraph(
       `${ownerOf(area, wording)} most pronounced needs are ${labelList(top.map(n => n.id))}.`,
       top.map(n => n.id),
-    )
-    : paragraph(
+    )];
+  } else if (anyRanked) {
+    needs = [paragraph(
       `${wording.several ? `In ${area.name}, no` : 'No'} indicator is in the highest-need ${100 - KEY_NEED_PERCENTILE}% of ${area.universeLabel}.`,
-    );
+    )];
+  }
 
-  return [paragraph(overall, scoredIdsWithValue(area)), needs];
+  return [paragraph(overall, scoredIdsWithValue(area)), ...needs];
 }
 
 function keyNeedSentence(
@@ -137,15 +142,32 @@ function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording): Na
     notes.push(paragraph(FALLBACK_NOTES[assessment.requestedUniverse === 'region' ? 'region' : 'peer']));
   }
 
-  // Areas that share a comparison group get one caution between them.
-  const cautioned = new Set<string>();
+  // Areas that share a comparison group get one note between them. In a group of fewer than 5 nothing is ranked (R58).
+  const stated = new Set<string>();
   for (const area of areas.filter(a => a.smallGroup)) {
     const n = area.universeSize;
     const text = `The comparison group (${area.universeLabel}) has only ${n} ${n === 1 ? 'LGA' : 'LGAs'}, `
-      + 'so percentiles should be read with caution.';
-    if (!cautioned.has(text)) notes.push(paragraph(text));
-    cautioned.add(text);
+      + `fewer than ${SMALL_GROUP_SIZE}, so no indicator is ranked.`;
+    if (!stated.has(text)) notes.push(paragraph(text));
+    stated.add(text);
   }
+
+  // R58: in a larger group, an indicator only a few of its LGAs have is not ranked either
+  const unrankedByGroup = new Map<string, IndicatorId[]>();
+  for (const area of areas.filter(a => !a.smallGroup)) {
+    const ids = unrankedByGroup.get(area.universeLabel) ?? [];
+    for (const s of area.indicators) if (s.unranked && isScored(s) && !ids.includes(s.id)) ids.push(s.id);
+    unrankedByGroup.set(area.universeLabel, ids);
+  }
+  unrankedByGroup.forEach((ids, universeLabel) => {
+    if (ids.length === 0) return;
+    const ordered = INDICATORS.map(def => def.id).filter(id => ids.includes(id));
+    notes.push(paragraph(
+      `Some indicators have fewer than ${SMALL_GROUP_SIZE} LGAs with data in the comparison group (${universeLabel}) `
+      + `and are not ranked: ${labelList(ordered)}.`,
+      ordered,
+    ));
+  });
 
   for (const area of areas) {
     const missing = area.indicators.filter(s => s.value === null && isScored(s)).map(s => s.id);

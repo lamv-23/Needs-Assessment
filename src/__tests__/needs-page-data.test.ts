@@ -1,5 +1,6 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
+import { partialBenchmarkNotes, partialBenchmarks } from '@/lib/needs/coverage';
 import { INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
 import { buildInsights, WFH_CAVEAT_CITATION } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
@@ -11,7 +12,8 @@ import {
 import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Universe } from '@/lib/needs/types';
 
 const score = (id: IndicatorId, overrides: Partial<IndicatorScore> = {}): IndicatorScore => ({
-  id, value: 1, percentile: 50, rank: 64, ranked: 128, keyNeed: false, approximate: false, partial: false, ...overrides,
+  id, value: 1, percentile: 50, rank: 64, ranked: 128, unranked: false, keyNeed: false, approximate: false, partial: false,
+  ...overrides,
 });
 
 /** An area whose indicators carry the given percentiles (the rest have no data). */
@@ -120,31 +122,45 @@ describe('indicatorCellText', () => {
   const def = INDICATOR_BY_ID.car_dependency;
 
   test('shows the value with the floored percentile', () => {
-    expect(indicatorCellText(def, score('car_dependency', { value: 83.84, percentile: 91.96 }), true)).toBe('83.8% (p91)');
+    expect(indicatorCellText(def, score('car_dependency', { value: 83.84, percentile: 91.96 }), 'area')).toBe('83.8% (p91)');
   });
 
   test('a percentile just under a threshold is not rounded up to it', () => {
-    expect(indicatorCellText(def, score('car_dependency', { value: 50, percentile: 79.99 }), true)).toBe('50.0% (p79)');
+    expect(indicatorCellText(def, score('car_dependency', { value: 50, percentile: 79.99 }), 'area')).toBe('50.0% (p79)');
   });
 
   test('prefixes an approximate value with ≈', () => {
-    expect(indicatorCellText(def, score('car_dependency', { value: 70, percentile: 60, approximate: true }), true))
+    expect(indicatorCellText(def, score('car_dependency', { value: 70, percentile: 60, approximate: true }), 'area'))
       .toBe('≈ 70.0% (p60)');
   });
 
   test('a missing value reads "No data", never 0', () => {
-    expect(indicatorCellText(def, score('car_dependency', { value: null, percentile: null }), true)).toBe('No data');
-    expect(indicatorCellText(def, undefined, false)).toBe('No data');
+    expect(indicatorCellText(def, score('car_dependency', { value: null, percentile: null }), 'area')).toBe('No data');
+    expect(indicatorCellText(def, undefined, 'benchmark')).toBe('No data');
   });
 
   test('benchmark columns show the value without a percentile', () => {
-    expect(indicatorCellText(def, score('car_dependency', { value: 66.3, percentile: 40 }), false)).toBe('66.3%');
-    expect(indicatorCellText(def, score('car_dependency', { value: 66.3, percentile: 40, approximate: true }), false))
+    expect(indicatorCellText(def, score('car_dependency', { value: 66.3, percentile: 40 }), 'benchmark')).toBe('66.3%');
+    expect(indicatorCellText(def, score('car_dependency', { value: 66.3, percentile: 40, approximate: true }), 'benchmark'))
       .toBe('≈ 66.3%');
   });
 
+  test('a benchmark value from only some of its LGAs is marked * (R58)', () => {
+    expect(indicatorCellText(def, score('car_dependency', { value: 30.2, partial: true }), 'benchmark')).toBe('30.2%*');
+    expect(indicatorCellText(def, score('car_dependency', { value: 15.9, approximate: true, partial: true }), 'benchmark'))
+      .toBe('≈ 15.9%*');
+    // A combined area's partial values have their own note (R16), not the benchmark mark
+    expect(indicatorCellText(def, score('car_dependency', { value: 70, percentile: 60, partial: true }), 'area'))
+      .toBe('70.0% (p60)');
+  });
+
+  test('a value with fewer than 5 LGAs with data in the group is "not ranked" with the count (R58)', () => {
+    const unranked = score('car_dependency', { value: 12.34, percentile: null, rank: null, ranked: 2, unranked: true });
+    expect(indicatorCellText(def, unranked, 'area')).toBe('12.3% (not ranked, n = 2)');
+  });
+
   test('a percentile of 0 is still shown', () => {
-    expect(indicatorCellText(def, score('car_dependency', { value: 5, percentile: 0.4 }), true)).toBe('5.0% (p0)');
+    expect(indicatorCellText(def, score('car_dependency', { value: 5, percentile: 0.4 }), 'area')).toBe('5.0% (p0)');
   });
 });
 
@@ -187,6 +203,45 @@ describe('indicatorTable', () => {
 
   test('no areas: only the benchmark columns', () => {
     expect(indicatorTable(assess([])).columns).toEqual(['Greater Sydney', 'NSW']);
+  });
+
+  test('benchmark values from only some of their LGAs are marked *, with a note each (R58)', () => {
+    const table = indicatorTable(assess(['lga_camden']));
+    const cells = (id: IndicatorId) => table.rows.find(r => r.id === id)!.cells;
+    expect(cells('job_growth_2041')[2]).toMatch(/^\d+\.\d%\*$/);     // NSW: 43 of 128
+    expect(cells('job_growth_2041')[1]).toMatch(/^\d+\.\d%$/);        // Greater Sydney: all 34
+    expect(cells('commute_distance_km')[1]).toMatch(/^≈ \d+\.\d km\*$/);
+    expect(cells('car_dependency')[2]).not.toContain('*');
+    expect(table.notes).toEqual([
+      '* Average commuting distance, Greater Sydney: based on the 33 of 34 LGAs with data.',
+      '* Average commuting distance, NSW: based on the 127 of 128 LGAs with data.',
+      '* Job growth 2021–41, NSW: based on the 43 of 128 LGAs with data.',
+    ]);
+  });
+
+  test('an area not ranked on an indicator shows the count of LGAs with data (R58)', () => {
+    const newcastle = runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds: ['lga_newcastle'], mode: 'separate', universe: 'region' });
+    const job = indicatorTable(newcastle).rows.find(r => r.id === 'job_growth_2041')!;
+    expect(job.cells[0]).toMatch(/^\d+\.\d% \(not ranked, n = 2\)$/);
+  });
+});
+
+describe('partialBenchmarks and their notes (R58)', () => {
+  test('one marked value: the plain note', () => {
+    const jobs = partialBenchmarks(assess(['lga_camden']), ['job_growth_2041']);
+    expect(jobs).toEqual([{ key: 'nsw', name: 'NSW', id: 'job_growth_2041', withData: 43, members: 128 }]);
+    expect(partialBenchmarkNotes(jobs)).toEqual(['* Based on the 43 of 128 LGAs with data.']);
+  });
+
+  test('none: no note', () => {
+    expect(partialBenchmarkNotes(partialBenchmarks(assess(['lga_camden']), ['car_dependency']))).toEqual([]);
+  });
+
+  test('Greater Sydney as the universe: the benchmarks are still marked against their own LGAs', () => {
+    const gsyd = runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds: ['lga_camden'], mode: 'separate', universe: 'gsyd' });
+    expect(partialBenchmarks(gsyd).map(p => `${p.key}:${p.id}:${p.withData}/${p.members}`)).toEqual([
+      'gsyd:commute_distance_km:33/34', 'nsw:commute_distance_km:127/128', 'nsw:job_growth_2041:43/128',
+    ]);
   });
 });
 
