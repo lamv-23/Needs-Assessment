@@ -57,14 +57,14 @@ The four domains are **transport** (Transport disadvantage), **socio** (Socio-ec
 
   | id | Label | Rule | ≈ n |
   |---|---|---|---|
-  | `metro_inner` | Inner metropolitan | metro and density ≥ 3,000 | 6 |
-  | `metro_middle` | Middle metropolitan | metro and 1,000 ≤ density < 3,000 | 13 |
-  | `metro_outer` | Outer metropolitan | metro and density < 1,000 (includes Central Coast) | 15 |
+  | `metro_inner` | Inner metropolitan | metro and density ≥ 4,000 | 7 |
+  | `metro_middle` | Middle metropolitan | metro and 1,700 ≤ density < 4,000 | 13 |
+  | `metro_outer` | Outer metropolitan | metro and density < 1,700 (includes Central Coast) | 14 |
   | `regional_city` | Regional city | not metro and population ≥ 50,000 | 19 |
   | `regional_town` | Regional town | not metro and 15,000 ≤ population < 50,000 | 23 |
   | `rural` | Rural and remote | not metro and population < 15,000 | 52 |
 
-  Counts come from the 2026-10-22 cache. Boundary rounding may move one LGA.
+  Counts come from the 2026-10-22 cache. The original 3,000 / 1,000 thresholds were calibrated on the bundled integer `populationDensity`, which understates metro density by about half (Blacktown 784 vs 1,651/km²). They were recalibrated on real boundary-area density during Task 2.
 - **Scored and context indicators.** Context indicators (`scored: false`, currently `indigenous_share`) still get a value and a percentile and appear everywhere, but they are excluded from domain scores, overall scores and key needs.
 - **Weights are equal** (user decision 2026-10-22): every scored indicator within a domain, and every domain within the overall score. The Word export's data notes state this.
 - **Domain score:** the mean of the scored need percentiles available in that domain. It is `null` when fewer than half of the domain's scored indicators have a value.

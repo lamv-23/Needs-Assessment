@@ -214,15 +214,16 @@
     export function peerGroupFor(input: { areaId: string; population: number; densityPerKm2: number }): PeerGroup
     ```
 
-    The rules are in the spec's peer-group table. `metro` means `GREATER_SYDNEY_GCCSA_AREA_IDS.includes(areaId)`. The thresholds are 3,000 and 1,000 people/km² for metro, and 50,000 and 15,000 residents for non-metro.
+    The rules are in the spec's peer-group table. `metro` means `GREATER_SYDNEY_GCCSA_AREA_IDS.includes(areaId)`. The thresholds are 4,000 and 1,700 people/km² for metro (recalibrated in Task 2, Ruling R8), and 50,000 and 15,000 residents for non-metro.
 
 - [ ] **Step 1: Write the failing snapshot test**
 
   ```ts
   test('peerGroupFor boundaries', () => {
-    expect(peerGroupFor({ areaId: 'lga_sydney', population: 1, densityPerKm2: 3000 })).toBe('metro_inner');
-    expect(peerGroupFor({ areaId: 'lga_sydney', population: 1, densityPerKm2: 2999 })).toBe('metro_middle');
-    expect(peerGroupFor({ areaId: 'lga_blacktown', population: 1, densityPerKm2: 999 })).toBe('metro_outer');
+    expect(peerGroupFor({ areaId: 'lga_sydney', population: 1, densityPerKm2: 4000 })).toBe('metro_inner');
+    expect(peerGroupFor({ areaId: 'lga_sydney', population: 1, densityPerKm2: 3999 })).toBe('metro_middle');
+    expect(peerGroupFor({ areaId: 'lga_sydney', population: 1, densityPerKm2: 1700 })).toBe('metro_middle');
+    expect(peerGroupFor({ areaId: 'lga_blacktown', population: 1, densityPerKm2: 1699 })).toBe('metro_outer');
     expect(peerGroupFor({ areaId: 'lga_newcastle', population: 50000, densityPerKm2: 9999 })).toBe('regional_city');
     expect(peerGroupFor({ areaId: 'lga_newcastle', population: 15000, densityPerKm2: 1 })).toBe('regional_town');
     expect(peerGroupFor({ areaId: 'lga_bourke', population: 14999, densityPerKm2: 0.1 })).toBe('rural');
@@ -260,7 +261,7 @@
     - `densityPerKm2` = population ÷ area, unrounded. Do not use the bundled `populationDensity`: it is an integer, and 34 rural LGAs read as 0.
     - Fail loudly if any LGA has no feature.
   - `peerGroup` = `peerGroupFor(...)`.
-  - Write the file with the auto-generated header, `generatedAt: new Date().toISOString()`, and pretty JSON. Target: under 150 KB.
+  - Write the file with the auto-generated header and `generatedAt: new Date().toISOString()`. Write `records` one JSON object per line, with non-integer numbers rounded to 4 dp (Ruling R9). Target: under 150 KB.
   - Print a coverage line per indicator (for example `frequent_stop_share 128/128`) and a count per peer group.
 
 - [ ] **Step 4: Run** `npm run build:needs`, then the test. Expected, matching the 2026-10-22 probe of the cache:
@@ -268,7 +269,7 @@
   - Census indicators: 128/128.
   - `frequent_stop_share` and `am_peak_departures_per_1000`: 128 (17 LGAs have 0 departures, which is a real value, not missing).
   - `crash_rate`: 128. `commute_distance_km`: about 127. `pop_growth_2041`: 123. **`job_growth_2041`: about 29** (see Task 12).
-  - Peer groups are close to 6 / 13 / 15 / 19 / 23 / 52.
+  - Peer groups are close to 7 / 13 / 14 / 19 / 23 / 52.
   - The tests PASS.
 
 - [ ] **Step 5: Commit** `feat(needs): bundled indicator snapshot for all LGAs` (include the generated file).
