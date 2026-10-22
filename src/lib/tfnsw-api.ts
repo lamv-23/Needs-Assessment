@@ -167,6 +167,12 @@ async function readFreshCache<T>(lgaCode: string, dataset: string): Promise<T | 
   return parseCachedJson<T>(cached.dataJson);
 }
 
+/** Cached value regardless of age — for datasets a seed keeps fresh. */
+async function readCache<T>(lgaCode: string, dataset: string): Promise<T | null> {
+  const cached = await getLiveDataRepository().getTfNSWCacheEntry(lgaCode, dataset);
+  return cached ? parseCachedJson<T>(cached.dataJson) : null;
+}
+
 async function writeCache(lgaCode: string, dataset: string, data: unknown, dataYear: number): Promise<void> {
   if (process.env.VERCEL === '1') return;
   await getSeedWriteRepository().upsertTfNSWCache(lgaCode, dataset, data, dataYear);
@@ -358,7 +364,9 @@ export async function getLiveTfNSWTransportData(areaId: string): Promise<TfNSWLi
   const aliases = getTfNSWLgaAliases(areaId);
   const [cachedTraffic, cachedCrash, cachedPatronage] = await Promise.all([
     readFreshCache<TfNSWTrafficTrendPoint[]>(lgaCode, TRAFFIC_CACHE_DATASET),
-    readFreshCache<TfNSWCrashTrendPoint[]>(lgaCode, CRASH_CACHE_DATASET),
+    // Crash data is refreshed for all LGAs by seed:transport / the 'transport'
+    // refresh job; a page request only downloads the 24 MB workbook if no row exists.
+    readCache<TfNSWCrashTrendPoint[]>(lgaCode, CRASH_CACHE_DATASET),
     readFreshCache<TfNSWPatronageSourceInfo>(lgaCode, PATRONAGE_CACHE_DATASET),
   ]);
 

@@ -33,7 +33,7 @@ export interface RefreshLogRecord {
 
 export interface RefreshJobRecord {
   id: number;
-  jobType: 'static' | 'abs' | 'all';
+  jobType: 'static' | 'abs' | 'transport' | 'all';
   status: 'queued' | 'running' | 'success' | 'error';
   requestedBy: string;
   lgaId: string | null;
@@ -133,7 +133,7 @@ export interface OperationsRepository {
     changeSummary?: ChangeSummary
   ): MaybePromise<void>;
   enqueueRefreshJob(input: {
-    jobType: 'static' | 'abs' | 'all';
+    jobType: 'static' | 'abs' | 'transport' | 'all';
     requestedBy: string;
     lgaId?: string | null;
     maxAttempts?: number;

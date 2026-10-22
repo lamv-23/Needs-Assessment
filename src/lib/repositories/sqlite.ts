@@ -66,7 +66,7 @@ function mapRefreshLog(log: ReturnType<typeof getRecentRefreshLogs>[number]): Re
 function mapRefreshJob(
   row: {
     id: number;
-    job_type: 'static' | 'abs' | 'all';
+    job_type: 'static' | 'abs' | 'transport' | 'all';
     status: 'queued' | 'running' | 'success' | 'error';
     requested_by: string;
     lga_id: string | null;
@@ -212,7 +212,7 @@ const sqliteOperationsRepository: OperationsRepository = {
       WHERE id = ?
     `).get(result.lastInsertRowid) as {
       id: number;
-      job_type: 'static' | 'abs' | 'all';
+      job_type: 'static' | 'abs' | 'transport' | 'all';
       status: 'queued' | 'running' | 'success' | 'error';
       requested_by: string;
       lga_id: string | null;
@@ -237,7 +237,7 @@ const sqliteOperationsRepository: OperationsRepository = {
       LIMIT ?
     `).all(limit) as Array<{
       id: number;
-      job_type: 'static' | 'abs' | 'all';
+      job_type: 'static' | 'abs' | 'transport' | 'all';
       status: 'queued' | 'running' | 'success' | 'error';
       requested_by: string;
       lga_id: string | null;
@@ -280,7 +280,7 @@ const sqliteOperationsRepository: OperationsRepository = {
         LIMIT 1
       `).get() as {
         id: number;
-        job_type: 'static' | 'abs' | 'all';
+        job_type: 'static' | 'abs' | 'transport' | 'all';
         status: 'queued' | 'running' | 'success' | 'error';
         requested_by: string;
         lga_id: string | null;
@@ -316,7 +316,7 @@ const sqliteOperationsRepository: OperationsRepository = {
         WHERE id = ?
       `).get(next.id) as {
         id: number;
-        job_type: 'static' | 'abs' | 'all';
+        job_type: 'static' | 'abs' | 'transport' | 'all';
         status: 'queued' | 'running' | 'success' | 'error';
         requested_by: string;
         lga_id: string | null;

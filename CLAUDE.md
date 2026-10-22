@@ -107,8 +107,10 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 ## Admin Panel
 - URL: `/admin` (admin-protected; accepts `ADMIN_KEY` and production admin identity flow)
 - Shows ABS cache count, projection count, config values, recent refresh logs
-- POST `/api/admin/refresh` with `{ mode: 'static' | 'abs' | 'all', lgaId? }` to enqueue a refresh job
-- Jobs are processed by the refresh worker / inline runner using `src/lib/seed-runner.ts`
+- POST `/api/admin/refresh` with `{ action: 'seed_static' | 'seed_abs' | 'seed_transport', lgaId? }` to enqueue a refresh job
+- Jobs are processed by the refresh worker (`npm run worker:refresh`) / inline runner using `src/lib/seed-runner.ts`; `transport` runs `src/lib/official-transport-seed.ts` (same as `npm run seed:transport`). GTFS stops are CLI-only (`npm run seed:gtfs`)
+- Auto-refresh: when `auto_refresh_enabled` is `true`, the worker queues `abs` / `transport` jobs once `abs_refresh_interval_days` / `tfnsw_refresh_interval_days` have passed (`dueScheduledRefreshes` in `src/lib/refresh-jobs.ts`)
+- After refreshing data that ships in the bundle, run `npm run build:fallbacks` and commit
 
 ## SQLite Schema (`data/cache.db`)
 | Table | Key | Content |

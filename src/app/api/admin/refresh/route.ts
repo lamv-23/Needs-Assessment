@@ -124,6 +124,23 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (action === 'seed_transport') {
+    const job = await enqueueRefreshJob({
+      jobType: 'transport',
+      requestedBy: auth.requestedBy ?? 'admin',
+    });
+    logServerInfo('refresh_job_enqueued', {
+      requestedBy: auth.requestedBy,
+      jobType: job.jobType,
+      jobId: job.id,
+    });
+    return NextResponse.json({
+      success: true,
+      message: 'Transport data refresh queued',
+      job,
+    });
+  }
+
   if (action === 'seed_abs') {
     const lgaId = parseAdminLgaId(body.lgaId);
     if (lgaId === null) {

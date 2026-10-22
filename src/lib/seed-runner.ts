@@ -15,8 +15,9 @@ import {
 } from '@/lib/repositories';
 import { logServerError, logServerInfo } from '@/lib/server/logger';
 import { getABSDatasetCounts, getABSCacheCount, getNSWProjectionCount } from '@/lib/db';
+import { seedOfficialTransport } from '@/lib/official-transport-seed';
 
-export type SeedMode = 'static' | 'abs' | 'all';
+export type SeedMode = 'static' | 'abs' | 'transport' | 'all';
 
 export default async function runSeed(mode: SeedMode, lgaId?: string): Promise<void> {
   if (mode === 'static' || mode === 'all') {
@@ -26,6 +27,25 @@ export default async function runSeed(mode: SeedMode, lgaId?: string): Promise<v
   if (mode === 'abs' || mode === 'all') {
     await seedABS(lgaId);
   }
+
+  if (mode === 'transport' || mode === 'all') {
+    await seedTransport();
+  }
+}
+
+/** HTS commute time, ABS commuting distance, Opal station patronage, crash trends. */
+async function seedTransport(): Promise<void> {
+  const operationsRepository = getOperationsRepository();
+  const logId = await operationsRepository.startRefreshLog('transport');
+  const result = await seedOfficialTransport();
+
+  const status = result.failures.length === 0 ? 'success' : result.failures.length < 4 ? 'partial' : 'error';
+  const lgasUpdated = Math.max(result.htsLgas, result.commuteDistanceLgas, result.stationPatronageLgas, result.crashLgas);
+  await operationsRepository.completeRefreshLog(
+    logId, status, lgasUpdated,
+    result.failures.length ? `Failed: ${result.failures.join(', ')}` : undefined,
+  );
+  logServerInfo('seed_transport_completed', { status, ...result });
 }
 
 async function seedStatic(): Promise<void> {

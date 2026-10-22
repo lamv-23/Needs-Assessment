@@ -303,7 +303,7 @@ const postgresOperationsRepository: OperationsRepository = {
     const pool = getPostgresPool();
     const result = await pool.query<{
       id: string;
-      job_type: 'static' | 'abs' | 'all';
+      job_type: 'static' | 'abs' | 'transport' | 'all';
       status: 'queued' | 'running' | 'success' | 'error';
       requested_by: string;
       lga_id: string | null;
@@ -352,7 +352,7 @@ const postgresOperationsRepository: OperationsRepository = {
     const pool = getPostgresPool();
     const result = await pool.query<{
       id: string;
-      job_type: 'static' | 'abs' | 'all';
+      job_type: 'static' | 'abs' | 'transport' | 'all';
       status: 'queued' | 'running' | 'success' | 'error';
       requested_by: string;
       lga_id: string | null;
@@ -413,7 +413,7 @@ const postgresOperationsRepository: OperationsRepository = {
     const pool = getPostgresPool();
     const result = await pool.query<{
       id: string;
-      job_type: 'static' | 'abs' | 'all';
+      job_type: 'static' | 'abs' | 'transport' | 'all';
       status: 'queued' | 'running' | 'success' | 'error';
       requested_by: string;
       lga_id: string | null;

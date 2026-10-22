@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { getOperationsRepository } from '@/lib/repositories';
 import { logServerError, logServerInfo } from '@/lib/server/logger';
 import runSeed, { type SeedMode } from '@/lib/seed-runner';
+import { OFFICIAL_TRANSPORT_LAST_SEED_KEY } from '@/lib/official-transport-seed';
 
 let workerRunning = false;
 const INLINE_WORKER_ENABLED = process.env.RUN_INLINE_REFRESH_WORKER === 'true'
@@ -73,6 +74,52 @@ export async function processRefreshQueue(): Promise<void> {
   }
 }
 
+// ─── Scheduled refresh ───────────────────────────────────────────────────────
+// When auto_refresh_enabled is 'true', the worker queues each refresh once its
+// interval (days) has passed since the last successful run.
+
+const SCHEDULES: Array<{ jobType: SeedMode; lastRefreshKey: string; intervalKey: string }> = [
+  { jobType: 'abs', lastRefreshKey: 'abs_last_refresh', intervalKey: 'abs_refresh_interval_days' },
+  { jobType: 'transport', lastRefreshKey: OFFICIAL_TRANSPORT_LAST_SEED_KEY, intervalKey: 'tfnsw_refresh_interval_days' },
+];
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Job types due for a scheduled refresh, skipping any already queued or running. */
+export function dueScheduledRefreshes(
+  config: Record<string, string | undefined>,
+  activeJobTypes: ReadonlySet<string>,
+  now: Date,
+): SeedMode[] {
+  if (config.auto_refresh_enabled !== 'true') return [];
+
+  return SCHEDULES.filter(({ jobType, lastRefreshKey, intervalKey }) => {
+    if (activeJobTypes.has(jobType) || activeJobTypes.has('all')) return false;
+    const intervalDays = Number(config[intervalKey]);
+    const interval = (Number.isFinite(intervalDays) && intervalDays >= 1 ? intervalDays : 7) * DAY_MS;
+    const last = Date.parse(config[lastRefreshKey] ?? '');
+    return !Number.isFinite(last) || now.getTime() - last >= interval;
+  }).map(({ jobType }) => jobType);
+}
+
+export async function enqueueDueScheduledRefreshes(now = new Date()): Promise<SeedMode[]> {
+  const operationsRepository = getOperationsRepository();
+  const [config, recentJobs] = await Promise.all([
+    operationsRepository.getAllConfig(),
+    operationsRepository.getRecentRefreshJobs(50),
+  ]);
+  const active = new Set(
+    recentJobs.filter((job) => job.status === 'queued' || job.status === 'running').map((job) => job.jobType),
+  );
+
+  const due = dueScheduledRefreshes(config, active, now);
+  for (const jobType of due) {
+    const job = await operationsRepository.enqueueRefreshJob({ jobType, requestedBy: 'scheduler' });
+    logServerInfo('refresh_job_scheduled', { jobId: job.id, jobType });
+  }
+  return due;
+}
+
 export async function startRefreshWorker(options?: {
   pollIntervalMs?: number;
   once?: boolean;
@@ -85,6 +132,13 @@ export async function startRefreshWorker(options?: {
   });
 
   do {
+    try {
+      await enqueueDueScheduledRefreshes();
+    } catch (error) {
+      logServerError('refresh_schedule_check_failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
     await processRefreshQueue();
 
     if (options?.once) {

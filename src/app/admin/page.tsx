@@ -26,7 +26,7 @@ interface AdminStatus {
   }>;
   recentJobs: Array<{
     id: number;
-    jobType: 'static' | 'abs' | 'all';
+    jobType: 'static' | 'abs' | 'transport' | 'all';
     status: 'queued' | 'running' | 'success' | 'error';
     requestedBy: string;
     lgaId: string | null;
@@ -350,7 +350,10 @@ export default function AdminPage() {
             <div className="text-2xl font-semibold text-gray-900">
               {status?.config.abs_refresh_interval_days ?? '7'} days
             </div>
-            <div className="text-xs text-gray-400 mt-1">Admin-adjustable</div>
+            <div className="text-xs text-gray-400 mt-1">
+              Auto-refresh {status?.config.auto_refresh_enabled === 'true' ? 'on (refresh worker)' : 'off'} · transport data
+              refreshed {formatDate(status?.config.official_transport_last_seed ?? null)}
+            </div>
           </div>
         </div>
 
@@ -416,6 +419,14 @@ export default function AdminPage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh All ABS Data
+            </button>
+            <button
+              onClick={() => setConfirmAction({ action: 'seed_transport', label: 'Refresh Transport Data', description: 'Re-downloads TfNSW Household Travel Survey commute times, Opal station patronage, NSW crash data and ABS commuting distance for all LGAs (~2 min). GTFS stops are refreshed separately with npm run seed:gtfs.' })}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh Transport Data
             </button>
             <button
               onClick={() => fetchStatus(adminKey)}

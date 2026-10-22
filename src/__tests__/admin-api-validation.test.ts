@@ -8,6 +8,7 @@ describe('admin API validation helpers', () => {
   it('accepts supported admin actions', () => {
     expect(parseAdminAction('seed_abs')).toBe('seed_abs');
     expect(parseAdminAction('seed_static')).toBe('seed_static');
+    expect(parseAdminAction('seed_transport')).toBe('seed_transport');
     expect(parseAdminAction('update_config')).toBe('update_config');
   });
 

@@ -1,6 +1,6 @@
 import { LGA_CODE_MAP } from '@/lib/abs-fetchers';
 
-export type AdminAction = 'update_config' | 'seed_static' | 'seed_abs';
+export type AdminAction = 'update_config' | 'seed_static' | 'seed_abs' | 'seed_transport';
 
 export const MUTABLE_ADMIN_CONFIG_KEYS = [
   'abs_refresh_interval_days',
@@ -15,7 +15,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function parseAdminAction(value: unknown): AdminAction | null {
-  if (value === 'update_config' || value === 'seed_static' || value === 'seed_abs') {
+  if (value === 'update_config' || value === 'seed_static' || value === 'seed_abs' || value === 'seed_transport') {
     return value;
   }
 
