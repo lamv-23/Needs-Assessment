@@ -482,7 +482,7 @@ describe('buildInsights', () => {
       .toBe(`${opening}compared with no median change across NSW LGAs.`);
   });
 
-  test('a trend whose two values show the same reads "was unchanged at" (R47)', () => {
+  test('a trend whose two values show the same reads "stayed at" (R47)', () => {
     const trendText = (subject: Partial<InsightSeries> & { population?: number }, others: Partial<InsightSeries>[] = []) => {
       const { population = 1000, ...series } = subject;
       const records = [
@@ -496,24 +496,24 @@ describe('buildInsights', () => {
       { approvalsPrev12: 5, approvalsLast12: 5 },
       [{ approvalsPrev12: 4, approvalsLast12: 6 }, { approvalsPrev12: 4, approvalsLast12: 6 }],
     )).toEqual([
-      "Testville's dwelling approvals per 1,000 residents was unchanged at 5.0 per 1,000 between the previous 12 months "
+      "Testville's dwelling approvals per 1,000 residents stayed at 5.0 per 1,000 between the previous 12 months "
       + 'and the last 12 months, compared with a median change of +2.0 per 1,000 across NSW LGAs.',
     ]);
     expect(trendText(   // 5.00 → 5.02 per 1,000 both show as 5.0
       { population: 100000, approvalsPrev12: 500, approvalsLast12: 502 },
       [{ approvalsPrev12: 3, approvalsLast12: 3 }, { approvalsPrev12: 3, approvalsLast12: 3 }],
     )).toEqual([
-      "Testville's dwelling approvals per 1,000 residents was unchanged at 5.0 per 1,000 between the previous 12 months "
+      "Testville's dwelling approvals per 1,000 residents stayed at 5.0 per 1,000 between the previous 12 months "
       + 'and the last 12 months, compared with no median change across NSW LGAs.',
     ]);
     expect(trendText({ carDependencyByYear: [{ year: 2016, value: 80.01 }, { year: 2021, value: 80.04 }] })).toEqual([
-      "Testville's car dependency was unchanged at 80.0% between 2016 and 2021, compared with no median change across NSW LGAs.",
+      "Testville's car dependency stayed at 80.0% between 2016 and 2021, compared with no median change across NSW LGAs.",
     ]);
     expect(trendText({
       crashesByYear: [{ year: 2020, total: 100 }, { year: 2024, total: 100 }],
       populationHistory: [{ year: 2021, population: 10000 }, { year: 2024, population: 10000 }],
     })).toEqual([
-      "Testville's road crashes per 10,000 residents was unchanged at 100.0 per 10,000 between 2020 and 2024, "
+      "Testville's road crashes per 10,000 residents stayed at 100.0 per 10,000 between 2020 and 2024, "
       + 'compared with no median change across NSW LGAs.',
     ]);
   });

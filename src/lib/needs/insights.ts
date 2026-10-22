@@ -413,7 +413,7 @@ const POPULATION_CITATIONS = [SOURCES.erp, SOURCES.populationProjections];
 
 /**
  * "{Owner} {label} changed from {from} ({fromLabel}) to {to} ({toLabel}), {comparison}.", or, when the two values
- * show the same, "{Owner} {label} was unchanged at {to} between {fromLabel} and {toLabel}, {comparison}." (R47).
+ * show the same, "{Owner} {label} stayed at {to} between {fromLabel} and {toLabel}, {comparison}." (R47).
  * The comparison states the median change with its sign, or "no median change" when it shows as zero (R43).
  */
 function trendText(
@@ -429,7 +429,7 @@ function trendText(
     : `compared with a median change of ${signedMedian} across ${universeLabel}`;
   const [from, to] = [formatValue(def, trend.from.value), formatValue(def, trend.to.value)];
   return from === to
-    ? `${subject.owner} ${label} was unchanged at ${to} between ${period(trend.from.label)} and ${period(trend.to.label)}, `
+    ? `${subject.owner} ${label} stayed at ${to} between ${period(trend.from.label)} and ${period(trend.to.label)}, `
       + `${comparison}.`
     : `${subject.owner} ${label} changed from ${from} (${trend.from.label}) to ${to} (${trend.to.label}), ${comparison}.`;
 }
