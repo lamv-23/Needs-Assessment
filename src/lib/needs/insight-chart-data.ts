@@ -401,7 +401,10 @@ export interface TrendPanel {
   title: string;
   /** The metric as it reads in "No {trendName} trend: …". */
   trendName: string;
+  /** What the panel shows, under its title. */
   note: string;
+  /** Caveats under the chart. */
+  notes: string[];
   xDomain: [number, number];
   xTicks: number[];
   yAxis: NiceAxis;
@@ -425,6 +428,20 @@ export interface TrendData {
   message: string | null;
 }
 
+/** The Trends figure's subtitle; the page passes it to the figure's wrapper (the component cannot set it). */
+export const TREND_FIGURE_SUBTITLE = 'Selected LGAs against the median of the comparison group.';
+
+/** Under the car dependency and crash panels: the line is not the statistic the findings quote (R49). */
+export const MEDIAN_CHANGE_NOTE =
+  "The findings quote the median of each LGA's own change, which can differ from the change in this line.";
+
+/** Under the car dependency panel. */
+export const LOCKDOWN_NOTE =
+  "The 2021 Census was held during Sydney's COVID-19 lockdown, so 2021 car dependency is not directly comparable with earlier years.";
+
+/** "Median of NSW LGAs in each year": the legend and series name of a comparison group's median line. */
+const medianName = (universeLabel: string) => `Median of ${universeLabel} in each year`;
+
 /** Median lines: grey, set apart from the area colours. */
 export const MEDIAN_COLOR = '#6b7280';
 /** The colour of every selected area when there are too many to tell apart. */
@@ -433,6 +450,7 @@ export const MANY_AREAS_COLOR = areaColor(0);
 export const MAX_MEDIAN_LINES = 3;
 
 const POPULATION_TICKS = [2021, 2025, 2030, 2035, 2041];
+const TREND_Y_TICKS = 5;
 
 /** A record's points on one panel: ERP years / crash years / Census years, and a projection to 2041 (population). */
 interface AreaPoints { actual: Pt[]; projected: Pt[] }
@@ -472,21 +490,24 @@ const POINTS: Record<TrendPanelId, PointsOf> = {
 /** A trend needs two points to be a line; the projection counts as the second point of an index. */
 const hasTrend = (p: AreaPoints) => p.actual.length + (p.projected.length > 0 ? 1 : 0) >= 2;
 
-const PANEL_TEXT: Record<TrendPanelId, { title: string; trendName: string; note: string }> = {
+const PANEL_TEXT: Record<TrendPanelId, { title: string; trendName: string; note: string; notes: string[] }> = {
   car_dependency: {
     title: 'Car dependency',
     trendName: 'car dependency',
     note: 'Share of people who travelled to work who went by car (Census; work from home excluded)',
+    notes: [LOCKDOWN_NOTE, MEDIAN_CHANGE_NOTE],
   },
   crash_rate: {
     title: 'Road crashes per 10,000 residents',
     trendName: 'crash rate',
     note: "Each year's crashes on that year's population (ABS ERP)",
+    notes: [MEDIAN_CHANGE_NOTE],
   },
   population: {
     title: 'Population (2021 = 100)',
     trendName: 'population',
     note: 'Solid: ABS ERP. Dashed: NSW DPE projection to 2041.',
+    notes: [],
   },
 };
 
@@ -506,8 +527,9 @@ function medianOf(values: number[]): number {
 /**
  * One small chart per metric that some selected area has a trend for: car dependency (Census years), crashes
  * per 10,000 (each year on its own ERP, R46) and a population index with 2021 = 100 to 2041 (R39). Each
- * selected area is a line; the median of each comparison group (at most `MAX_MEDIAN_LINES`) is drawn in each
- * year that has a value.
+ * selected area is a line; the median of each comparison group (at most `MAX_MEDIAN_LINES`) is drawn over a
+ * fixed set of its LGAs, those with a value in every year the panel shows, so the line's change is not the effect
+ * of LGAs entering or leaving the median (R49).
  */
 export function trendData(a: NeedsAssessment): TrendData {
   const areas = areaRecords(a);
@@ -547,10 +569,12 @@ export function trendData(a: NeedsAssessment): TrendData {
 
     const xs = Array.from(rows.keys());
     medianGroups.forEach((group, g) => {
-      const universe = group.records.map(POINTS[id]);
-      const name = `Median of ${group.label}`;
+      const name = medianName(group.label);
+      const valueAt = (p: AreaPoints, x: number) => (p.actual.find(q => q.x === x) ?? p.projected.find(q => q.x === x))?.y;
+      // The same LGAs in every year: those with a value in each year shown
+      const fixed = group.records.map(POINTS[id]).filter(p => xs.every(x => valueAt(p, x) !== undefined));
       const at = (pick: (p: AreaPoints) => Pt[], x: number) =>
-        universe.flatMap(p => pick(p).filter(q => q.x === x).map(q => q.y));
+        fixed.flatMap(p => pick(p).filter(q => q.x === x).map(q => q.y));
       const actualXs = xs.filter(x => at(p => p.actual, x).length > 0);
       if (actualXs.length > 0) series.push({ key: `m${g}`, name, color: MEDIAN_COLOR, kind: 'median' });
       actualXs.forEach(x => put(`m${g}`, { x, y: medianOf(at(p => p.actual, x)) }));
@@ -575,7 +599,8 @@ export function trendData(a: NeedsAssessment): TrendData {
       ...PANEL_TEXT[id],
       xDomain: [ticks[0], ticks[ticks.length - 1]],
       xTicks: ticks,
-      yAxis: niceAxis(min, max, { floor: min >= 0 ? 0 : undefined, cap: id === 'car_dependency' ? 100 : undefined }),
+      // Few ticks: a panel is short, and Recharts hides the ones that crowd (leaving an uneven axis)
+      yAxis: niceAxis(min, max, { floor: min >= 0 ? 0 : undefined, cap: id === 'car_dependency' ? 100 : undefined }, TREND_Y_TICKS),
       rows: sorted,
       series,
       noData: own.filter(o => !hasTrend(o.points)).map(o => o.area.name),
@@ -585,7 +610,7 @@ export function trendData(a: NeedsAssessment): TrendData {
   return {
     panels,
     areaLegend: uniform ? null : areas.map(({ area }) => ({ name: area.name, color: areaColor(a.areas.indexOf(area)) })),
-    medianLegend: medianGroups.map(g => ({ name: `Median of ${g.label}` })),
+    medianLegend: medianGroups.map(g => ({ name: medianName(g.label) })),
     omittedMedians: groups.length - medianGroups.length,
     hasProjection: panels.some(p => p.series.some(s => s.kind === 'projected')),
     message: panels.length === 0 ? 'No trend data for the selected areas.' : null,

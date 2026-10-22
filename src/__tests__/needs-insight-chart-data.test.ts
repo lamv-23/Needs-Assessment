@@ -7,7 +7,7 @@ import {
   areaRecords, carDependencyMismatch, crashRate, growthVsService, jobsHousing, trends,
 } from '@/lib/needs/insights';
 import {
-  clipLine, formatTrendValue, growthServiceChartData, jobsHousingChartData, labelGeometry, mismatchChartData,
+  LOCKDOWN_NOTE, MEDIAN_CHANGE_NOTE, TREND_FIGURE_SUBTITLE, clipLine, formatTrendValue, growthServiceChartData, jobsHousingChartData, labelGeometry, mismatchChartData,
   nameList, noDataNote, placePointLabels, populationAxis, populationTickLabel, predictorTickLabel, tickDecimals, trendData,
   type LabelAnchor, type LabelPlacement,
 } from '@/lib/needs/insight-chart-data';
@@ -395,13 +395,69 @@ describe('trendData', () => {
     expect(p.series.find(s => s.name === 'Newcastle')!.color).toBe(areaColor(1));
   });
 
-  test('a dashed median line per comparison group, at the median of the group in each year', () => {
+  test('a dotted median line per comparison group, over the LGAs that have a value in every year shown', () => {
     const p = panel('car_dependency');
-    const median21 = median(NEEDS_SNAPSHOT.records.flatMap(r => r.series.carDependencyByYear.filter(c => c.year === 2021).map(c => c.value)));
+    const years = [2011, 2016, 2021] as const;
+    const at = (r: LgaIndicatorRecord, year: number) => r.series.carDependencyByYear.find(c => c.year === year)?.value;
+    const fixed = NEEDS_SNAPSHOT.records.filter(r => years.every(y => at(r, y) !== undefined));
+    expect(fixed.length).toBeGreaterThan(100);
+    expect(fixed.length).toBeLessThan(NEEDS_SNAPSHOT.records.length);   // 2011 lacks the LGAs amalgamated in 2016
     const m = p.series.find(s => s.kind === 'median')!;
-    expect(m.name).toBe('Median of NSW LGAs');
-    expect(valueAt(p, m.key, 2021)).toBeCloseTo(median21, 9);
+    expect(m.name).toBe('Median of NSW LGAs in each year');
+    for (const y of years) expect(valueAt(p, m.key, y)).toBeCloseTo(median(fixed.map(r => at(r, y)!)), 9);
     expect(p.series.filter(s => s.kind === 'median')).toHaveLength(1);
+  });
+
+  test('the median line holds its LGAs fixed: one missing 2011 is left out of every point', () => {
+    const car = (values: [number, number, number] | [number, number]) => ({
+      carDependencyByYear: values.length === 3
+        ? [{ year: 2011 as const, value: values[0] }, { year: 2016 as const, value: values[1] }, { year: 2021 as const, value: values[2] }]
+        : [{ year: 2016 as const, value: values[0] }, { year: 2021 as const, value: values[1] }],
+    });
+    const records = [
+      makeRecord('lga_test_a', { name: 'A', series: car([50, 52, 54]) }),
+      makeRecord('lga_test_b', { name: 'B', series: car([60, 62, 64]) }),
+      makeRecord('lga_test_c', { name: 'C', series: car([70, 72, 74]) }),
+      makeRecord('lga_test_d', { name: 'D', series: car([99, 99]) }),   // no 2011
+    ];
+    const p = trendData(assess(['lga_test_a'], 'separate', 'nsw', records)).panels.find(x => x.id === 'car_dependency')!;
+    const m = p.series.find(s => s.kind === 'median')!;
+    // medians of A, B and C: D would make 2016 and 2021 the medians of four values (67 and 69)
+    expect([2011, 2016, 2021].map(y => valueAt(p, m.key, y))).toEqual([60, 62, 64]);
+
+    // with the selected area not measured in 2011 the panel does not show 2011, so D is back in the set
+    const noEarly = records.map(r => (r.areaId === 'lga_test_a' ? { ...r, series: { ...r.series, ...car([52, 54]) } } : r));
+    const q = trendData(assess(['lga_test_a'], 'separate', 'nsw', noEarly)).panels.find(x => x.id === 'car_dependency')!;
+    expect(q.xTicks).toEqual([2016, 2021]);
+    const mq = q.series.find(s => s.kind === 'median')!;
+    expect([2016, 2021].map(y => valueAt(q, mq.key, y))).toEqual([67, 69]);
+  });
+
+  test('the legend names the comparison group and says the line is a median in each year', () => {
+    expect(data.medianLegend).toEqual([{ name: 'Median of NSW LGAs in each year' }]);
+    const regions = trendData(assess(['lga_blacktown', 'lga_newcastle'], 'separate', 'region'));
+    expect(regions.medianLegend.map(m => m.name)).toEqual([
+      'Median of LGAs in the Greater Sydney region in each year', 'Median of LGAs in the Hunter region in each year',
+    ]);
+    for (const p of data.panels) {
+      for (const s of p.series.filter(x => x.kind === 'median' || x.kind === 'median-projected')) {
+        expect(s.name).toBe('Median of NSW LGAs in each year');
+      }
+    }
+  });
+
+  test('the car dependency and crash panels say the line is not the median change in the findings; car adds the lockdown', () => {
+    const median = "The findings quote the median of each LGA's own change, which can differ from the change in this line.";
+    const lockdown = "The 2021 Census was held during Sydney's COVID-19 lockdown, so 2021 car dependency is not directly comparable with earlier years.";
+    expect(panel('car_dependency').notes).toEqual([lockdown, median]);
+    expect(panel('crash_rate').notes).toEqual([median]);
+    expect(panel('population').notes).toEqual([]);
+    expect(MEDIAN_CHANGE_NOTE).toBe(median);
+    expect(LOCKDOWN_NOTE).toBe(lockdown);
+  });
+
+  test('the figure subtitle is exported for the page', () => {
+    expect(TREND_FIGURE_SUBTITLE).toBe('Selected LGAs against the median of the comparison group.');
   });
 
   test('crashes per 10,000: every year on its own ERP, matching the trend endpoints', () => {
@@ -438,15 +494,20 @@ describe('trendData', () => {
     expect(data.hasProjection).toBe(true);
   });
 
-  test('the universe median of the population index has its own actual and projected parts', () => {
+  test('the median of the population index has its own actual and projected parts, over LGAs with every year', () => {
     const p = panel('population');
-    const median2041 = median(NEEDS_SNAPSHOT.records.flatMap(r => {
-      const base = r.series.populationHistory.find(h => h.year === 2021)?.population;
-      return base && r.series.population2041 ? [(r.series.population2041 / base) * 100] : [];
-    }));
+    const years = [2021, 2022, 2023, 2024, 2025];
+    const complete = NEEDS_SNAPSHOT.records.filter(r =>
+      years.every(y => r.series.populationHistory.some(h => h.year === y && h.population > 0))
+      && r.series.population2041 !== null && r.series.population2041 > 0);
+    const base = (r: LgaIndicatorRecord) => r.series.populationHistory.find(h => h.year === 2021)!.population;
     const m = p.series.find(s => s.kind === 'median-projected')!;
-    expect(valueAt(p, m.key, 2041)).toBeCloseTo(median2041, 9);
+    expect(valueAt(p, m.key, 2041)).toBeCloseTo(median(complete.map(r => (r.series.population2041! / base(r)) * 100)), 9);
     expect(valueAt(p, m.key, 2021)).toBe(100);
+    const actual = p.series.find(s => s.kind === 'median')!;
+    expect(valueAt(p, actual.key, 2025)).toBeCloseTo(
+      median(complete.map(r => (r.series.populationHistory.find(h => h.year === 2025)!.population / base(r)) * 100)), 9,
+    );
   });
 
   test('few areas are told apart by colour in a legend; many are drawn in one colour', () => {

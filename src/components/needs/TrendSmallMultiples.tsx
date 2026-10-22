@@ -125,6 +125,11 @@ function TrendPanelChart({ panel, crowded }: { panel: TrendPanel; crowded: boole
           ))}
         </LineChart>
       </ResponsiveContainer>
+      {panel.notes.length > 0 && (
+        <ChartNotes>
+          {panel.notes.map(note => <p key={note}>{note}</p>)}
+        </ChartNotes>
+      )}
     </div>
   );
 }
