@@ -439,6 +439,50 @@ describe('buildNarrative: data notes', () => {
     });
   });
 
+  describe('partial data in a combined selection', () => {
+    const partialArea = makeArea(
+      { areaId: 'combined', name: 'Blacktown + Penrith', overall: 50, band: 'Moderate' },
+      {
+        car_dependency: { value: 80, percentile: 50, approximate: true, partial: true },
+        crash_rate: { value: 9, percentile: 50, partial: true },
+        seifa_irsd: { value: 950, percentile: 50, approximate: true },
+      },
+    );
+    const combined = (area: AreaAssessment, memberIds: string[]) =>
+      makeAssessment([area], { mode: 'combined', memberIds });
+
+    test('are noted once, after the approximation note, citing the indicators concerned', () => {
+      const notes = section(buildNarrative(combined(partialArea, ['lga_blacktown', 'lga_penrith'])), 'notes').paragraphs;
+      const partial = notes.filter(p => p.text.includes('selected LGAs that have data'));
+      expect(partial).toHaveLength(1);
+      expect(partial[0].text).toBe(
+        'Values for car dependency and road crashes per 10,000 residents are based only on the selected LGAs that have data.',
+      );
+      expect(partial[0].citations.map(c => c.short)).toEqual(['ABS Census 2021 G62', 'TfNSW Centre for Road Safety']);
+      const noteTexts = notes.map(p => p.text);
+      expect(noteTexts.indexOf(partial[0].text)).toBe(noteTexts.findIndex(t => t.includes('population-weighted')) + 1);
+    });
+
+    test('a single partial indicator reads as a list of one', () => {
+      const area = makeArea(
+        { areaId: 'combined', name: 'Blacktown + Penrith', overall: 50, band: 'Moderate' },
+        { seifa_irsd: { value: 950, percentile: 50, approximate: true, partial: true } },
+      );
+      expect(notesOf(combined(area, ['lga_blacktown', 'lga_penrith']))).toContain(
+        'Values for SEIFA disadvantage (IRSD) are based only on the selected LGAs that have data.',
+      );
+    });
+
+    test('are not noted when nothing is partial, in separate mode, or for a single-LGA combined area', () => {
+      const none = makeArea({ areaId: 'combined', overall: 50, band: 'Moderate' }, {
+        seifa_irsd: { value: 950, percentile: 50, approximate: true },
+      });
+      expect(notesOf(combined(none, ['lga_blacktown', 'lga_penrith'])).join('\n')).not.toContain('selected LGAs that have data');
+      expect(notesOf(makeAssessment([partialArea])).join('\n')).not.toContain('selected LGAs that have data');
+      expect(notesOf(combined(partialArea, ['lga_blacktown'])).join('\n')).not.toContain('selected LGAs that have data');
+    });
+  });
+
   describe('small comparison groups', () => {
     test('singular for one LGA', () => {
       const area = makeArea({ smallGroup: true, universeSize: 1, universeLabel: 'LGAs in the Central Coast region' });
@@ -509,6 +553,73 @@ describe('buildNarrative: data notes', () => {
     expect(missing).toHaveLength(2);
     expect(missing[0]).toContain(' in Blacktown; ');
     expect(missing[1]).toContain(' in Penrith; ');
+  });
+});
+
+describe('buildNarrative: combined area wording', () => {
+  const combinedArea = () => {
+    const area = makeArea(
+      { areaId: 'combined', name: 'Blacktown + Newcastle', overall: 55.2, band: 'Moderate' },
+      {
+        ...withValues(['pop_growth_2041', 'job_growth_2041']),
+        car_dependency: { value: 83.8, percentile: 92, keyNeed: true },
+        limited_english: { value: 4.1, percentile: 84, keyNeed: true },
+      },
+    );
+    return withDomain(area, 'socio', 60, 'High');
+  };
+  const assessment = (memberIds = ['lga_blacktown', 'lga_newcastle'], mode: NeedsMode = 'combined') =>
+    makeAssessment([combinedArea()], { mode, memberIds });
+
+  test('the summary introduces the combined area, then refers to it as "The combined area"', () => {
+    const summary = texts(section(buildNarrative(assessment()), 'summary'));
+    expect(summary).toEqual([
+      'The combined area (Blacktown + Newcastle) has moderate overall need (score 55/100, ranked against NSW LGAs).',
+      "The combined area's most pronounced needs are car dependency and limited English proficiency.",
+    ]);
+  });
+
+  test('key-need sentences use "The combined area\'s"', () => {
+    expect(texts(section(buildNarrative(assessment()), 'transport'))).toContain(
+      "The combined area's car dependency (83.8%) ranks in the highest-need 8% of NSW LGAs, "
+      + '17.5 pp above the Greater Sydney figure of 66.3%.',
+    );
+    expect(texts(section(buildNarrative(assessment()), 'socio'))[1]).toMatch(
+      /^The combined area's limited English proficiency \(4\.1%\) ranks in the highest-need 16% of NSW LGAs/,
+    );
+  });
+
+  test('the missing-data note says "in the combined area"', () => {
+    const notes = texts(section(buildNarrative(assessment()), 'notes'));
+    expect(notes.filter(t => t.startsWith('No data is available'))).toEqual([
+      'No data is available for population growth 2021–41 and job growth 2021–41 in the combined area; '
+      + 'these are excluded from the scores.',
+    ]);
+  });
+
+  test('a single-LGA combined selection and separate mode keep the plain wording', () => {
+    for (const a of [assessment(['lga_blacktown']), assessment(['lga_blacktown', 'lga_newcastle'], 'separate')]) {
+      const sections = buildNarrative(a);
+      expect(texts(section(sections, 'summary'))[0]).toBe(
+        'Blacktown + Newcastle has moderate overall need (score 55/100, ranked against NSW LGAs).',
+      );
+      expect(texts(section(sections, 'summary'))[1]).toMatch(/^Its most pronounced needs are/);
+      expect(texts(section(sections, 'transport'))[1]).toMatch(/^Blacktown \+ Newcastle's car dependency/);
+      expect(narrativeToPlainText(sections)).not.toContain('combined area');
+    }
+  });
+
+  test('on real data', () => {
+    const sections = buildNarrative(
+      runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds: ['lga_blacktown', 'lga_newcastle'], mode: 'combined', universe: 'nsw' }),
+    );
+    const summary = texts(section(sections, 'summary'));
+    expect(summary[0]).toMatch(
+      /^The combined area \(Blacktown \+ Newcastle\) has (very high|high|moderate|lower) overall need \(score \d+\/100, ranked against NSW LGAs\)\.$/,
+    );
+    expect(summary[1]).toMatch(/^The combined area's most pronounced needs are /);
+    const sentences = sections.filter(s => s.id !== 'notes').flatMap(texts);
+    expect(sentences.join('\n')).not.toMatch(/Blacktown \+ Newcastle's|\bIts\b/);
   });
 });
 
@@ -586,6 +697,14 @@ describe('buildNarrative on real assessments', () => {
     expect(texts(section(crossPeer, 'notes'))).toContain(
       'The selected LGAs span more than one peer group, so the combined area is ranked against NSW LGAs.',
     );
+  });
+
+  test('a combined selection where one LGA lacks data gets the partial-data note', () => {
+    const sections = buildNarrative(run(['lga_blacktown', 'lga_snowy_valleys'], 'combined', 'nsw'));
+    const notes = texts(section(sections, 'notes'));
+    expect(notes).toContain('Values for job growth 2021–41 are based only on the selected LGAs that have data.');
+    // only one LGA lacks the value, so the combined area still has it and does not report it as missing
+    expect(notes.join('\n')).not.toContain('No data is available for job growth');
   });
 
   test('a single-LGA combined selection has no approximation note', () => {

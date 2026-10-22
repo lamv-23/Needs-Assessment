@@ -8,6 +8,14 @@ export interface NarrativeSection { id: 'summary' | NeedDomain | 'notes'; headin
 
 const MAX_SUMMARY_NEEDS = 3;
 
+/** How sentences refer to the areas being narrated. */
+interface Wording {
+  /** Several areas are narrated one after another (separate mode), so every sentence names its area. */
+  several: boolean;
+  /** One area standing for two or more selected LGAs, which the sentences call "the combined area". */
+  combined: boolean;
+}
+
 const WFH_CAVEAT =
   "The 2021 Census was held during Sydney's COVID-19 lockdown, which inflated working from home. "
   + 'Car dependency is therefore measured as a share of people who travelled to work.';
@@ -65,28 +73,41 @@ function keyNeeds(area: AreaAssessment, domain?: NeedDomain): KeyNeed[] {
     .sort((a, b) => b.percentile - a.percentile);
 }
 
-function summaryParagraphs(area: AreaAssessment, several: boolean): NarrativeParagraph[] {
+/** Sentence-initial possessive: the area's name, "The combined area's", or (a lone area) "Its". */
+function ownerOf(area: AreaAssessment, { several, combined }: Wording): string {
+  if (combined) return "The combined area's";
+  return several ? possessive(area.name) : 'Its';
+}
+
+function summaryParagraphs(area: AreaAssessment, wording: Wording): NarrativeParagraph[] {
+  const subject = wording.combined ? `The combined area (${area.name})` : area.name;
   const overall = area.overall !== null && area.band !== null
-    ? `${area.name} has ${area.band.toLowerCase()} overall need (score ${Math.round(area.overall)}/100, ranked against ${area.universeLabel}).`
-    : `${area.name} has insufficient data for an overall need score.`;
+    ? `${subject} has ${area.band.toLowerCase()} overall need (score ${Math.round(area.overall)}/100, ranked against ${area.universeLabel}).`
+    : `${subject} has insufficient data for an overall need score.`;
 
   const top = keyNeeds(area).slice(0, MAX_SUMMARY_NEEDS);
   const needs = top.length > 0
     ? paragraph(
-      `${several ? possessive(area.name) : 'Its'} most pronounced needs are ${joinList(top.map(n => inSentence(INDICATOR_BY_ID[n.id].label)))}.`,
+      `${ownerOf(area, wording)} most pronounced needs are ${joinList(top.map(n => inSentence(INDICATOR_BY_ID[n.id].label)))}.`,
       top.map(n => n.id),
     )
     : paragraph(
-      `${several ? `In ${area.name}, no` : 'No'} indicator is in the highest-need ${100 - KEY_NEED_PERCENTILE}% of ${area.universeLabel}.`,
+      `${wording.several ? `In ${area.name}, no` : 'No'} indicator is in the highest-need ${100 - KEY_NEED_PERCENTILE}% of ${area.universeLabel}.`,
     );
 
   return [paragraph(overall, scoredIdsWithValue(area)), needs];
 }
 
-function keyNeedSentence(area: AreaAssessment, need: KeyNeed, greaterSydney: number | null): NarrativeParagraph {
+function keyNeedSentence(
+  area: AreaAssessment,
+  need: KeyNeed,
+  greaterSydney: number | null,
+  wording: Wording,
+): NarrativeParagraph {
   const def = INDICATOR_BY_ID[need.id];
   const rank = Math.max(1, Math.round(100 - need.percentile));
-  let text = `${possessive(area.name)} ${inSentence(def.label)} (${formatValue(def, need.value)}) `
+  const owner = wording.combined ? ownerOf(area, wording) : possessive(area.name);
+  let text = `${owner} ${inSentence(def.label)} (${formatValue(def, need.value)}) `
     + `ranks in the highest-need ${rank}% of ${area.universeLabel}`;
   if (greaterSydney !== null) {
     const diff = need.value - greaterSydney;
@@ -102,7 +123,7 @@ function keyNeedSentence(area: AreaAssessment, need: KeyNeed, greaterSydney: num
 function domainParagraphs(
   area: AreaAssessment,
   domain: NeedDomain,
-  several: boolean,
+  wording: Wording,
   greaterSydney: AreaAssessment,
 ): NarrativeParagraph[] {
   const label = DOMAIN_LABELS[domain];
@@ -112,16 +133,17 @@ function domainParagraphs(
     : `${label}: insufficient data.`;
 
   return [
-    paragraph(several ? `${area.name} — ${headline}` : headline, scoredIdsWithValue(area, domain)),
+    paragraph(wording.several ? `${area.name} — ${headline}` : headline, scoredIdsWithValue(area, domain)),
     ...keyNeeds(area, domain).map(need => keyNeedSentence(
       area,
       need,
       greaterSydney.indicators.find(s => s.id === need.id)?.value ?? null,
+      wording,
     )),
   ];
 }
 
-function notesParagraphs(assessment: NeedsAssessment): NarrativeParagraph[] {
+function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording): NarrativeParagraph[] {
   const { areas } = assessment;
   const notes: NarrativeParagraph[] = [];
 
@@ -143,20 +165,31 @@ function notesParagraphs(assessment: NeedsAssessment): NarrativeParagraph[] {
     const missing = area.indicators.filter(s => s.value === null && INDICATOR_BY_ID[s.id].scored).map(s => s.id);
     if (missing.length === 0) continue;
     notes.push(paragraph(
-      `No data is available for ${joinList(missing.map(id => inSentence(INDICATOR_BY_ID[id].label)))} in ${area.name}; `
+      `No data is available for ${joinList(missing.map(id => inSentence(INDICATOR_BY_ID[id].label)))} in ${combined ? 'the combined area' : area.name}; `
       + `${missing.length === 1 ? 'this is' : 'these are'} excluded from the scores.`,
       missing,
     ));
   }
 
-  // Only a combined selection of several LGAs has weighted means standing in for sums; benchmarks are not narrated.
-  if (assessment.mode === 'combined' && assessment.memberIds.length >= 2) {
+  // Only a combined selection of several LGAs has weighted means standing in for sums, or members
+  // without data; benchmarks are not narrated.
+  if (combined) {
     const approximate = Array.from(new Set(areas.flatMap(a => a.indicators.filter(s => s.approximate).map(s => s.id))));
     if (approximate.length > 0) {
       notes.push(paragraph(
         `Values for ${joinList(approximate.map(id => inSentence(INDICATOR_BY_ID[id].label)))} are population-weighted `
         + 'approximations because they cannot be summed across LGAs.',
         approximate,
+      ));
+    }
+
+    for (const area of areas) {
+      const partial = area.indicators.filter(s => s.partial).map(s => s.id);
+      if (partial.length === 0) continue;
+      notes.push(paragraph(
+        `Values for ${joinList(partial.map(id => inSentence(INDICATOR_BY_ID[id].label)))} `
+        + 'are based only on the selected LGAs that have data.',
+        partial,
       ));
     }
   }
@@ -177,16 +210,19 @@ function notesParagraphs(assessment: NeedsAssessment): NarrativeParagraph[] {
 export function buildNarrative(assessment: NeedsAssessment): NarrativeSection[] {
   const { areas } = assessment;
   if (areas.length === 0) return [];
-  const several = areas.length > 1;
+  const wording: Wording = {
+    several: areas.length > 1,
+    combined: assessment.mode === 'combined' && assessment.memberIds.length >= 2,
+  };
 
   return [
-    { id: 'summary', heading: 'Summary', paragraphs: areas.flatMap(a => summaryParagraphs(a, several)) },
+    { id: 'summary', heading: 'Summary', paragraphs: areas.flatMap(a => summaryParagraphs(a, wording)) },
     ...NEED_DOMAINS.map((domain): NarrativeSection => ({
       id: domain,
       heading: DOMAIN_LABELS[domain],
-      paragraphs: areas.flatMap(a => domainParagraphs(a, domain, several, assessment.benchmarks.gsyd)),
+      paragraphs: areas.flatMap(a => domainParagraphs(a, domain, wording, assessment.benchmarks.gsyd)),
     })),
-    { id: 'notes', heading: 'Data notes', paragraphs: notesParagraphs(assessment) },
+    { id: 'notes', heading: 'Data notes', paragraphs: notesParagraphs(assessment, wording) },
   ];
 }
 
