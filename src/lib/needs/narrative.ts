@@ -1,4 +1,4 @@
-import { formatDiff, formatValue } from './format';
+import { displayScore, formatDiff, formatValue } from './format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, NEED_DOMAINS } from './indicators';
 import { KEY_NEED_PERCENTILE } from './scoring';
 import type { AreaAssessment, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, SourceRef } from './types';
@@ -45,10 +45,13 @@ function inSentence(label: string): string {
   return /[A-Z]/.test(firstWord.slice(1)) ? label : label.charAt(0).toLowerCase() + label.slice(1);
 }
 
-/** "a", "a and b", "a, b and c". */
-function joinList(items: string[]): string {
-  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+/** Indicator labels as a list: "a", "a and b", "a, b and c". */
+function labelList(ids: IndicatorId[]): string {
+  const labels = ids.map(id => inSentence(INDICATOR_BY_ID[id].label));
+  return labels.length < 2 ? labels.join('') : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
 }
+
+const isScored = (score: IndicatorScore): boolean => INDICATOR_BY_ID[score.id].scored;
 
 function possessive(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`;
@@ -82,13 +85,13 @@ function ownerOf(area: AreaAssessment, { several, combined }: Wording): string {
 function summaryParagraphs(area: AreaAssessment, wording: Wording): NarrativeParagraph[] {
   const subject = wording.combined ? `The combined area (${area.name})` : area.name;
   const overall = area.overall !== null && area.band !== null
-    ? `${subject} has ${area.band.toLowerCase()} overall need (score ${Math.round(area.overall)}/100, ranked against ${area.universeLabel}).`
+    ? `${subject} has ${area.band.toLowerCase()} overall need (score ${displayScore(area.overall)}/100, ranked against ${area.universeLabel}).`
     : `${subject} has insufficient data for an overall need score.`;
 
   const top = keyNeeds(area).slice(0, MAX_SUMMARY_NEEDS);
   const needs = top.length > 0
     ? paragraph(
-      `${ownerOf(area, wording)} most pronounced needs are ${joinList(top.map(n => inSentence(INDICATOR_BY_ID[n.id].label)))}.`,
+      `${ownerOf(area, wording)} most pronounced needs are ${labelList(top.map(n => n.id))}.`,
       top.map(n => n.id),
     )
     : paragraph(
@@ -106,8 +109,8 @@ function keyNeedSentence(
 ): NarrativeParagraph {
   const def = INDICATOR_BY_ID[need.id];
   const rank = Math.max(1, Math.round(100 - need.percentile));
-  const owner = wording.combined ? ownerOf(area, wording) : possessive(area.name);
-  let text = `${owner} ${inSentence(def.label)} (${formatValue(def, need.value)}) `
+  const subject = wording.combined ? 'the combined area' : area.name;
+  let text = `On ${inSentence(def.label)}, ${subject} (${formatValue(def, need.value)}) `
     + `ranks in the highest-need ${rank}% of ${area.universeLabel}`;
   if (greaterSydney !== null) {
     const diff = need.value - greaterSydney;
@@ -129,7 +132,7 @@ function domainParagraphs(
   const label = DOMAIN_LABELS[domain];
   const score = area.domains.find(d => d.domain === domain);
   const headline = score && score.score !== null && score.band !== null
-    ? `${label}: ${score.band.toLowerCase()} (score ${Math.round(score.score)}/100).`
+    ? `${label}: ${score.band.toLowerCase()} (score ${displayScore(score.score)}/100).`
     : `${label}: insufficient data.`;
 
   return [
@@ -162,10 +165,10 @@ function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording): Na
   }
 
   for (const area of areas) {
-    const missing = area.indicators.filter(s => s.value === null && INDICATOR_BY_ID[s.id].scored).map(s => s.id);
+    const missing = area.indicators.filter(s => s.value === null && isScored(s)).map(s => s.id);
     if (missing.length === 0) continue;
     notes.push(paragraph(
-      `No data is available for ${joinList(missing.map(id => inSentence(INDICATOR_BY_ID[id].label)))} in ${combined ? 'the combined area' : area.name}; `
+      `No data is available for ${labelList(missing)} in ${combined ? 'the combined area' : area.name}; `
       + `${missing.length === 1 ? 'this is' : 'these are'} excluded from the scores.`,
       missing,
     ));
@@ -174,20 +177,22 @@ function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording): Na
   // Only a combined selection of several LGAs has weighted means standing in for sums, or members
   // without data; benchmarks are not narrated.
   if (combined) {
-    const approximate = Array.from(new Set(areas.flatMap(a => a.indicators.filter(s => s.approximate).map(s => s.id))));
+    const approximate = Array.from(new Set(
+      areas.flatMap(a => a.indicators.filter(s => s.approximate && isScored(s)).map(s => s.id)),
+    ));
     if (approximate.length > 0) {
       notes.push(paragraph(
-        `Values for ${joinList(approximate.map(id => inSentence(INDICATOR_BY_ID[id].label)))} are population-weighted `
+        `Values for ${labelList(approximate)} are population-weighted `
         + 'approximations because they cannot be summed across LGAs.',
         approximate,
       ));
     }
 
     for (const area of areas) {
-      const partial = area.indicators.filter(s => s.partial).map(s => s.id);
+      const partial = area.indicators.filter(s => s.partial && isScored(s)).map(s => s.id);
       if (partial.length === 0) continue;
       notes.push(paragraph(
-        `Values for ${joinList(partial.map(id => inSentence(INDICATOR_BY_ID[id].label)))} `
+        `Values for ${labelList(partial)} `
         + 'are based only on the selected LGAs that have data.',
         partial,
       ));

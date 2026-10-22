@@ -8,6 +8,14 @@ function fixed(value: number, decimals: number): string {
   return Number(text) === 0 ? text.replace('-', '') : text;
 }
 
+/**
+ * A need score as shown: rounded down. Band thresholds are whole numbers, so floor(score) >= T exactly
+ * when score >= T, and a shown score never contradicts its band (59.9 is "59", not "60", and Moderate).
+ */
+export function displayScore(score: number): number {
+  return Math.floor(score);
+}
+
 /** "83.8%", "987", "10.0 per 1,000", "12.3 km"; null (no data) is never shown as 0. */
 export function formatValue(def: IndicatorDef, value: number | null): string {
   if (value === null) return NO_DATA;

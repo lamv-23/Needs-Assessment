@@ -1,6 +1,6 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
-import { formatDiff, formatValue } from '@/lib/needs/format';
+import { displayScore, formatDiff, formatValue } from '@/lib/needs/format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { buildNarrative, narrativeToPlainText, type NarrativeSection } from '@/lib/needs/narrative';
 import type {
@@ -98,7 +98,7 @@ describe('formatValue', () => {
     expect(formatValue(def('car_dependency'), 83.77)).toBe('83.8%');
     expect(formatValue(def('seifa_irsd'), 987.4)).toBe('987');
     expect(formatValue(def('approvals_per_1000'), 10)).toBe('10.0 per 1,000');
-    expect(formatValue(def('crash_rate'), 4.55)).toBe('4.5 per 10,000');
+    expect(formatValue(def('crash_rate'), 4.56)).toBe('4.6 per 10,000');
     expect(formatValue(def('commute_distance_km'), 12.34)).toBe('12.3 km');
   });
 
@@ -116,8 +116,19 @@ describe('formatDiff', () => {
     expect(formatDiff(def('car_dependency'), 12)).toBe('12.0 pp');
     expect(formatDiff(def('seifa_irsd'), 33)).toBe('33 points');
     expect(formatDiff(def('commute_distance_km'), 2.34)).toBe('2.3 km');
-    expect(formatDiff(def('approvals_per_1000'), 1.25)).toBe('1.3 per 1,000');
+    expect(formatDiff(def('approvals_per_1000'), 1.26)).toBe('1.3 per 1,000');
     expect(formatDiff(def('crash_rate'), 0.5)).toBe('0.5 per 10,000');
+  });
+});
+
+describe('displayScore', () => {
+  test('rounds down, so a shown score never reaches a band threshold its band does not', () => {
+    expect(displayScore(59.9)).toBe(59);
+    expect(displayScore(39.81)).toBe(39);
+    expect(displayScore(79.999)).toBe(79);
+    expect(displayScore(60)).toBe(60);
+    expect(displayScore(0)).toBe(0);
+    expect(displayScore(72.4)).toBe(72);
   });
 });
 
@@ -230,12 +241,12 @@ describe('buildNarrative: domain sections', () => {
   test('a domain without a score is insufficient data', () => {
     const sections = buildNarrative(makeAssessment([blacktown()]));
     expect(section(sections, 'growth').paragraphs[0].text).toBe('Growth pressure: insufficient data.');
-    expect(texts(section(sections, 'socio'))[0]).toBe('Socio-economic disadvantage: moderate (score 42/100).');
+    expect(texts(section(sections, 'socio'))[0]).toBe('Socio-economic disadvantage: moderate (score 41/100).');
   });
 
   test('key-need sentence has the value, rank, universe and the Greater Sydney comparison', () => {
     expect(texts(transport)).toContain(
-      "Blacktown's car dependency (83.8%) ranks in the highest-need 8% of NSW LGAs, "
+      'On car dependency, Blacktown (83.8%) ranks in the highest-need 8% of NSW LGAs, '
       + '17.5 pp above the Greater Sydney figure of 66.3%.',
     );
   });
@@ -246,7 +257,7 @@ describe('buildNarrative: domain sections', () => {
   });
 
   test('every key-need sentence cites the indicator source', () => {
-    const sentence = transport.paragraphs.find(p => p.text.includes('car dependency (83.8%)'));
+    const sentence = transport.paragraphs.find(p => p.text.includes('On car dependency, Blacktown (83.8%)'));
     expect(sentence?.citations[0].short).toBe('ABS Census 2021 G62');
     expect(sentence?.citations).toEqual([INDICATOR_BY_ID.car_dependency.source]);
   });
@@ -270,8 +281,8 @@ describe('buildNarrative: domain sections', () => {
       crash_rate: { value: 9, percentile: 97, keyNeed: true },
     }), 'transport', 70, 'High');
     const sentences = texts(section(buildNarrative(makeAssessment([area])), 'transport')).slice(1);
-    expect(sentences[0]).toContain('road crashes per 10,000 residents (9.0 per 10,000) ranks in the highest-need 3%');
-    expect(sentences[1]).toContain('car dependency (83.8%) ranks in the highest-need 15%');
+    expect(sentences[0]).toContain('On road crashes per 10,000 residents, Blacktown (9.0 per 10,000) ranks in the highest-need 3%');
+    expect(sentences[1]).toContain('On car dependency, Blacktown (83.8%) ranks in the highest-need 15%');
   });
 
   test('"highest-need k%" is at least 1%', () => {
@@ -290,7 +301,7 @@ describe('buildNarrative: domain sections', () => {
       frequent_stop_share: { value: 40, percentile: 50 },
     });
     expect(texts(section(buildNarrative(assessment), 'transport'))[1]).toBe(
-      "Blacktown's stops with frequent AM-peak service (10.0%) ranks in the highest-need 5% of NSW LGAs, "
+      'On stops with frequent AM-peak service, Blacktown (10.0%) ranks in the highest-need 5% of NSW LGAs, '
       + '30.0 pp below the Greater Sydney figure of 40.0%.',
     );
   });
@@ -304,7 +315,7 @@ describe('buildNarrative: domain sections', () => {
       seifa_irsd: { value: 1017.4, percentile: 50 },
     });
     expect(texts(section(buildNarrative(assessment), 'socio'))[1]).toBe(
-      "Blacktown's SEIFA disadvantage (IRSD) (850) ranks in the highest-need 4% of NSW LGAs, "
+      'On SEIFA disadvantage (IRSD), Blacktown (850) ranks in the highest-need 4% of NSW LGAs, '
       + '167 points below the Greater Sydney figure of 1017.',
     );
   });
@@ -313,7 +324,7 @@ describe('buildNarrative: domain sections', () => {
     const assessment = makeAssessment([blacktown()]);
     assessment.benchmarks.gsyd = makeArea({ areaId: 'benchmark_gsy', name: 'Greater Sydney' });
     expect(texts(section(buildNarrative(assessment), 'transport'))).toContain(
-      "Blacktown's car dependency (83.8%) ranks in the highest-need 8% of NSW LGAs.",
+      'On car dependency, Blacktown (83.8%) ranks in the highest-need 8% of NSW LGAs.',
     );
   });
 
@@ -322,17 +333,27 @@ describe('buildNarrative: domain sections', () => {
       car_dependency: { value: 66.32, percentile: 90, keyNeed: true },
     })]);
     expect(texts(section(buildNarrative(assessment), 'transport'))[1]).toBe(
-      "Blacktown's car dependency (66.3%) ranks in the highest-need 10% of NSW LGAs, "
+      'On car dependency, Blacktown (66.3%) ranks in the highest-need 10% of NSW LGAs, '
       + 'level with the Greater Sydney figure of 66.3%.',
     );
   });
 
-  test('possessive of a name ending in s takes an apostrophe only', () => {
+  test('the subject is the plain area name, so plural-looking names and indicator labels agree', () => {
+    const area = makeArea({ name: 'Blue Mountains', overall: 75, band: 'High' }, {
+      zero_car_households: { value: 6, percentile: 92, keyNeed: true },
+    });
+    expect(texts(section(buildNarrative(makeAssessment([area])), 'transport'))[1]).toMatch(
+      /^On households without a car, Blue Mountains \(6\.0%\) ranks in the highest-need 8% of NSW LGAs/,
+    );
+  });
+
+  test('a name ending in s takes an apostrophe only in the summary of several areas', () => {
     const area = makeArea({ name: 'Blue Mountains', overall: 75, band: 'High' }, {
       car_dependency: { value: 83.8, percentile: 92, keyNeed: true },
     });
-    expect(texts(section(buildNarrative(makeAssessment([area])), 'transport'))[1])
-      .toMatch(/^Blue Mountains' car dependency \(83\.8%\)/);
+    const other = makeArea({ areaId: 'lga_penrith', name: 'Penrith', overall: 50, band: 'Moderate' });
+    expect(texts(section(buildNarrative(makeAssessment([area, other])), 'summary'))[1])
+      .toBe("Blue Mountains' most pronounced needs are car dependency.");
   });
 
   test('separate mode prefixes each area\'s domain line with its name, grouped by area', () => {
@@ -343,11 +364,52 @@ describe('buildNarrative: domain sections', () => {
     const sentences = texts(section(buildNarrative(makeAssessment([blacktown(), penrith])), 'transport'));
     expect(sentences).toEqual([
       'Blacktown — Transport disadvantage: high (score 64/100).',
-      "Blacktown's car dependency (83.8%) ranks in the highest-need 8% of NSW LGAs, "
+      'On car dependency, Blacktown (83.8%) ranks in the highest-need 8% of NSW LGAs, '
       + '17.5 pp above the Greater Sydney figure of 66.3%.',
       'Penrith — Transport disadvantage: moderate (score 45/100).',
-      "Penrith's road crashes per 10,000 residents (9.0 per 10,000) ranks in the highest-need 3% of NSW LGAs.",
+      'On road crashes per 10,000 residents, Penrith (9.0 per 10,000) ranks in the highest-need 3% of NSW LGAs.',
     ]);
+  });
+});
+
+describe('buildNarrative: displayed scores', () => {
+  const lines = (score: number, band: NeedBand) => {
+    const area = withDomain(makeArea({ overall: score, band }), 'transport', score, band);
+    const sections = buildNarrative(makeAssessment([area]));
+    return [texts(section(sections, 'summary'))[0], texts(section(sections, 'transport'))[0]];
+  };
+
+  test('59.9 is Moderate and shows 59, not 60', () => {
+    expect(lines(59.9, 'Moderate')).toEqual([
+      'Blacktown has moderate overall need (score 59/100, ranked against NSW LGAs).',
+      'Transport disadvantage: moderate (score 59/100).',
+    ]);
+  });
+
+  test('39.81 is Lower and shows 39', () => {
+    expect(lines(39.81, 'Lower')).toEqual([
+      'Blacktown has lower overall need (score 39/100, ranked against NSW LGAs).',
+      'Transport disadvantage: lower (score 39/100).',
+    ]);
+  });
+
+  test('exactly 60 is High and shows 60', () => {
+    expect(lines(60, 'High')).toEqual([
+      'Blacktown has high overall need (score 60/100, ranked against NSW LGAs).',
+      'Transport disadvantage: high (score 60/100).',
+    ]);
+  });
+
+  test('on real data a displayed score never reaches a band threshold its band does not', () => {
+    const floorBand = (n: number) => (n >= 80 ? 'very high' : n >= 60 ? 'high' : n >= 40 ? 'moderate' : 'lower');
+    for (const record of NEEDS_SNAPSHOT.records) {
+      const sections = buildNarrative(
+        runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds: [record.areaId], mode: 'separate', universe: 'nsw' }),
+      );
+      const shown = sections.flatMap(texts).flatMap(t => Array.from(t.matchAll(/(very high|high|moderate|lower)[^(]*\(score (\d+)\/100/g)));
+      expect(shown.length).toBeGreaterThan(0);
+      for (const [, band, score] of shown) expect(floorBand(Number(score))).toBe(band);
+    }
   });
 });
 
@@ -422,6 +484,26 @@ describe('buildNarrative: data notes', () => {
       );
     });
 
+    test('list scored indicators only, like the missing-data note', () => {
+      const area = makeArea(
+        { areaId: 'combined', name: 'Blacktown + Penrith', overall: 50, band: 'Moderate' },
+        {
+          seifa_irsd: { value: 950, percentile: 50, approximate: true },
+          indigenous_share: { value: 5, percentile: 50, approximate: true },
+        },
+      );
+      const memberIds = ['lga_blacktown', 'lga_penrith'];
+      expect(notesOf(makeAssessment([area], { mode: 'combined', memberIds }))).toContain(
+        'Values for SEIFA disadvantage (IRSD) are population-weighted approximations because they cannot be summed across LGAs.',
+      );
+      const onlyContext = makeArea(
+        { areaId: 'combined', name: 'Blacktown + Penrith', overall: 50, band: 'Moderate' },
+        { indigenous_share: { value: 5, percentile: 50, approximate: true } },
+      );
+      expect(notesOf(makeAssessment([onlyContext], { mode: 'combined', memberIds })).join('\n'))
+        .not.toContain('approximations');
+    });
+
     test('are not noted for a combined area of one LGA', () => {
       const assessment = makeAssessment([combinedArea], { mode: 'combined', memberIds: ['lga_blacktown'] });
       expect(notesOf(assessment).join('\n')).not.toContain('approximations');
@@ -471,6 +553,21 @@ describe('buildNarrative: data notes', () => {
       expect(notesOf(combined(area, ['lga_blacktown', 'lga_penrith']))).toContain(
         'Values for SEIFA disadvantage (IRSD) are based only on the selected LGAs that have data.',
       );
+    });
+
+    test('list scored indicators only', () => {
+      const memberIds = ['lga_blacktown', 'lga_penrith'];
+      const mixed = makeArea({ areaId: 'combined', overall: 50, band: 'Moderate' }, {
+        crash_rate: { value: 9, percentile: 50, partial: true },
+        indigenous_share: { value: 5, percentile: 50, partial: true },
+      });
+      expect(notesOf(combined(mixed, memberIds))).toContain(
+        'Values for road crashes per 10,000 residents are based only on the selected LGAs that have data.',
+      );
+      const onlyContext = makeArea({ areaId: 'combined', overall: 50, band: 'Moderate' }, {
+        indigenous_share: { value: 5, percentile: 50, partial: true },
+      });
+      expect(notesOf(combined(onlyContext, memberIds)).join('\n')).not.toContain('selected LGAs that have data');
     });
 
     test('are not noted when nothing is partial, in separate mode, or for a single-LGA combined area', () => {
@@ -581,11 +678,11 @@ describe('buildNarrative: combined area wording', () => {
 
   test('key-need sentences use "The combined area\'s"', () => {
     expect(texts(section(buildNarrative(assessment()), 'transport'))).toContain(
-      "The combined area's car dependency (83.8%) ranks in the highest-need 8% of NSW LGAs, "
+      'On car dependency, the combined area (83.8%) ranks in the highest-need 8% of NSW LGAs, '
       + '17.5 pp above the Greater Sydney figure of 66.3%.',
     );
     expect(texts(section(buildNarrative(assessment()), 'socio'))[1]).toMatch(
-      /^The combined area's limited English proficiency \(4\.1%\) ranks in the highest-need 16% of NSW LGAs/,
+      /^On limited English proficiency, the combined area \(4\.1%\) ranks in the highest-need 16% of NSW LGAs/,
     );
   });
 
@@ -604,7 +701,7 @@ describe('buildNarrative: combined area wording', () => {
         'Blacktown + Newcastle has moderate overall need (score 55/100, ranked against NSW LGAs).',
       );
       expect(texts(section(sections, 'summary'))[1]).toMatch(/^Its most pronounced needs are/);
-      expect(texts(section(sections, 'transport'))[1]).toMatch(/^Blacktown \+ Newcastle's car dependency/);
+      expect(texts(section(sections, 'transport'))[1]).toMatch(/^On car dependency, Blacktown \+ Newcastle \(83\.8%\) ranks/);
       expect(narrativeToPlainText(sections)).not.toContain('combined area');
     }
   });
