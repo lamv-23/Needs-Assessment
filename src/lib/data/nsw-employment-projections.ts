@@ -4665,10 +4665,34 @@ export const tzp24EmploymentByLGA: EmploymentProjection[] = [
 ];
 
 /**
- * Get all employment projections for a given lgaId
+ * The rows above carry the legacy LGA_MAPPING id spelling (underscores dropped, e.g. `lga_innerwest`),
+ * while SAMPLE_AREAS ids are snake_case. Single-word LGAs are spelled identically; these 14 differ
+ * (`lga_canterbury` and `lga_thehills` are also renames; `lga_huntershll` is a typo in the source ids).
+ * Maps SAMPLE_AREAS id -> id used in the rows above.
+ */
+const TZP24_ID_BY_AREA_ID: Record<string, string> = {
+  lga_blue_mountains: 'lga_bluemountains',
+  lga_canada_bay: 'lga_canadabay',
+  lga_canterbury_bankstown: 'lga_canterbury',
+  lga_central_coast: 'lga_centralcoast',
+  lga_coffs_harbour: 'lga_coffsharbour',
+  lga_georges_river: 'lga_georgesriver',
+  lga_hills: 'lga_thehills',
+  lga_hunters_hill: 'lga_huntershll',
+  lga_inner_west: 'lga_innerwest',
+  lga_ku_ring_gai: 'lga_kuringgai',
+  lga_lake_macquarie: 'lga_lakemacquarie',
+  lga_lane_cove: 'lga_lanecove',
+  lga_north_sydney: 'lga_northsydney',
+  lga_northern_beaches: 'lga_northernbeaches',
+};
+
+/**
+ * Get all employment projections for a given area id (a SAMPLE_AREAS id, or an id as spelled in the rows above)
  */
 export function getEmploymentProjections(lgaId: string): EmploymentProjection[] {
-  return tzp24EmploymentByLGA.filter(e => e.lgaId === lgaId).sort((a, b) => a.year - b.year);
+  const sourceId = TZP24_ID_BY_AREA_ID[lgaId] ?? lgaId;
+  return tzp24EmploymentByLGA.filter(e => e.lgaId === sourceId).sort((a, b) => a.year - b.year);
 }
 
 /**

@@ -44,3 +44,12 @@ test('Blacktown matches the cache', () => {
   expect(b.values.frequent_stop_share.value).toBeCloseTo(27.9, 1);
   expect(b.peerGroup).toBe('metro_outer');
 });
+
+// The bundled TZP24 extract (src/lib/data/nsw-employment-projections.ts) holds 43 LGAs: all 33 Greater
+// Sydney, Central Coast, Newcastle, Lake Macquarie, five Illawarra-Shoalhaven, Lismore and Coffs Harbour.
+// The other 85 have no bundled source rows, so job growth stays null for them (never proxied).
+const EXPECTED_TZP24_LGAS = 43;
+
+test('job growth coverage matches the TZP24 source', () => {
+  expect(NEEDS_SNAPSHOT.records.filter(r => r.values.job_growth_2041.value !== null).length).toBe(EXPECTED_TZP24_LGAS);
+});
