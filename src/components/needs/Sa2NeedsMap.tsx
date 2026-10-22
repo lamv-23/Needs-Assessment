@@ -3,78 +3,27 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import ChoroplethMapDirect from '@/components/maps/ChoroplethMapDirect';
-import { NEED_SCALE, NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
+import { escapeHtml, NEED_STEPS, NeedMapLegend, NSW_CENTRE, NSW_ZOOM, SELECTED_OUTLINE } from '@/components/needs/mapParts';
+import { LGA_BOUNDARIES_URL, loadBoundaries, SA2_BOUNDARIES_URL } from '@/lib/needs/boundaries';
+import { NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
 import { LOW_POPULATION_REASON, SA2_MAP_NOTE, sa2MapEntries, type Sa2MapEntry } from '@/lib/needs/map-data';
 import { SA2_LOW_POPULATION } from '@/lib/needs/sa2';
 import type { Sa2NeedsFile } from '@/lib/needs/types';
 
-const SA2_BOUNDARIES_URL = '/geo/sa2-nsw-simple.json';
-const LGA_BOUNDARIES_URL = '/geo/lga-nsw-simple.json';
-const NSW_CENTRE: [number, number] = [-32.8, 147];
-const NSW_ZOOM = 6;
-const LGA_OUTLINE = '#111827';
-const SWATCH_STROKE = '#cbd5e1';
 /** A low-population SA2: a mid grey, darker than "No data" and off the need scale. */
 const LOW_POPULATION_COLOR = '#9ca3af';
 /** The `need` value that marks a low-population SA2, which has no percentile (percentiles run 0-100). */
 const LOW_POPULATION_VALUE = -1;
 const MAP_HEIGHT = 460;
-
-const requests = new Map<string, Promise<FeatureCollection>>();
-
-/** A boundary file, fetched once per page load (the need map shares the LGA file). A failed request is retried by the next caller. */
-function loadBoundaries(url: string): Promise<FeatureCollection> {
-  let request = requests.get(url);
-  if (!request) {
-    request = fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-        return res.json() as Promise<FeatureCollection>;
-      })
-      .catch((error) => {
-        requests.delete(url);
-        throw error;
-      });
-    requests.set(url, request);
-  }
-  return request;
-}
+const LEGEND_STEPS = [
+  ...NEED_STEPS,
+  { fill: LOW_POPULATION_COLOR, label: `${LOW_POPULATION_REASON} (under ${SA2_LOW_POPULATION} residents)` },
+  { fill: NO_DATA_COLOR, label: 'No data' },
+];
 
 // A stable function, so the map restyles only when the shading changes.
 const colorForNeed = (value: number | undefined) =>
   value === LOW_POPULATION_VALUE ? LOW_POPULATION_COLOR : needColor(value ?? null);
-
-const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ESCAPES[c]);
-
-function Swatch({ fill, border = `1px solid ${SWATCH_STROKE}` }: { fill: string; border?: string }) {
-  return <span className="inline-block h-3.5 w-[18px]" style={{ backgroundColor: fill, border }} />;
-}
-
-function Legend() {
-  const steps = [
-    ...NEED_SCALE.map((fill, i) => ({ fill, label: `${i * 20}–${(i + 1) * 20}` })),
-    { fill: LOW_POPULATION_COLOR, label: `${LOW_POPULATION_REASON} (under ${SA2_LOW_POPULATION} residents)` },
-    { fill: NO_DATA_COLOR, label: 'No data' },
-  ];
-  return (
-    <div data-figure-legend className="mt-2 text-xs text-gray-600">
-      <p>{SA2_MAP_NOTE}</p>
-      <ul className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-900">
-        {steps.map((step) => (
-          <li key={step.label} className="flex items-center gap-1.5">
-            <Swatch fill={step.fill} />
-            {step.label}
-          </li>
-        ))}
-        <li className="flex items-center gap-1.5">
-          <Swatch fill="#ffffff" border={`3px solid ${LGA_OUTLINE}`} />
-          Selected LGA
-        </li>
-      </ul>
-    </div>
-  );
-}
 
 /**
  * The SA2s in the drill-down of the selected LGAs (`sa2MapEntries`), each shaded by the need percentile of its overall
@@ -156,7 +105,7 @@ export default function Sa2NeedsMap({
         valueField="need"
         colorForValue={colorForNeed}
         outlines={outlines}
-        outlineColor={LGA_OUTLINE}
+        outlineColor={SELECTED_OUTLINE}
         scrollWheelZoom={false}
         fillOpacity={1}
         getTooltip={tooltip}
@@ -167,7 +116,7 @@ export default function Sa2NeedsMap({
         basemap={false}
         showLegend={false}
       />
-      <Legend />
+      <NeedMapLegend note={SA2_MAP_NOTE} steps={LEGEND_STEPS} />
     </div>
   );
 }

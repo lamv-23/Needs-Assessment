@@ -3,72 +3,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import ChoroplethMapDirect from '@/components/maps/ChoroplethMapDirect';
-import { NEED_SCALE, NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
+import { escapeHtml, NEED_STEPS, NeedMapLegend, NSW_CENTRE, NSW_ZOOM, SELECTED_OUTLINE } from '@/components/needs/mapParts';
+import { LGA_BOUNDARIES_URL, loadBoundaries } from '@/lib/needs/boundaries';
+import { NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
 import { describeMapScore, mapScores, mapUniverseNote } from '@/lib/needs/map-data';
 import type { NeedsAssessment } from '@/lib/needs/types';
 
-const BOUNDARIES_URL = '/geo/lga-nsw-simple.json';
-const NSW_CENTRE: [number, number] = [-32.8, 147];
-const NSW_ZOOM = 6;
-const SELECTED_OUTLINE = '#111827';
-const SWATCH_STROKE = '#cbd5e1';
 const MAP_HEIGHT = 500;
-
-let boundariesRequest: Promise<FeatureCollection> | null = null;
-
-/** The simplified LGA boundaries, fetched once per page load. A failed request is retried by the next caller. */
-function loadBoundaries(): Promise<FeatureCollection> {
-  if (!boundariesRequest) {
-    boundariesRequest = fetch(BOUNDARIES_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status} for ${BOUNDARIES_URL}`);
-        return res.json() as Promise<FeatureCollection>;
-      })
-      .catch((error) => {
-        boundariesRequest = null;
-        throw error;
-      });
-  }
-  return boundariesRequest;
-}
+const LEGEND_STEPS = [...NEED_STEPS, { fill: NO_DATA_COLOR, label: 'No score' }];
 
 // A stable function, so the map restyles only when the scores or the selection change.
 const colorForNeed = (score: number | undefined) => needColor(score ?? null);
-
-const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ESCAPES[c]);
-
-function Legend({ universeNote }: { universeNote: string }) {
-  const steps = [
-    ...NEED_SCALE.map((fill, i) => ({ fill, label: `${i * 20}–${(i + 1) * 20}` })),
-    { fill: NO_DATA_COLOR, label: 'No score' },
-  ];
-  return (
-    <div data-figure-legend className="mt-2 text-xs text-gray-600">
-      <p>
-        Shading shows each LGA&apos;s overall need score (0–100); darker means more need. {universeNote}
-      </p>
-      <ul className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-900">
-        {steps.map((step) => (
-          <li key={step.label} className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-3.5 w-[18px]"
-              style={{ backgroundColor: step.fill, border: `1px solid ${SWATCH_STROKE}` }}
-            />
-            {step.label}
-          </li>
-        ))}
-        <li className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-3.5 w-[18px] bg-white"
-            style={{ border: `3px solid ${SELECTED_OUTLINE}` }}
-          />
-          Selected LGA
-        </li>
-      </ul>
-    </div>
-  );
-}
 
 /**
  * Every NSW LGA shaded by its overall need score against the assessment's comparison universe;
@@ -88,7 +33,7 @@ export default function NeedsMap({
 
   useEffect(() => {
     let current = true;
-    loadBoundaries()
+    loadBoundaries(LGA_BOUNDARIES_URL)
       .then((collection) => {
         if (current) setBoundaries(collection);
       })
@@ -161,7 +106,10 @@ export default function NeedsMap({
         basemap={false}
         showLegend={false}
       />
-      <Legend universeNote={mapUniverseNote(universe)} />
+      <NeedMapLegend
+        note={`Shading shows each LGA's overall need score (0–100); darker means more need. ${mapUniverseNote(universe)}`}
+        steps={LEGEND_STEPS}
+      />
     </div>
   );
 }
