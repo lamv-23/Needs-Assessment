@@ -42,6 +42,55 @@ export interface LgaIndicatorRecord {
   values: Record<IndicatorId, IndicatorValue>;
 }
 
+/** A record that may describe a combined selection, which can span several peer groups. */
+export type AssessableRecord = Omit<LgaIndicatorRecord, 'peerGroup'> & { peerGroup: PeerGroup | null };
+
+/** Comparison universe: all NSW LGAs, Greater Sydney LGAs, the same region, or the same peer group. */
+export type Universe = 'nsw' | 'gsyd' | 'region' | 'peer';
+
+export type NeedBand = 'Very high' | 'High' | 'Moderate' | 'Lower';
+
+export interface IndicatorScore {
+  id: IndicatorId;
+  value: number | null;
+  /** Need percentile 0-100 (100 = most need), unrounded; null when there is no value to rank. */
+  percentile: number | null;
+  /** Scored indicator with a need percentile of 80 or more. */
+  keyNeed: boolean;
+  /** Combined selection: population-weighted mean of a non-additive indicator. */
+  approximate: boolean;
+  /** Combined selection: some of the selected LGAs have no value. */
+  partial: boolean;
+}
+
+export interface DomainScore {
+  domain: NeedDomain;
+  score: number | null;
+  band: NeedBand | null;
+  /** Scored indicators with a value / scored indicators in the domain. */
+  available: number;
+  total: number;
+}
+
+export interface AreaAssessment {
+  areaId: string;
+  name: string;
+  region: string;
+  population: number;
+  /** null for a combined area spanning several peer groups. */
+  peerGroup: PeerGroup | null;
+  universe: Universe;
+  /** Plural noun phrase used verbatim in sentences ("NSW LGAs", "regional cities"). */
+  universeLabel: string;
+  universeSize: number;
+  /** The universe has fewer than 5 LGAs, so percentiles are coarse. */
+  smallGroup: boolean;
+  indicators: IndicatorScore[];
+  domains: DomainScore[];
+  overall: number | null;
+  band: NeedBand | null;
+}
+
 export interface NeedsSnapshot { generatedAt: string; records: LgaIndicatorRecord[] }
 
 export interface LiveBundle {
