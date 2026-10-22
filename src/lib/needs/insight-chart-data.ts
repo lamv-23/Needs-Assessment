@@ -18,7 +18,6 @@ interface Pt { x: number; y: number }
 
 const CAR = INDICATOR_BY_ID.car_dependency;
 const CRASH = INDICATOR_BY_ID.crash_rate;
-const STOPS = INDICATOR_BY_ID.frequent_stop_share;
 const DEPARTURES = INDICATOR_BY_ID.am_peak_departures_per_1000;
 
 // Shared text
@@ -243,8 +242,13 @@ export interface MismatchChartsData {
 
 const SETTINGS: Setting[] = ['metro', 'non_metro'];
 
-const SETTING_TEXT: Record<Setting, { heading: string; group: string; xTitle: string }> = {
-  metro: { heading: 'Metropolitan LGAs', group: 'metropolitan LGAs', xTitle: `${STOPS.label} (${STOPS.unit})` },
+/** The x axis of each setting's model: its predictor (P2-R4: the frequent-service catchment in Sydney). */
+export const SETTING_TEXT: Record<Setting, { heading: string; group: string; xTitle: string }> = {
+  metro: {
+    heading: 'Metropolitan LGAs',
+    group: 'metropolitan LGAs',
+    xTitle: 'Residents near frequent AM-peak public transport (%, straight-line distance)',
+  },
   non_metro: { heading: 'Non-metropolitan LGAs', group: 'non-metropolitan LGAs', xTitle: 'Population (log scale)' },
 };
 

@@ -1,10 +1,15 @@
 import { markedValue, notRankedText, partialBenchmarkNotes, partialBenchmarks, type ValueColumn } from './coverage';
-import { displayScore } from './format';
-import { INDICATOR_BY_ID, INDICATORS, SOURCES } from './indicators';
+import { displayScore, formatValue } from './format';
+import { CATCHMENT_NOTE, INDICATOR_BY_ID, INDICATORS, SOURCES } from './indicators';
 import { mismatchChartData, trendData } from './insight-chart-data';
 import { carDependencySources, WFH_CAVEAT_CITATION } from './insights';
+import {
+  drillDownSa2s, lgaShareText, rankSa2s, SA2_INDICATOR_IDS, SA2_LOW_POPULATION, SA2_RANKED_CRITERIA,
+  SA2_SHARE_THRESHOLD, sa2RankText, topSa2s,
+} from './sa2';
 import type {
-  AreaAssessment, IndicatorDef, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, SourceRef,
+  AreaAssessment, IndicatorDef, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, Sa2Assessed, Sa2NeedsFile,
+  SourceRef,
 } from './types';
 
 /** Pure data shaping for the /needs page; the components only draw what this returns. */
@@ -43,9 +48,12 @@ export function figureCaption(ids: IndicatorId[] = ALL_INDICATOR_IDS): string {
 // The insight figures draw on series that are not all indicators, so their sources are named here. They are the
 // sources the findings cite (insights.ts), without the 2021 Census lockdown caveat, which is a note and not data.
 
-/** Car dependency, and the predictor of each setting drawn: stop service in Sydney, population elsewhere. */
+/**
+ * Car dependency, and the predictor of each setting drawn: residents near frequent AM-peak service in Sydney (the
+ * straight-line catchments), population elsewhere.
+ */
 export function mismatchCaption(assessment: NeedsAssessment): string {
-  const predictors = { metro: SOURCES.gtfs, non_metro: SOURCES.g01 };
+  const predictors = { metro: SOURCES.catchments, non_metro: SOURCES.g01 };
   return sourcesCaption([
     SOURCES.g62,
     ...mismatchChartData(assessment).charts.map(chart => predictors[chart.setting]),
@@ -70,6 +78,115 @@ export const GROWTH_SERVICE_CAPTION = sourcesCaption([SOURCES.gtfs, SOURCES.erp,
 export const JOBS_HOUSING_CAPTION = sourcesCaption([
   SOURCES.employmentProjections, SOURCES.erp, SOURCES.populationProjections,
 ]);
+
+// The SA2 drill-down (Phase 2). Every catchment figure says "straight-line distance", in its title so that the Word
+// caption ("Figure n. {title}. Source: …") says it too.
+
+export const SA2_MAP_TITLE = 'SA2 need map';
+
+/** The SA2 map shades each SA2 by its overall score, made from all the SA2 indicators. */
+export const SA2_MAP_CAPTION = figureCaption(SA2_INDICATOR_IDS);
+
+/** The SA2 table's source line (page and Word): its scores, like the map's shading, use all the SA2 indicators. */
+export const SA2_TABLE_CAPTION = figureCaption(SA2_INDICATOR_IDS);
+
+/** The SA2 table's heading in the Word export (P2-R18). */
+export const SA2_TABLE_HEADING = 'SA2s within the selection';
+
+/** In place of the SA2 table when the selection has no ranked SA2. */
+export const SA2_TABLE_EMPTY = 'No ranked SA2 in the selected LGAs.';
+
+export const CATCHMENT_TITLE = 'Residents near AM-peak public transport (straight-line distance)';
+
+/** The walking catchments: mesh-block residents and the stops with AM-peak service. */
+export const CATCHMENT_CAPTION = sourcesCaption([SOURCES.catchments]);
+
+/** The SA2 table lists this many of the selection's highest-need SA2s. */
+export const SA2_TABLE_SIZE = 10;
+
+const NO_SCORE = 'No score';
+
+export interface Sa2TableRow {
+  code: string;
+  name: string;
+  /** The LGAs the SA2 is listed for, with their shares of its residents. */
+  lgas: string;
+  /** "High (67)": the band and the overall score, floored. */
+  overall: string;
+  /** "ranks in the highest-need 10% of NSW SA2s" (R57). */
+  rank: string;
+  transport: string;
+  socio: string;
+  /** Residents near frequent AM-peak public transport (straight-line distance), or "No data". */
+  frequent: string;
+}
+
+export interface Sa2TableData { rows: Sa2TableRow[]; notes: string[] }
+
+type Sa2TableColumnKey = Exclude<keyof Sa2TableRow, 'code' | 'rank'>;
+
+/**
+ * The SA2 table's columns, in order, for the page and the Word export: the Overall need cell is `overall` with `rank`
+ * on a line of its own, every other cell is its row field. `numeric` columns are right-aligned.
+ */
+export const SA2_TABLE_COLUMNS: { key: Sa2TableColumnKey; header: string; numeric: boolean }[] = [
+  { key: 'name', header: 'SA2', numeric: false },
+  { key: 'lgas', header: 'LGA (share of residents)', numeric: false },
+  { key: 'overall', header: 'Overall need', numeric: false },
+  { key: 'transport', header: 'Transport score', numeric: true },
+  { key: 'socio', header: 'Socio-economic score', numeric: true },
+  { key: 'frequent', header: 'Near frequent AM-peak public transport (straight-line distance)', numeric: true },
+];
+
+/** "Blacktown" by area id, for every LGA. */
+const lgaNames = (assessment: Pick<NeedsAssessment, 'records'>) => new Map(assessment.records.map(r => [r.areaId, r.name]));
+
+/**
+ * The selection's highest-need SA2s (`topSa2s` of the selected LGAs, each SA2 once), with notes on what the scores
+ * cover, the SA2s that are not ranked, and the straight-line catchment.
+ */
+export function sa2Table(file: Sa2NeedsFile, assessment: Pick<NeedsAssessment, 'records' | 'memberIds'>): Sa2TableData {
+  const ranking = rankSa2s(file);
+  const names = lgaNames(assessment);
+  const drillDown = drillDownSa2s(file, assessment.memberIds);
+  const top = topSa2s(file, assessment.memberIds, SA2_TABLE_SIZE);
+  const frequent = INDICATOR_BY_ID.frequent_service_catchment;
+  const domainText = (entry: Sa2Assessed, domain: NeedDomain) => {
+    const score = entry.assessment.domains.find(d => d.domain === domain)?.score ?? null;
+    return score === null ? NO_SCORE : String(displayScore(score));
+  };
+
+  const rows = top.map((entry): Sa2TableRow => {
+    const { record, assessment: a } = entry;
+    return {
+      code: record.sa2Code,
+      name: record.name,
+      lgas: lgaShareText(record, names),
+      overall: a.overall !== null && a.band !== null ? `${a.band} (${displayScore(a.overall)})` : NO_SCORE,
+      rank: sa2RankText(entry, ranking) ?? '',
+      transport: domainText(entry, 'transport'),
+      socio: domainText(entry, 'socio'),
+      frequent: formatValue(frequent, a.indicators.find(s => s.id === frequent.id)?.value ?? null),
+    };
+  });
+
+  const rankedCount = drillDown.filter(e => e.overallRank !== null).length;
+  const unranked = drillDown.filter(e => e.overallRank === null).map(e => e.record.name);
+  const shown = rows.length < rankedCount
+    ? `The ${rows.length} highest-need of the ${rankedCount} ranked SA2s in the selection`
+    : `All ${rankedCount} ranked SA2s in the selection`;
+  const notes = [
+    `${shown}, by overall SA2 need score. An SA2 is in the selection when at least `
+      + `${Math.round(SA2_SHARE_THRESHOLD * 100)}% of its residents live in a selected LGA. SA2 scores cover the `
+      + `transport and socio-economic domains only and are ranked against the ${ranking.ranked} NSW SA2s `
+      + `${SA2_RANKED_CRITERIA}.`,
+    ...(unranked.length > 0
+      ? [`Not ranked (fewer than ${SA2_LOW_POPULATION} residents, or no score): ${unranked.join(', ')}.`]
+      : []),
+    CATCHMENT_NOTE,
+  ];
+  return { rows, notes };
+}
 
 export const STRIP_PLOT_COUNT = 6;
 
@@ -193,6 +310,17 @@ export function sameSelection(a: SelectionOf, b: SelectionOf): boolean {
     && a.requestedUniverse === b.requestedUniverse
     && a.memberIds.length === b.memberIds.length
     && a.memberIds.every((id, i) => id === b.memberIds[i]);
+}
+
+/**
+ * What the Word export is waiting for, named on its button ("Loading map boundaries…"): the SA2 file (P2-R5), then the
+ * maps' boundary files and code (P2-R19), so no map is pictured while it still shows a placeholder. Null when nothing
+ * the document needs is loading.
+ */
+export function exportWaitingFor(loading: { sa2Data: boolean; boundaries: boolean }): string | null {
+  if (loading.sa2Data) return 'SA2 data';
+  if (loading.boundaries) return 'map boundaries';
+  return null;
 }
 
 /** Shown, with no download, when the selection changed while the Word export was capturing its figures. */

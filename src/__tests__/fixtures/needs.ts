@@ -92,6 +92,7 @@ export function makeBundle(overrides: DeepPartial<LiveBundle> = {}): LiveBundle 
         departuresPer1000Residents: 12,
       },
       commuteDistance2016: { avgKm: 18.2, medianKm: 12 },
+      catchment: { persons: 400000, frequentPersons: 240000, anyPersons: 380000, frequentShare: 60, anyShare: 95 },
       crashTrend: [
         { year: 2022, totalCrashes: 900, fatalCrashes: 8, injuryCrashes: 500 },
         { year: 2023, totalCrashes: 1000, fatalCrashes: 9, injuryCrashes: 540 },

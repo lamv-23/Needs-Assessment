@@ -1,6 +1,7 @@
 import { displayScore } from './format';
+import { drillDownSa2s, lgaShareText, rankSa2s, sa2RankText } from './sa2';
 import { assessRecord, universeRecords } from './scoring';
-import type { NeedBand, NeedsAssessment, Universe } from './types';
+import type { NeedBand, NeedsAssessment, Sa2NeedsFile, Universe } from './types';
 
 /** Pure data shaping for the need map; the component only draws what this returns. */
 
@@ -64,6 +65,66 @@ export function mapScores(assessment: Pick<NeedsAssessment, 'records' | 'univers
 export function describeMapScore(entry: MapScore | undefined): string {
   if (!entry || entry.score === null) return entry?.noScoreReason ?? NO_DATA_REASON;
   return `${entry.band} need · score ${displayScore(entry.score)} / 100`;
+}
+
+// The SA2 need map (Phase 2)
+
+/** An SA2 with fewer than 100 residents, which is not ranked. */
+export const LOW_POPULATION_REASON = 'Low population';
+
+/**
+ * What the SA2 map's shading is, shown with its legend: the rank (need percentile) among NSW SA2s, while the tooltip
+ * and the table give the score's band (P2-R20).
+ */
+export const SA2_MAP_NOTE =
+  'Shading shows where each SA2 ranks among NSW SA2s (its need percentile) on its overall SA2 need score, which covers '
+  + 'the transport and socio-economic domains only (there are no growth indicators for SA2s); darker means more need. '
+  + 'The tooltip and the SA2 table show the score and its band.';
+
+/**
+ * The SA2 map's legend, one label per step of the need scale (P2-R20): the shading is the percentile among NSW SA2s, so
+ * the steps are percentile bands, not the score steps of the LGA map.
+ */
+export const SA2_PERCENTILE_BANDS = ['Lowest 20% of NSW SA2s', '20–40%', '40–60%', '60–80%', 'Highest 20%'];
+
+export interface Sa2MapEntry {
+  code: string;
+  name: string;
+  /** Need percentile of the overall score among the ranked NSW SA2s, unrounded; null when there is none. */
+  percentile: number | null;
+  lowPopulation: boolean;
+  /** The tooltip: the name, then the score and rank (or why there is none), then the LGA shares. */
+  lines: string[];
+}
+
+const sentenceStart = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * Every SA2 in the drill-down of `lgaIds`, each once, with its overall need percentile for the shading and its tooltip:
+ * the band, the score (floored) and the rank among NSW SA2s (R57), or "Low population" for an SA2 that is not ranked.
+ */
+export function sa2MapEntries(file: Sa2NeedsFile, lgaIds: string[], lgaNames: Map<string, string>): Sa2MapEntry[] {
+  const ranking = rankSa2s(file);
+  return drillDownSa2s(file, lgaIds).map(entry => {
+    const { record, assessment } = entry;
+    const rank = sa2RankText(entry, ranking);
+    let status: string[];
+    if (record.lowPopulation) {
+      const residents = `${record.population} ${record.population === 1 ? 'resident' : 'residents'}`;
+      status = [`${LOW_POPULATION_REASON} (${residents}): not ranked`];
+    } else if (assessment.overall === null || assessment.band === null || rank === null) {
+      status = [NO_DATA_REASON];
+    } else {
+      status = [`${assessment.band} need · score ${displayScore(assessment.overall)} / 100`, sentenceStart(rank)];
+    }
+    return {
+      code: record.sa2Code,
+      name: record.name,
+      percentile: entry.overallPercentile,
+      lowPopulation: record.lowPopulation,
+      lines: [record.name, ...status, `Residents in ${lgaShareText(record, lgaNames)}`],
+    };
+  });
 }
 
 const SMALL_GROUP_NOTE = ' An LGA in a group of fewer than 5 LGAs is not scored.';

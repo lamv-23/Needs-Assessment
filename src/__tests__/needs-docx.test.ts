@@ -6,15 +6,20 @@ import {
   buildNeedsDocument, captureFigures, figureLayout, skippedFiguresMessage, type DocxFigure, type NeedsDocxInput,
 } from '@/lib/needs/docx-export';
 import { DOMAIN_LABELS, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { figureSkipError, skipReasonOf } from '@/lib/needs/figure-skip';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  citationSegments, comparisonLabel, exportFileName, exportTitle, indicatorTable, NEEDS_SOURCES, sourceNumber,
+  CATCHMENT_CAPTION, CATCHMENT_TITLE, citationSegments, comparisonLabel, exportFileName, exportTitle, indicatorTable,
+  NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, SA2_TABLE_CAPTION, SA2_TABLE_COLUMNS, SA2_TABLE_EMPTY,
+  SA2_TABLE_HEADING, sa2Table, sourceNumber,
 } from '@/lib/needs/page-data';
 import type { NeedsAssessment, NeedsMode, NeedsSnapshot, Universe } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 const METHOD_SENTENCE =
   'Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. '
-  + 'Aboriginal and Torres Strait Islander share is shown for context and is not scored.';
+  + 'Aboriginal and Torres Strait Islander share and the share of stops with frequent AM-peak service are shown for '
+  + 'context and are not scored.';
 
 /** A real 1x1 PNG. The display size comes from the transformation, not the bytes. */
 const PNG_1X1 = Uint8Array.from(Buffer.from(
@@ -409,6 +414,114 @@ describe('buildNeedsDocument: figures', () => {
   });
 });
 
+describe('buildNeedsDocument: SA2 drill-down', () => {
+  const assessment = assess(['lga_blacktown', 'lga_mosman']);
+  const narrative = buildNarrative(assessment, { file: SA2_POCKETS_FILE });
+  const drillDown = [figure(SA2_MAP_TITLE, 1000, 700, SA2_MAP_CAPTION), figure(CATCHMENT_TITLE, 2000, 700, CATCHMENT_CAPTION)];
+
+  test('docx includes the pockets section and a straight-line note in the catchment caption', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, [figure('Need map'), ...drillDown]), narrative });
+
+    const order = headings(xml, 'Heading2');
+    expect(order.indexOf('Pockets of need')).toBe(order.indexOf(DOMAIN_LABELS.growth) + 1);
+    const texts = paragraphs(xml).map(p => p.text);
+    const pockets = narrative.find(s => s.id === 'pockets')!;
+    expect(pockets.paragraphs.map(p => p.text)).toEqual([
+      'Within Blacktown, Mount Druitt - Whalan, Lethbridge Park - Tregear and Blackett - Dharruk are in the highest-need 10% of NSW SA2s.',
+      'No SA2 in Mosman is in the highest-need 10% of NSW SA2s.',
+    ]);
+    for (const p of pockets.paragraphs) {
+      const citation = citationSegments(p.citations.map(sourceNumber))
+        .map(({ from, to }) => (from === to ? `${from}` : `${from}–${to}`)).join(', ');
+      expect(citation).not.toBe('');
+      expect(texts).toContain(p.text + citation);
+    }
+
+    const captions = paragraphs(xml).filter(p => p.style === 'Caption').map(p => p.text);
+    expect(captions).toEqual([
+      'Figure 1. Need map. Source: ABS Census 2021 G62',
+      `Figure 2. SA2 need map. Source: ${SA2_MAP_CAPTION}`,
+      `Figure 3. ${CATCHMENT_TITLE}. Source: ${CATCHMENT_CAPTION}`,
+    ]);
+    expect(captions[2]).toContain('straight-line distance');
+  });
+
+  test('the SA2 map and catchment captions cite numbered sources only (R31, R45)', () => {
+    for (const caption of [SA2_MAP_CAPTION, CATCHMENT_CAPTION]) {
+      for (const short of caption.split('; ')) expect(NEEDS_SOURCES.map(s => s.short)).toContain(short);
+    }
+    expect(CATCHMENT_CAPTION).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
+  });
+});
+
+describe('buildNeedsDocument: SA2 table (P2-R18)', () => {
+  const assessment = assess(['lga_blacktown']);
+  const sa2 = sa2Table(SA2_POCKETS_FILE, assessment);
+
+  test('a native table after the indicator table: the page columns and cells, its notes and a source line', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, [figure('Need map')]), sa2Table: sa2 });
+
+    const order = headings(xml, 'Heading2');
+    expect(order.indexOf(SA2_TABLE_HEADING)).toBe(order.indexOf('Indicators') + 1);
+    expect(order.indexOf('Figures')).toBe(order.indexOf(SA2_TABLE_HEADING) + 1);
+    expect(SA2_TABLE_HEADING).toBe('SA2s within the selection');
+
+    const all = tables(xml);
+    expect(all).toHaveLength(2);
+    const table = all[1];
+    expect(table[0]).toEqual(SA2_TABLE_COLUMNS.map(c => c.header));
+    expect(table).toHaveLength(sa2.rows.length + 1);
+    const expected = sa2.rows.find(r => r.name === 'Mount Druitt - Whalan')!;
+    expect(expected.rank).not.toBe('');
+    // The overall need cell holds the band and score, then the rank on a line of its own, as on the page
+    expect(table.find(r => r[0] === 'Mount Druitt - Whalan')).toEqual([
+      expected.name, expected.lgas, expected.overall + expected.rank, expected.transport, expected.socio, expected.frequent,
+    ]);
+    expect(table.slice(1).map(r => r[0])).toEqual(sa2.rows.map(r => r.name));
+
+    const texts = paragraphs(xml).map(p => p.text);
+    const sourceAt = texts.indexOf(`Source: ${SA2_TABLE_CAPTION}`);
+    expect(sourceAt).toBeGreaterThan(-1);
+    // The notes (the straight-line catchment note among them) come before the source line, as on the page
+    expect(texts.slice(sourceAt - sa2.notes.length, sourceAt)).toEqual(sa2.notes);
+    expect(texts.indexOf(SA2_TABLE_HEADING)).toBeLessThan(sourceAt);
+    expect(sourceAt).toBeLessThan(texts.indexOf('Figures'));
+  });
+
+  test('six fixed columns fit the portrait text width, so the table stays in portrait (R32)', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, []), sa2Table: sa2 });
+    const withTables = sections(xml).filter(s => s.xml.includes('<w:tbl>'));
+    expect(withTables.map(s => s.orientation)).toEqual(['portrait']);
+  });
+
+  test('after a landscape indicator table, the SA2 table starts a portrait section', async () => {
+    const many = assess(GSYD_IDS.slice(0, 6));
+    const { xml } = await documentParts({ ...inputFor(many, []), sa2Table: sa2Table(SA2_POCKETS_FILE, many) });
+    const orientationOfTable = sections(xml).flatMap(s => Array.from(s.xml.matchAll(/<w:tbl>/g)).map(() => s.orientation));
+    expect(orientationOfTable).toEqual(['landscape', 'portrait']);
+  });
+
+  test('without the SA2 file there is no SA2 table', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, []), sa2Table: null });
+    expect(headings(xml, 'Heading2')).not.toContain(SA2_TABLE_HEADING);
+    expect(tables(xml)).toHaveLength(1);
+  });
+
+  test('a selection with no ranked SA2 says so, with the notes and source line, and draws no empty table', async () => {
+    const empty = { ...sa2, rows: [] };
+    const { xml } = await documentParts({ ...inputFor(assessment, []), sa2Table: empty });
+    const texts = paragraphs(xml).map(p => p.text);
+    expect(tables(xml)).toHaveLength(1);
+    expect(texts).toContain(SA2_TABLE_EMPTY);
+    expect(texts).toContain(`Source: ${SA2_TABLE_CAPTION}`);
+  });
+
+  test('the source line cites numbered sources only (R31, R45)', () => {
+    for (const short of SA2_TABLE_CAPTION.split('; ')) expect(NEEDS_SOURCES.map(s => s.short)).toContain(short);
+    expect(SA2_TABLE_CAPTION).toBe(SA2_MAP_CAPTION);
+  });
+});
+
 describe('figureLayout', () => {
   test('a figure at most 1.6 times as wide as tall stays in portrait at 16 cm wide', () => {
     expect(figureLayout(1600, 1000)).toMatchObject({ orientation: 'portrait', widthCm: 16, heightCm: 10 });
@@ -508,7 +621,15 @@ describe('captureFigures', () => {
     title, caption: `${title} source`, capture: async () => ({ png: PNG_1X1, widthPx: 30, heightPx: 20 }),
   });
   const collapsed = (title: string) => ({
-    title, caption: '', capture: async () => { throw new Error(`Figure "${title}" is not rendered (collapsed or unmounted)`); },
+    title, caption: '',
+    capture: async () => { throw figureSkipError('collapsed', `Figure "${title}" is not rendered (collapsed or unmounted)`); },
+  });
+  const unavailable = (title: string) => ({
+    title, caption: '',
+    capture: async () => { throw figureSkipError('unavailable', `Figure "${title}" is unavailable: the map boundaries could not be loaded`); },
+  });
+  const broken = (title: string) => ({
+    title, caption: '', capture: async () => { throw new Error('toBlob failed'); },
   });
 
   let warn: jest.SpyInstance;
@@ -526,11 +647,21 @@ describe('captureFigures', () => {
   test('a figure that cannot be rendered is skipped by title and the others still export, renumbered', async () => {
     const { captured, skipped } = await captureFigures([ok('A'), collapsed('B'), ok('C'), collapsed('D')]);
     expect(captured.map(f => f.title)).toEqual(['A', 'C']);
-    expect(skipped).toEqual(['B', 'D']);
+    expect(skipped).toEqual([{ title: 'B', reason: 'collapsed' }, { title: 'D', reason: 'collapsed' }]);
     expect(skippedFiguresMessage(skipped)).toBe('Expand these figures and export again: B, D');
     const { xml } = await documentParts(inputFor(assess(['lga_blacktown']), captured));
     expect(paragraphs(xml).filter(p => p.style === 'Caption').map(p => p.text))
       .toEqual(['Figure 1. A. Source: A source', 'Figure 2. C. Source: C source']);
+  });
+
+  test('P2-R19: each skipped figure keeps why: unavailable (data or boundaries not loaded), collapsed, or failed', async () => {
+    const { captured, skipped } = await captureFigures([unavailable('Need map'), collapsed('Trends'), broken('Radar'), ok('A')]);
+    expect(captured.map(f => f.title)).toEqual(['A']);
+    expect(skipped).toEqual([
+      { title: 'Need map', reason: 'unavailable' },
+      { title: 'Trends', reason: 'collapsed' },
+      { title: 'Radar', reason: 'failed' },
+    ]);
   });
 
   test('captures one figure at a time', async () => {
@@ -548,6 +679,49 @@ describe('captureFigures', () => {
     });
     await captureFigures([slow('A'), slow('B'), slow('C')]);
     expect(overlap).toBe(false);
+  });
+});
+
+describe('skippedFiguresMessage (R22, P2-R19)', () => {
+  test('nothing skipped: no message', () => {
+    expect(skippedFiguresMessage([])).toBeNull();
+  });
+
+  test('an unavailable figure states why it is missing instead of asking to expand it', () => {
+    expect(skippedFiguresMessage([
+      { title: 'SA2 need map', reason: 'unavailable' }, { title: 'Need map', reason: 'unavailable' },
+    ])).toBe('These figures could not be loaded and were left out: SA2 need map, Need map.');
+  });
+
+  test('collapsed figures keep the original wording', () => {
+    expect(skippedFiguresMessage([{ title: 'Trends', reason: 'collapsed' }]))
+      .toBe('Expand these figures and export again: Trends');
+  });
+
+  test('a figure that failed to render is named as such', () => {
+    expect(skippedFiguresMessage([{ title: 'Radar', reason: 'failed' }]))
+      .toBe('These figures could not be rendered and were left out: Radar. Export again to retry.');
+  });
+
+  test('several reasons: one sentence each, unavailable first, collapsed last', () => {
+    expect(skippedFiguresMessage([
+      { title: 'Trends', reason: 'collapsed' }, { title: 'SA2 need map', reason: 'unavailable' },
+      { title: 'Radar', reason: 'failed' },
+    ])).toBe(
+      'These figures could not be loaded and were left out: SA2 need map. '
+      + 'These figures could not be rendered and were left out: Radar. Export again to retry. '
+      + 'Expand these figures and export again: Trends',
+    );
+  });
+
+  test('skipReasonOf reads the reason of a figureSkipError; any other error is a failure', () => {
+    expect(skipReasonOf(figureSkipError('unavailable', 'x'))).toBe('unavailable');
+    expect(skipReasonOf(figureSkipError('collapsed', 'x'))).toBe('collapsed');
+    expect(figureSkipError('collapsed', 'not rendered')).toBeInstanceOf(Error);
+    expect(figureSkipError('collapsed', 'not rendered').message).toBe('not rendered');
+    expect(skipReasonOf(new Error('boom'))).toBe('failed');
+    expect(skipReasonOf('boom')).toBe('failed');
+    expect(skipReasonOf(null)).toBe('failed');
   });
 });
 

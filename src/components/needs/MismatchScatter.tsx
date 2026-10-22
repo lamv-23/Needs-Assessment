@@ -5,7 +5,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { formatDiff } from '@/lib/needs/format';
-import { INDICATOR_BY_ID } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, INDICATOR_BY_ID } from '@/lib/needs/indicators';
 import {
   DEFAULT_SCATTER_WIDTH, RING_RADIUS, SCATTER_HEIGHT, SCATTER_MARGIN, SCATTER_X_AXIS_HEIGHT, SCATTER_Y_AXIS_WIDTH,
   SELECTED_RADIUS, labelGeometry, mismatchChartData, predictorTickLabel,
@@ -98,9 +98,9 @@ function MismatchPlot({ chart, onWidth }: { chart: MismatchChart; onWidth: (widt
 
 /**
  * Car dependency against what the model expects for the LGA's setting: metropolitan LGAs by their share of
- * stops with frequent AM-peak service, the others by population. The other LGAs are grey, the fitted line and
- * the band of one residual SD either side are drawn, and the selected areas are coloured (the first few named)
- * and ringed when their residual is at least one residual SD.
+ * residents near frequent AM-peak public transport (straight-line distance), the others by population. The other
+ * LGAs are grey, the fitted line and the band of one residual SD either side are drawn, and the selected areas are
+ * coloured (the first few named) and ringed when their residual is at least one residual SD.
  */
 export default function MismatchScatter({ assessment }: { assessment: NeedsAssessment }) {
   // Names are fitted to the plot's measured width, so they re-fit when the chart is resized.
@@ -143,6 +143,7 @@ export default function MismatchScatter({ assessment }: { assessment: NeedsAsses
       ))}
       <ChartNotes>
         <p>Car dependency is the share of people who travelled to work who went by car; work from home is excluded (2021 Census).</p>
+        {charts.some(chart => chart.setting === 'metro') && <p>{CATCHMENT_NOTE}</p>}
         {noData.length > 0 && <p>No car dependency data: {noData.join(', ')}.</p>}
       </ChartNotes>
     </div>

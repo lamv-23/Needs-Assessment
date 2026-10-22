@@ -1,4 +1,4 @@
-import type { IndicatorDef, IndicatorId, NeedDomain, SourceRef } from './types';
+import type { IndicatorDef, IndicatorId, IndicatorLevel, NeedDomain, SourceRef } from './types';
 
 // Indicators that share a source share one SourceRef, so the narrative and
 // Word export can de-duplicate citations on `full`.
@@ -27,6 +27,16 @@ export const SOURCES = {
     short: 'TfNSW GTFS',
     full: 'Transport for NSW, GTFS timetable data: weekday 7-9am departures per stop',
     url: 'https://opendata.transport.nsw.gov.au',
+  },
+  // P2-R3: the residents (mesh blocks) and the stops with service (GTFS) behind the walking catchments. P2-R13: the
+  // short name joins them with "+", since "; " separates the sources of a figure caption.
+  catchments: {
+    short: 'ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)',
+    full: 'Australian Bureau of Statistics, Mesh Block Counts, 2021 (Census usual residents by mesh block); Transport for '
+      + 'NSW, GTFS timetable data: weekday 7-9am departures per stop. Residents whose mesh block centroid is within a '
+      + 'straight-line distance of 800 m (train, metro, ferry) or 400 m (bus, light rail) of a stop with frequent '
+      + '(8 or more departures) or any service',
+    url: 'https://www.abs.gov.au/census/guide-census-data/mesh-block-counts/latest-release',
   },
   commuteDistance: {
     short: 'ABS Data by Region (Census 2016)',
@@ -65,94 +75,124 @@ export const SOURCES = {
   },
 } satisfies Record<string, SourceRef>;
 
-/** In the spec table's order, grouped by domain. */
+// The levels an indicator is assessed at. SA2s have the Census and catchment indicators only (Phase 2 spec): no
+// projections, approvals, crashes, stop frequency or commuting distance exist at SA2.
+const LGA_ONLY: IndicatorLevel[] = ['lga'];
+const LGA_AND_SA2: IndicatorLevel[] = ['lga', 'sa2'];
+
+/** In the spec table's order, grouped by domain; the catchments (Phase 2) follow the frequent-stop share. */
 export const INDICATORS: IndicatorDef[] = [
   // Transport
   {
     id: 'car_dependency', domain: 'transport', label: 'Car dependency',
-    unit: '%', direction: 'higher', aggregation: 'weighted', scored: true, scale: 1, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'weighted', scored: true, levels: LGA_AND_SA2, scale: 1, decimals: 1,
     source: SOURCES.g62,
   },
   {
     id: 'zero_car_households', domain: 'transport', label: 'Households without a car',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.g34,
   },
   {
+    // Context only since Phase 2: the frequent-service catchment, a share of residents rather than of stops, is scored.
     id: 'frequent_stop_share', domain: 'transport', label: 'Stops with frequent AM-peak service',
-    unit: '%', direction: 'lower', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'lower', aggregation: 'ratio', scored: false, levels: LGA_ONLY, scale: 100, decimals: 1,
     source: SOURCES.gtfs,
   },
   {
+    // frequentPersons ÷ persons × 100: residents within a straight-line walk of a stop with 8+ AM-peak departures.
+    // P2-R17: the labels say AM-peak, since a stop with no weekday 7-9am departure counts as no service.
+    id: 'frequent_service_catchment', domain: 'transport',
+    label: 'Residents near frequent AM-peak public transport (straight-line distance)',
+    unit: '%', direction: 'lower', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
+    source: SOURCES.catchments,
+  },
+  {
+    // anyPersons ÷ persons × 100: residents within a straight-line walk of a stop with 1+ AM-peak departures
+    id: 'any_service_catchment', domain: 'transport',
+    label: 'Residents near any AM-peak public transport (straight-line distance)',
+    unit: '%', direction: 'lower', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
+    source: SOURCES.catchments,
+  },
+  {
     id: 'am_peak_departures_per_1000', domain: 'transport', label: 'AM-peak departures per 1,000 residents',
-    unit: 'per 1,000', direction: 'lower', aggregation: 'ratio', scored: true, scale: 1000, decimals: 1,
+    unit: 'per 1,000', direction: 'lower', aggregation: 'ratio', scored: true, levels: LGA_ONLY, scale: 1000, decimals: 1,
     source: SOURCES.gtfs,
   },
   {
     id: 'commute_distance_km', domain: 'transport', label: 'Average commuting distance',
-    unit: 'km', direction: 'higher', aggregation: 'weighted', scored: true, scale: 1, decimals: 1,
+    unit: 'km', direction: 'higher', aggregation: 'weighted', scored: true, levels: LGA_ONLY, scale: 1, decimals: 1,
     source: SOURCES.commuteDistance,
   },
   {
     // Latest-year totalCrashes ÷ ERP of that year (nearest ERP year if missing) × 10,000
     id: 'crash_rate', domain: 'transport', label: 'Road crashes per 10,000 residents',
-    unit: 'per 10,000', direction: 'higher', aggregation: 'ratio', scored: true, scale: 10000, decimals: 1,
+    unit: 'per 10,000', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_ONLY, scale: 10000, decimals: 1,
     source: SOURCES.crashes,
   },
   // Socio-economic
   {
     id: 'seifa_irsd', domain: 'socio', label: 'SEIFA disadvantage (IRSD)',
-    unit: 'score', direction: 'lower', aggregation: 'weighted', scored: true, scale: 1, decimals: 0,
+    unit: 'score', direction: 'lower', aggregation: 'weighted', scored: true, levels: LGA_AND_SA2, scale: 1, decimals: 0,
     source: SOURCES.seifa,
   },
   {
     id: 'unemployment_rate', domain: 'socio', label: 'Unemployment rate',
-    unit: '%', direction: 'higher', aggregation: 'weighted', scored: true, scale: 1, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'weighted', scored: true, levels: LGA_AND_SA2, scale: 1, decimals: 1,
     source: SOURCES.g46,
   },
   {
     id: 'low_income_households', domain: 'socio', label: 'Low-income households',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.g33,
   },
   {
     id: 'needs_assistance', domain: 'socio', label: 'People needing assistance',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.g18,
   },
   {
     id: 'limited_english', domain: 'socio', label: 'Limited English proficiency',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.g13,
   },
   {
     id: 'older_residents', domain: 'socio', label: 'Residents aged 65+',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.g01,
   },
   {
     // Context only (user decision 2026-10-22): shown with a percentile but not scored.
     id: 'indigenous_share', domain: 'socio', label: 'Aboriginal and Torres Strait Islander residents',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: false, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: false, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.g01,
   },
   // Growth
   {
     id: 'pop_growth_2041', domain: 'growth', label: 'Population growth 2021–41',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_ONLY, scale: 100, decimals: 1,
     source: SOURCES.populationProjections,
   },
   {
     id: 'job_growth_2041', domain: 'growth', label: 'Job growth 2021–41',
-    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, scale: 100, decimals: 1,
+    unit: '%', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_ONLY, scale: 100, decimals: 1,
     source: SOURCES.employmentProjections,
   },
   {
     id: 'approvals_per_1000', domain: 'growth', label: 'Dwelling approvals per 1,000 residents (last 12 months)',
-    unit: 'per 1,000', direction: 'higher', aggregation: 'ratio', scored: true, scale: 1000, decimals: 1,
+    unit: 'per 1,000', direction: 'higher', aggregation: 'ratio', scored: true, levels: LGA_ONLY, scale: 1000, decimals: 1,
     source: SOURCES.buildingApprovals,
   },
 ];
+
+/**
+ * What the two catchment indicators measure (P2-R17), for the notes of the figures and tables that show them: always
+ * straight-line distance, and only stops with weekday 7-9am departures.
+ */
+export const CATCHMENT_NOTE =
+  'Share of residents living within a straight-line 400 m (bus, light rail) or 800 m (train, metro, ferry) of a stop '
+  + 'with weekday 7–9am departures — frequent: 8 or more departures; any: at least 1. School-only services are '
+  + 'excluded. Straight-line distance overstates real walking access.';
 
 export const INDICATOR_BY_ID = Object.fromEntries(
   INDICATORS.map(def => [def.id, def]),

@@ -1,9 +1,12 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  domainScoresExcel, excelOf, growthServiceExcel, indicatorTableExcel, jobsHousingExcel, mismatchExcel, needMapExcel,
-  quadrantExcel, radarExcel, stripExcel, trendsExcel, type FigureExcel,
+  catchmentExcel, domainScoresExcel, excelOf, growthServiceExcel, indicatorTableExcel, jobsHousingExcel, mismatchExcel,
+  needMapExcel, quadrantExcel, radarExcel, sa2MapExcel, sa2TableExcel, stripExcel, trendsExcel, type FigureExcel,
 } from '@/lib/needs/excel-data';
+import { sa2Table } from '@/lib/needs/page-data';
+import { rankSa2s } from '@/lib/needs/sa2';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 import { excelSheetName } from '@/lib/export/sheet-name';
 import { displayScore } from '@/lib/needs/format';
 import { INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
@@ -11,7 +14,7 @@ import {
   growthServiceChartData, jobsHousingChartData, mismatchChartData, trendData,
 } from '@/lib/needs/insight-chart-data';
 import { carDependencyMismatch } from '@/lib/needs/insights';
-import { mapScores } from '@/lib/needs/map-data';
+import { mapScores, sa2MapEntries } from '@/lib/needs/map-data';
 import { QUADRANT_SCATTERS, RADAR_AXES, inNeedQuadrant, quadrantPanels, radarData } from '@/lib/needs/project-need';
 import { needPercentile } from '@/lib/needs/scoring';
 import type { NeedsAssessment, NeedsMode, Universe } from '@/lib/needs/types';
@@ -217,19 +220,20 @@ describe('mismatchExcel', () => {
     const excel = mismatchExcel(a);
     const charts = mismatchChartData(a).charts.filter(c => c.weakMessage === null);
     expect(sheet(excel).header).toEqual([
-      'Setting', 'LGA', 'Selected (Y/N)', 'Stops with frequent AM-peak service (%)', 'Population',
+      'Setting', 'LGA', 'Selected (Y/N)', 'Residents near frequent AM-peak public transport (%, straight-line distance)',
+      'Population',
       'Car dependency (%)', 'Expected car dependency (%)', 'Residual (pp)', 'z',
     ]);
     expect(excel.data).toHaveLength(charts.reduce((n, c) => n + c.others.length + c.selected.length, 0));
     const blacktown = excel.data.find(r => r.lga === 'Blacktown')!;
     const m = carDependencyMismatch(a.records.find(r => r.areaId === 'lga_blacktown')!, a.records)!;
     expect(blacktown).toMatchObject({
-      setting: 'Metropolitan', selected: 'Y', population: null,
+      setting: 'Metropolitan', selected: 'Y', catchment: rounded(m.x, 1), population: null,
       actual: rounded(m.actual, 1), expected: rounded(m.expected, 1), residual: rounded(m.residual, 1), z: rounded(m.z, 1),
     });
     expect(typeof excel.data.find(r => r.lga === 'Newcastle')!.population).toBe('number');
     for (const row of excel.data) {
-      for (const key of ['stopShare', 'population', 'actual', 'expected', 'residual', 'z']) expect(isNumberOrBlank(row[key])).toBe(true);
+      for (const key of ['catchment', 'population', 'actual', 'expected', 'residual', 'z']) expect(isNumberOrBlank(row[key])).toBe(true);
       // Every row's residual is its actual less its expected, as shown
       expect(Math.abs((row.actual as number) - (row.expected as number) - (row.residual as number))).toBeLessThan(0.11);
     }
@@ -264,5 +268,51 @@ describe('growthServiceExcel and jobsHousingExcel', () => {
     const j = jobsHousingChartData(a);
     expect(sheet(jobs).header).toEqual(['Area', 'Local jobs per resident, 2021', 'Local jobs per resident, 2041']);
     expect(jobs.data).toEqual(j.rows.map(r => ({ area: r.name, y2021: rounded(r.y2021, 2), y2041: rounded(r.y2041, 2) })));
+  });
+});
+
+describe('SA2 drill-down sheets', () => {
+  const a = assess(['lga_blacktown']);
+
+  test('the SA2 map: every SA2 drawn, with its score, band, rank and percentile floored, as numbers', () => {
+    const excel = sa2MapExcel(SA2_POCKETS_FILE, a);
+    expect(sheet(excel).header).toEqual([
+      'SA2', 'SA2 code', 'LGAs (share of residents)', 'Overall SA2 need score', 'Band', 'Rank among 50 NSW SA2s (1 = highest need)',
+      'Need percentile among NSW SA2s', 'Residents (Census 2021)', 'Low population, not ranked (Y/N)',
+    ]);
+    expect(column(excel, 'SA2')).toEqual(sa2MapEntries(SA2_POCKETS_FILE, ['lga_blacktown'], new Map()).map(e => e.name));
+    const ranking = rankSa2s(SA2_POCKETS_FILE);
+    const mountDruitt = excel.data.find(r => r.sa2 === 'Mount Druitt - Whalan')!;
+    const entry = ranking.byCode.get('116031317')!;
+    expect(mountDruitt).toMatchObject({
+      overall: displayScore(entry.assessment.overall!), rank: 1, percentile: displayScore(entry.overallPercentile!), lowPopulation: 'N',
+    });
+    // Not ranked: blank cells, never 0
+    expect(excel.data.find(r => r.sa2 === 'Prospect Reservoir')).toMatchObject({
+      overall: null, band: null, rank: null, percentile: null, residents: 12, lowPopulation: 'Y',
+    });
+    for (const key of ['overall', 'rank', 'percentile', 'residents']) expect(excel.data.every(r => isNumberOrBlank(r[key]))).toBe(true);
+  });
+
+  test('the SA2 table: its rows, with domain scores floored and the frequent catchment to 1 dp', () => {
+    const excel = sa2TableExcel(SA2_POCKETS_FILE, a);
+    expect(sheet(excel).header.slice(-3)).toEqual([
+      'Transport disadvantage', 'Socio-economic disadvantage',
+      'Residents near frequent AM-peak public transport (straight-line distance) (%)',
+    ]);
+    expect(column(excel, 'SA2')).toEqual(sa2Table(SA2_POCKETS_FILE, a).rows.map(r => r.name));
+    expect(excel.data[0]).toMatchObject({ sa2: 'Mount Druitt - Whalan', rank: 1, frequent: 50 });
+    expect(excel.data.every(r => typeof r.transport === 'number' && typeof r.socio === 'number')).toBe(true);
+  });
+
+  test('the catchment chart: each area, Greater Sydney and NSW on both measures, to 1 dp', () => {
+    const excel = catchmentExcel(assess(['lga_blacktown', 'lga_penrith']));
+    expect(sheet(excel).rows).toEqual([
+      ['Blacktown', 'Selected area', 59.4, 95],
+      ['Penrith', 'Selected area', 40.7, 90.2],
+      ['Greater Sydney', 'Greater Sydney', 67.2, 93.5],
+      ['NSW', 'NSW', 46.8, 81.2],
+    ]);
+    expect(sheet(excel).header[2]).toContain('straight-line distance');
   });
 });

@@ -3,10 +3,13 @@ import type { DemographicsData, TransportData, EconomyData, GrowthData } from '@
 export type NeedDomain = 'transport' | 'socio' | 'growth';
 
 export type IndicatorId =
-  | 'car_dependency' | 'zero_car_households' | 'frequent_stop_share' | 'am_peak_departures_per_1000'
-  | 'commute_distance_km' | 'crash_rate' | 'seifa_irsd' | 'unemployment_rate' | 'low_income_households'
-  | 'needs_assistance' | 'limited_english' | 'older_residents' | 'indigenous_share'
-  | 'pop_growth_2041' | 'job_growth_2041' | 'approvals_per_1000';
+  | 'car_dependency' | 'zero_car_households' | 'frequent_stop_share' | 'frequent_service_catchment'
+  | 'any_service_catchment' | 'am_peak_departures_per_1000' | 'commute_distance_km' | 'crash_rate' | 'seifa_irsd'
+  | 'unemployment_rate' | 'low_income_households' | 'needs_assistance' | 'limited_english' | 'older_residents'
+  | 'indigenous_share' | 'pop_growth_2041' | 'job_growth_2041' | 'approvals_per_1000';
+
+/** The geography an indicator is assessed at: LGAs, or SA2s (a subset: no growth indicators exist at SA2). */
+export type IndicatorLevel = 'lga' | 'sa2';
 
 export type PeerGroup = 'metro_inner' | 'metro_middle' | 'metro_outer' | 'regional_city' | 'regional_town' | 'rural';
 
@@ -23,6 +26,8 @@ export interface IndicatorDef {
   aggregation: 'ratio' | 'weighted';
   /** false = context only: shown with a percentile, excluded from domain/overall scores and key needs. */
   scored: boolean;
+  /** The levels the indicator is assessed at; an assessment at another level leaves it out. */
+  levels: IndicatorLevel[];
   /** 100, 1000 or 10000 for ratios; 1 for weighted. */
   scale: number;
   decimals: number;
@@ -67,6 +72,19 @@ export interface LgaIndicatorRecord {
 /** A record that may describe a combined selection or benchmark, which can span several peer groups. */
 export type AssessableRecord = Omit<LgaIndicatorRecord, 'peerGroup'> & { peerGroup: PeerGroup | null };
 
+/**
+ * What scoring reads of a record (P2-R1): an LGA, a combined selection or benchmark, or an SA2, which has no series,
+ * density or peer group and only the SA2 indicators.
+ */
+export interface ScorableRecord {
+  areaId: string;
+  name: string;
+  region: string;
+  population: number;
+  peerGroup: PeerGroup | null;
+  values: Partial<Record<IndicatorId, IndicatorValue>>;
+}
+
 /** Comparison universe: all NSW LGAs, Greater Sydney LGAs, the same region, or the same peer group. */
 export type Universe = 'nsw' | 'gsyd' | 'region' | 'peer';
 
@@ -75,12 +93,15 @@ export type NeedBand = 'Very high' | 'High' | 'Moderate' | 'Lower';
 export interface IndicatorScore {
   id: IndicatorId;
   value: number | null;
-  /** Need percentile 0-100 (100 = most need), unrounded; null when there is no value, or it is `unranked`. */
+  /**
+   * Need percentile 0-100 (100 = most need), unrounded; null when there is no value, or it is `unranked`, or the
+   * area is not ranked at all (a low-population or non-spatial SA2).
+   */
   percentile: number | null;
   /**
    * Place in need order among the universe LGAs with a value: 1 + the number with more need, so ties share the better
    * rank. An area that is not one of those LGAs (a combined area, a benchmark) takes the place it would have among
-   * them. Null when there is no value, or it is `unranked`.
+   * them. Null when the percentile is.
    */
   rank: number | null;
   /** The universe LGAs with a value, which `rank` is out of; null when the area itself has no value. */
@@ -112,21 +133,66 @@ export interface AreaAssessment {
   name: string;
   region: string;
   population: number;
-  /** null for a combined area spanning several peer groups. */
+  /** null for a combined area spanning several peer groups, and for an SA2. */
   peerGroup: PeerGroup | null;
   universe: Universe;
-  /** Plural noun phrase used verbatim in sentences ("NSW LGAs", "regional cities"). */
+  /** Plural noun phrase used verbatim in sentences ("NSW LGAs", "regional cities", "NSW SA2s"). */
   universeLabel: string;
   universeSize: number;
   /** The universe has fewer than 5 LGAs, so percentiles are coarse. */
   smallGroup: boolean;
+  /** The indicators assessed at the area's level, in registry order: all of them for an LGA, the SA2 subset for an SA2. */
   indicators: IndicatorScore[];
+  /** The domains with a scored indicator at the area's level, in order: all three for an LGA, no growth for an SA2. */
   domains: DomainScore[];
   overall: number | null;
   band: NeedBand | null;
 }
 
 export interface NeedsSnapshot { generatedAt: string; records: LgaIndicatorRecord[] }
+
+/** One NSW SA2 (ASGS 2021) with its SA2 indicator values. */
+export interface Sa2Record {
+  /** 9-digit ASGS 2021 SA2 code. */
+  sa2Code: string;
+  name: string;
+  /** Census 2021 usual residents (G01). */
+  population: number;
+  /** Fewer than 100 residents: not ranked and not a peer, shown as "Low population". */
+  lowPopulation: boolean;
+  /** One of the two special-purpose SA2s with no geometry: not ranked, not a peer and in no LGA (P2-R7). */
+  nonSpatial: boolean;
+  /** The LGA with the largest share of the SA2's residents; null when no resident is in an LGA (Lord Howe Island). */
+  primaryLgaId: string | null;
+  /** Each LGA's share of the SA2's located mesh-block residents (Σ = 1), largest first. SA2s do not nest in LGAs. */
+  lgaShares: { lgaId: string; share: number }[];
+  values: Partial<Record<IndicatorId, IndicatorValue>>;
+}
+
+/** public/data/sa2-needs.json: every NSW SA2, sorted by code. */
+export interface Sa2NeedsFile { generatedAt: string; records: Sa2Record[] }
+
+/** An SA2 scored against the ranked NSW SA2s, with the place of its overall score among theirs. */
+export interface Sa2Assessed {
+  record: Sa2Record;
+  assessment: AreaAssessment;
+  /**
+   * 1 + the ranked SA2s with a higher overall score (ties share the better rank); null for an SA2 that is not ranked
+   * (low population, non-spatial) or has no overall score.
+   */
+  overallRank: number | null;
+  /** Mid-rank need percentile (0-100, unrounded) of the overall score among the ranked SA2s' scores; null likewise. */
+  overallPercentile: number | null;
+}
+
+/** Every SA2 of a needs file, ranked on its overall score. */
+export interface Sa2Ranking {
+  byCode: Map<string, Sa2Assessed>;
+  /** The ranked SA2s with an overall score: what an `overallRank` is out of. */
+  ranked: number;
+  /** The lowest rank in the highest-need 10%: floor(0.1 × ranked) (P2-R15). */
+  pocketRank: number;
+}
 
 /** A combined selection or a benchmark, rolled up (values and series) from the member LGAs it covers. */
 export type AggregatedRecord = AssessableRecord & {

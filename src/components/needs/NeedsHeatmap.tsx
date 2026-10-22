@@ -1,6 +1,6 @@
 'use client';
 
-import { heatmapRowLabel, wrapLabel } from '@/lib/needs/chart-data';
+import { HEATMAP_CATCHMENT_NOTE, heatmapRowLabel, wrapLabel } from '@/lib/needs/chart-data';
 import {
   NEED_SCALE, NO_DATA_COLOR, NEUTRAL_FILL, needColor, needTextColor,
 } from '@/lib/needs/colors';
@@ -112,6 +112,7 @@ export default function NeedsHeatmap({ assessment }: { assessment: NeedsAssessme
     ...(showApproximate ? ['≈ population-weighted estimate for a combined selection or benchmark.'] : []),
     ...(showNotRanked ? [NOT_RANKED_NOTE] : []),
     ...partialBenchmarkNotes(partialBenchmarks(assessment)),
+    ...HEATMAP_CATCHMENT_NOTE,
   ];
 
   const blocks = NEED_DOMAINS.map(domain => ({ domain, defs: INDICATORS.filter(def => def.domain === domain) }));

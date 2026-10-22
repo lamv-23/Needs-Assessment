@@ -1,17 +1,24 @@
 import { displayScore, inSentence, possessive } from './format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from './indicators';
 import { buildInsights, isKeyNeed, keyNeedText, WFH_CAVEAT, type KeyNeed } from './insights';
-import { KEY_NEED_PERCENTILE, SMALL_GROUP_SIZE } from './scoring';
+import { nameList } from './insight-chart-data';
+import {
+  MAX_POCKETS, rankSa2s, SA2_INDICATOR_IDS, SA2_POCKET_SHARE, SA2_RANKED_CRITERIA, SA2_SHARE_THRESHOLD, sa2Pockets,
+} from './sa2';
+import { KEY_NEED_PERCENTILE, SA2_UNIVERSE_LABEL, SMALL_GROUP_SIZE } from './scoring';
 import type {
-  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedDomain, NeedsAssessment, SourceRef,
+  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedDomain, NeedsAssessment, Sa2NeedsFile, SourceRef,
 } from './types';
 
 export interface NarrativeParagraph { text: string; citations: SourceRef[] }
 export interface NarrativeSection {
-  id: 'key_findings' | 'summary' | NeedDomain | 'insights' | 'notes';
+  id: 'key_findings' | 'summary' | NeedDomain | 'pockets' | 'insights' | 'notes';
   heading: string;
   paragraphs: NarrativeParagraph[];
 }
+
+/** The SA2 needs file the pockets of need are drawn from; the narrative has no pockets without it. */
+export interface Sa2Narrative { file: Sa2NeedsFile }
 
 const MAX_SUMMARY_NEEDS = 3;
 const MAX_KEY_FINDINGS = 5;
@@ -32,7 +39,8 @@ interface Wording {
 
 const METHOD_NOTE =
   'Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. '
-  + 'Aboriginal and Torres Strait Islander share is shown for context and is not scored.';
+  + 'Aboriginal and Torres Strait Islander share and the share of stops with frequent AM-peak service are shown for '
+  + 'context and are not scored.';
 
 const FALLBACK_NOTES = {
   region: 'The selected LGAs span more than one region, so the combined area is ranked against NSW LGAs.',
@@ -134,7 +142,7 @@ function domainParagraphs(
   ];
 }
 
-function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording): NarrativeParagraph[] {
+function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording, sa2?: Sa2Narrative): NarrativeParagraph[] {
   const { areas } = assessment;
   const notes: NarrativeParagraph[] = [];
 
@@ -208,8 +216,45 @@ function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording): Na
     notes.push(paragraph(WFH_CAVEAT, ['car_dependency']));
   }
 
+  if (sa2) notes.push(sa2Note(sa2.file));
+
   notes.push(paragraph(METHOD_NOTE));
   return notes;
+}
+
+/** The highest-need share of NSW SA2s a pocket of need is in, as written: "10%". */
+const POCKET_SHARE_TEXT = `${Math.round(SA2_POCKET_SHARE * 100)}%`;
+
+/** The indicators behind an SA2's overall score, which a statement about SA2 rankings cites. */
+const SA2_SCORED_IDS = SA2_INDICATOR_IDS.filter(id => INDICATOR_BY_ID[id].scored);
+
+/**
+ * One paragraph per selected LGA, in selection order, also when combined (P2-R6: SA2s belong to LGAs, not to the
+ * combined area): "Within {LGA}, {a}, {b} and {c} are in the highest-need 10% of NSW SA2s." with its top 3 pockets
+ * of need, or "No SA2 in {LGA} is in the highest-need 10% of NSW SA2s.".
+ */
+function pocketsParagraphs(assessment: NeedsAssessment, file: Sa2NeedsFile): NarrativeParagraph[] {
+  const names = new Map(assessment.records.map(r => [r.areaId, r.name]));
+  return assessment.memberIds.flatMap(lgaId => {
+    const name = names.get(lgaId);
+    if (name === undefined) return [];
+    const pockets = sa2Pockets(file, lgaId, MAX_POCKETS).map(e => e.record.name);
+    const group = `the highest-need ${POCKET_SHARE_TEXT} of ${SA2_UNIVERSE_LABEL}`;
+    const text = pockets.length === 0
+      ? `No SA2 in ${name} is in ${group}.`
+      : `Within ${name}, ${nameList(pockets)} ${pockets.length === 1 ? 'is' : 'are'} in ${group}.`;
+    return [paragraph(text, SA2_SCORED_IDS)];
+  });
+}
+
+/** What an SA2 need score covers and how SA2s are ranked and listed, for the data notes. */
+function sa2Note(file: Sa2NeedsFile): NarrativeParagraph {
+  return paragraph(
+    'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near AM-peak '
+    + 'public transport by straight-line distance, so they cover the transport and socio-economic domains and not '
+    + `growth. SA2s are ranked against the ${rankSa2s(file).ranked} ${SA2_UNIVERSE_LABEL} ${SA2_RANKED_CRITERIA}, and an `
+    + `SA2 is listed for an LGA when at least ${Math.round(SA2_SHARE_THRESHOLD * 100)}% of its residents live there.`,
+  );
 }
 
 const insightParagraph = ({ text, citations }: Insight): NarrativeParagraph => ({ text, citations });
@@ -238,9 +283,10 @@ function insightSections(assessment: NeedsAssessment): { keyFindings: NarrativeS
  * Written findings for the assessed areas, from templates filled with values, percentiles and the
  * Greater Sydney figure (no LLM). Each paragraph carries the sources of the indicators it uses.
  * With several areas (separate mode) every paragraph names its area. Empty when no area is selected.
- * Key findings come first and further findings follow the domains.
+ * Key findings come first; with the SA2 needs file, the pockets of need follow the domains; further findings come
+ * after those.
  */
-export function buildNarrative(assessment: NeedsAssessment): NarrativeSection[] {
+export function buildNarrative(assessment: NeedsAssessment, sa2?: Sa2Narrative): NarrativeSection[] {
   const { areas } = assessment;
   if (areas.length === 0) return [];
   const wording: Wording = {
@@ -249,6 +295,9 @@ export function buildNarrative(assessment: NeedsAssessment): NarrativeSection[] 
   };
 
   const { keyFindings, further } = insightSections(assessment);
+  const pockets: NarrativeSection[] = sa2
+    ? [{ id: 'pockets', heading: 'Pockets of need', paragraphs: pocketsParagraphs(assessment, sa2.file) }]
+    : [];
 
   return [
     ...keyFindings,
@@ -258,8 +307,9 @@ export function buildNarrative(assessment: NeedsAssessment): NarrativeSection[] 
       heading: DOMAIN_LABELS[domain],
       paragraphs: areas.flatMap(a => domainParagraphs(a, domain, wording, assessment.benchmarks.gsyd)),
     })),
+    ...pockets,
     ...further,
-    { id: 'notes', heading: 'Data notes', paragraphs: notesParagraphs(assessment, wording) },
+    { id: 'notes', heading: 'Data notes', paragraphs: notesParagraphs(assessment, wording, sa2) },
   ];
 }
 

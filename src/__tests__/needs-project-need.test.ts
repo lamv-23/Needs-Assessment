@@ -4,7 +4,7 @@ import { runAssessment } from '@/lib/needs/assess';
 import { formatValue } from '@/lib/needs/format';
 import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
 import { buildInsights } from '@/lib/needs/insights';
-import { sourceNumber } from '@/lib/needs/page-data';
+import { figureCaption, sourceNumber } from '@/lib/needs/page-data';
 import {
   MAX_RADAR_AREAS, QUADRANT_SCATTERS, RADAR_AXES, inNeedQuadrant, quadrantData, quadrantGroupOf, quadrantInsights,
   quadrantPanels, radarData, radarGaps, typicalLabel, type QuadrantSpec,
@@ -82,14 +82,21 @@ function fiveRecords(ids: string[] = METRO_FIVE): LgaIndicatorRecord[] {
 }
 
 describe('RADAR_AXES', () => {
-  test('are the spec five, in order, with the spec labels', () => {
+  test('are the spec five, in order, with the spec labels; the service gap is the frequent-service catchment (P2-R12)', () => {
     expect(RADAR_AXES.map(a => a.id)).toEqual([
-      'car_dependency', 'frequent_stop_share', 'zero_car_households', 'seifa_irsd', 'pop_growth_2041',
+      'car_dependency', 'frequent_service_catchment', 'zero_car_households', 'seifa_irsd', 'pop_growth_2041',
     ]);
     expect(RADAR_AXES.map(a => a.label)).toEqual([
       'Car dependency', 'Public transport service gap', 'Households without a car', 'Socio-economic disadvantage',
       'Population growth to 2041',
     ]);
+  });
+
+  test('the radar caption cites the straight-line catchments for the service gap (P2-R12)', () => {
+    expect(figureCaption(RADAR_AXES.map(a => a.id))).toBe(
+      'ABS Census 2021 G62; ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments); ABS Census 2021 G34; '
+      + 'ABS SEIFA 2021; NSW DPE projections',
+    );
   });
 });
 
@@ -122,13 +129,15 @@ describe('radarData', () => {
     expect(keys).not.toContain('typical');
   });
 
-  test('frequent_stop_share is a need percentile: a low share ranks high', () => {
+  test('the service gap is a need percentile of the frequent-service catchment: a low share ranks high', () => {
     const lowest = NEEDS_SNAPSHOT.records
-      .filter(rec => valueOf(rec, 'frequent_stop_share') === 0)
+      .filter(rec => valueOf(rec, 'frequent_service_catchment') === 0)
       .map(rec => rec.areaId)
       .filter(id => !GREATER_SYDNEY_GCCSA_AREA_IDS.includes(id))[0];
     const row = radarData(assess([lowest])).rows.find(x => x.axis === 'Public transport service gap')!;
     expect(row.a0 as number).toBeGreaterThan(50);
+    const sydney = radarData(assess(['lga_sydney'])).rows.find(x => x.axis === 'Public transport service gap')!;
+    expect(sydney.a0 as number).toBeLessThan(10);   // 99.2% of residents near frequent service
   });
 
   test('a null percentile stays null: a gap, never 0', () => {

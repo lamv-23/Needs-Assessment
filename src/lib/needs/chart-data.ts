@@ -1,6 +1,6 @@
 import { BENCHMARK_UNIVERSES } from './assess';
 import { markedValue, partialBenchmarkNotes, partialBenchmarks } from './coverage';
-import { INDICATOR_BY_ID, DOMAIN_LABELS, NEED_DOMAINS } from './indicators';
+import { CATCHMENT_NOTE, INDICATOR_BY_ID, DOMAIN_LABELS, NEED_DOMAINS } from './indicators';
 import { formatValue } from './format';
 import { AREA_PALETTE_SIZE, areaColor, BENCHMARK_COLOR, DOMAIN_COLORS, labelledIds } from './colors';
 import type { AreaAssessment, IndicatorDef, IndicatorId, NeedDomain, NeedsAssessment } from './types';
@@ -99,13 +99,33 @@ export const HEATMAP_LABEL_CHARS = 38;
 const LOWER_IS_MORE_NEED = '(lower value = more need)';
 
 /**
- * Heatmap row label: the indicator name wrapped to the label column ("(context)" appended for an
+ * Heatmap row names of the indicators whose label does not fit the one line beside the hint: the label's terms, AM-peak
+ * kept (P2-R17). The heatmap's notes give their straight-line definition (HEATMAP_CATCHMENT_NOTE).
+ */
+const HEATMAP_LABELS: Partial<Record<IndicatorId, string>> = {
+  frequent_service_catchment: 'Near frequent AM-peak public transport',
+  any_service_catchment: 'Near any AM-peak public transport',
+};
+
+/** Longest line of a heatmap note: the legend is 700 px wide, at 11 px. */
+const HEATMAP_NOTE_CHARS = 110;
+
+/** Under the heatmap: what its two catchment rows measure (the shared catchment note), wrapped to the legend's width. */
+export const HEATMAP_CATCHMENT_NOTE = wrapLabel(CATCHMENT_NOTE, HEATMAP_NOTE_CHARS, 4);
+
+/** The name of `def`'s heatmap row: its label, or a shorter name where the label is too long for the row. */
+export const heatmapRowName = (def: IndicatorDef): string => HEATMAP_LABELS[def.id] ?? def.label;
+
+/**
+ * Heatmap row label: the indicator's row name wrapped to the label column ("(context)" appended for an
  * unscored one), and a separate hint line when a lower value means more need, since the cell
- * colour then runs against the number. At most two lines in all, so rows stay one height.
+ * colour then runs against the number. A context row is unshaded, so it has no hint. At most two lines in all, so
+ * rows stay one height.
  */
 export function heatmapRowLabel(def: IndicatorDef): { lines: string[]; hint: string | null } {
-  const hint = def.direction === 'lower' ? LOWER_IS_MORE_NEED : null;
-  const text = def.scored ? def.label : `${def.label} (context)`;
+  const hint = def.direction === 'lower' && def.scored ? LOWER_IS_MORE_NEED : null;
+  const name = heatmapRowName(def);
+  const text = def.scored ? name : `${name} (context)`;
   return { lines: wrapLabel(text, HEATMAP_LABEL_CHARS, hint ? 1 : 2), hint };
 }
 
@@ -338,5 +358,71 @@ export function stripData(assessment: NeedsAssessment, indicatorId: IndicatorId,
     unnamedCount: selected.filter(p => p.level === null).length,
     /** Under the plot: what a "*" benchmark line is made from (R58). */
     notes: partialBenchmarkNotes(partialBenchmarks(assessment, [indicatorId])),
+  };
+}
+
+// Walking catchments (Phase 2)
+
+export type CatchmentId = 'frequent_service_catchment' | 'any_service_catchment';
+
+/** The catchment chart's two panels, in order, with their titles. */
+export const CATCHMENT_PANELS: { id: CatchmentId; title: string }[] = [
+  { id: 'frequent_service_catchment', title: 'Near frequent service (8+ weekday 7-9am departures)' },
+  { id: 'any_service_catchment', title: 'Near any service (1+ weekday 7-9am departures)' },
+];
+
+export interface CatchmentBar {
+  id: string;
+  name: string;
+  /** The share in percent; null when the area has none (drawn as "No data"). */
+  value: number | null;
+  text: string;
+}
+
+export interface CatchmentPanel {
+  id: CatchmentId;
+  title: string;
+  bars: CatchmentBar[];
+  /** Greater Sydney and NSW, drawn as reference lines; a benchmark with no value is left out. */
+  references: StripReference[];
+}
+
+const CATCHMENT_BAR_PX = 30;
+
+/**
+ * The residents near frequent and near any AM-peak public transport (straight-line distance) of each assessed area (the
+ * combined area as one bar), one panel per measure, with Greater Sydney and NSW as reference lines, marked "*" with a
+ * note when made from only some of their LGAs (R58).
+ */
+export function catchmentChartData(assessment: NeedsAssessment) {
+  const ids = CATCHMENT_PANELS.map(panel => panel.id);
+  const panels: CatchmentPanel[] = CATCHMENT_PANELS.map(({ id, title }) => {
+    const def = INDICATOR_BY_ID[id];
+    const scoreOf = (area: AreaAssessment) => area.indicators.find(s => s.id === id);
+    return {
+      id,
+      title,
+      bars: assessment.areas.map(area => {
+        const value = scoreOf(area)?.value ?? null;
+        return { id: area.areaId, name: area.name, value, text: formatValue(def, value) };
+      }),
+      references: (['gsyd', 'nsw'] as const).flatMap(key => {
+        const benchmark = assessment.benchmarks[key];
+        const score = scoreOf(benchmark);
+        if (!score || score.value === null) return [];
+        return [{ key, name: benchmark.name, x: score.value, text: markedValue(def, score, 'benchmark') }];
+      }),
+    };
+  });
+  return {
+    panels,
+    /** Shares run 0-100%. */
+    axis: { lo: 0, hi: 100, ticks: [0, 20, 40, 60, 80, 100] } satisfies NiceAxis,
+    /** Each panel's height: a row per area, plus the axis and room for the reference labels. */
+    height: Math.max(150, 96 + assessment.areas.length * CATCHMENT_BAR_PX),
+    noData: assessment.areas
+      .filter(area => ids.some(id => (area.indicators.find(s => s.id === id)?.value ?? null) === null))
+      .map(area => area.name),
+    notes: partialBenchmarkNotes(partialBenchmarks(assessment, ids)),
   };
 }

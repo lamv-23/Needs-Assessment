@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { displayScore, formatDiff, formatValue, ordinal } from '@/lib/needs/format';
@@ -5,15 +7,19 @@ import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from '@/lib/
 import { buildInsights } from '@/lib/needs/insights';
 import { buildNarrative, narrativeToPlainText, type NarrativeSection } from '@/lib/needs/narrative';
 import { sourceNumber } from '@/lib/needs/page-data';
+import { rankSa2s, SA2_INDICATOR_IDS, sa2sForLgas } from '@/lib/needs/sa2';
 import type {
-  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedBand, NeedDomain, NeedsAssessment, NeedsMode, Universe,
+  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedBand, NeedDomain, NeedsAssessment, NeedsMode, Sa2NeedsFile,
+  Universe,
 } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 type Score = Partial<Omit<IndicatorScore, 'id'>>;
 
 const METHOD_SENTENCE =
   'Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. '
-  + 'Aboriginal and Torres Strait Islander share is shown for context and is not scored.';
+  + 'Aboriginal and Torres Strait Islander share and the share of stops with frequent AM-peak service are shown for '
+  + 'context and are not scored.';
 const WFH_SENTENCE =
   "The 2021 Census was held during Sydney's COVID-19 lockdown, which inflated working from home. "
   + 'Car dependency is therefore measured as a share of people who travelled to work.';
@@ -42,14 +48,14 @@ function withDomain(area: AreaAssessment, domain: NeedDomain, score: number | nu
 
 /**
  * Blacktown, as in the brief: overall 72.4 (High), car dependency 83.8 at p92 (a key need), households
- * without a car at p30 and no frequent-stop figure. Only these three indicators are listed.
+ * without a car at p30 and no frequent-service catchment figure. Only these three indicators are listed.
  */
 function blacktown(): AreaAssessment {
   const area = makeArea({ overall: 72.4, band: 'High' });
   const listed: IndicatorScore[] = [
     { id: 'car_dependency', value: 83.8, percentile: 92, rank: 10, ranked: 128, unranked: false, keyNeed: true, approximate: false, partial: false },
     { id: 'zero_car_households', value: 8.2, percentile: 30, rank: 90, ranked: 128, unranked: false, keyNeed: false, approximate: false, partial: false },
-    { id: 'frequent_stop_share', value: null, percentile: null, rank: null, ranked: null, unranked: false, keyNeed: false, approximate: false, partial: false },
+    { id: 'frequent_service_catchment', value: null, percentile: null, rank: null, ranked: null, unranked: false, keyNeed: false, approximate: false, partial: false },
   ];
   return withDomain(withDomain({ ...area, indicators: listed }, 'transport', 64.1, 'High'), 'socio', 41.6, 'Moderate');
 }
@@ -173,13 +179,13 @@ describe('buildNarrative: summary', () => {
       car_dependency: { value: 90, percentile: 85, keyNeed: true, rank: 19, ranked: 128 },
       seifa_irsd: { value: 800, percentile: 99, keyNeed: true, rank: 1, ranked: 128 },
       crash_rate: { value: 12, percentile: 95, keyNeed: true, rank: 6, ranked: 128 },
-      frequent_stop_share: { value: 5, percentile: 90, keyNeed: true, rank: 12, ranked: 128 },
+      frequent_service_catchment: { value: 5, percentile: 90, keyNeed: true, rank: 12, ranked: 128 },
       limited_english: { value: 30, percentile: 82, keyNeed: true, rank: 23, ranked: 128 },
     });
     const text = section(buildNarrative(makeAssessment([area])), 'summary').paragraphs[1].text;
     expect(text).toBe(
       'Its most pronounced needs are SEIFA disadvantage (IRSD), road crashes per 10,000 residents '
-      + 'and stops with frequent AM-peak service.',
+      + 'and residents near frequent AM-peak public transport (straight-line distance).',
     );
   });
 
@@ -306,15 +312,15 @@ describe('buildNarrative: domain sections', () => {
 
   test('"below" when the value is under the Greater Sydney figure (a lower-is-more-need indicator)', () => {
     const area = makeArea({ overall: 75, band: 'High' }, {
-      frequent_stop_share: { value: 10, percentile: 95, keyNeed: true, rank: 6, ranked: 128 },
+      frequent_service_catchment: { value: 10, percentile: 95, keyNeed: true, rank: 6, ranked: 128 },
     });
     const assessment = makeAssessment([area]);
     assessment.benchmarks.gsyd = makeArea({ areaId: 'benchmark_gsy', name: 'Greater Sydney' }, {
-      frequent_stop_share: { value: 40, percentile: 50 },
+      frequent_service_catchment: { value: 40, percentile: 50 },
     });
     expect(texts(section(buildNarrative(assessment), 'transport'))[1]).toBe(
-      'On stops with frequent AM-peak service, Blacktown (10.0%) ranks in the highest-need 5% of NSW LGAs, '
-      + '30.0 pp below the Greater Sydney figure of 40.0%.',
+      'On residents near frequent AM-peak public transport (straight-line distance), Blacktown (10.0%) ranks in the '
+      + 'highest-need 5% of NSW LGAs, 30.0 pp below the Greater Sydney figure of 40.0%.',
     );
   });
 
@@ -430,27 +436,30 @@ describe('buildNarrative: data notes', () => {
 
   test('missing scored indicators are listed with the area name', () => {
     expect(notesOf(makeAssessment([blacktown()]))).toContain(
-      'No data is available for stops with frequent AM-peak service in Blacktown; this is excluded from the scores.',
+      'No data is available for residents near frequent AM-peak public transport (straight-line distance) in Blacktown; '
+      + 'this is excluded from the scores.',
     );
   });
 
   test('plural wording for several missing indicators', () => {
-    const area = makeArea({}, withValues(['frequent_stop_share', 'am_peak_departures_per_1000', 'job_growth_2041']));
+    const area = makeArea({}, withValues(['frequent_service_catchment', 'am_peak_departures_per_1000', 'job_growth_2041']));
     expect(notesOf(makeAssessment([area]))).toContain(
-      'No data is available for stops with frequent AM-peak service, AM-peak departures per 1,000 residents '
-      + 'and job growth 2021–41 in Blacktown; these are excluded from the scores.',
+      'No data is available for residents near frequent AM-peak public transport (straight-line distance), AM-peak '
+      + 'departures per 1,000 residents and job growth 2021–41 in Blacktown; these are excluded from the scores.',
     );
   });
 
   test('a missing context indicator is not claimed to be excluded from the scores', () => {
-    const area = makeArea({}, withValues(['indigenous_share']));
-    expect(notesOf(makeAssessment([area])).filter(t => t.startsWith('No data'))).toEqual([]);
+    for (const id of ['indigenous_share', 'frequent_stop_share'] as const) {
+      const area = makeArea({}, withValues([id]));
+      expect(notesOf(makeAssessment([area])).filter(t => t.startsWith('No data'))).toEqual([]);
+    }
   });
 
   test('missing notes cite the sources of the indicators concerned', () => {
     const notes = section(buildNarrative(makeAssessment([blacktown()])), 'notes');
-    const missing = notes.paragraphs.find(p => p.text.startsWith('No data is available for stops'));
-    expect(missing?.citations.map(c => c.short)).toEqual(['TfNSW GTFS']);
+    const missing = notes.paragraphs.find(p => p.text.startsWith('No data is available for residents near'));
+    expect(missing?.citations.map(c => c.short)).toEqual(['ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)']);
   });
 
   test('the WFH caveat is included when car dependency is shown, citing its source', () => {
@@ -995,5 +1004,106 @@ describe('buildNarrative: key findings and further findings', () => {
     expect(blocks.indexOf('Further findings')).toBeLessThan(blocks.indexOf('Data notes'));
     expect(blocks.indexOf('Summary')).toBe(6);
     expect(narrativeToPlainText(sections)).not.toMatch(/NaN|undefined|null|Infinity|\[object/);
+  });
+});
+
+describe('buildNarrative: pockets of need (SA2s)', () => {
+  const run = (areaIds: string[], mode: NeedsMode = 'separate') =>
+    runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe: 'nsw' });
+  const sa2 = { file: SA2_POCKETS_FILE };
+  const pockets = (sections: NarrativeSection[]) => section(sections, 'pockets');
+
+  const BLACKTOWN = 'Within Blacktown, Mount Druitt - Whalan, Lethbridge Park - Tregear and Blackett - Dharruk are in the highest-need 10% of NSW SA2s.';
+  const PENRITH = 'Within Penrith, St Marys - North St Marys is in the highest-need 10% of NSW SA2s.';
+  const MOSMAN = 'No SA2 in Mosman is in the highest-need 10% of NSW SA2s.';
+
+  test('names the top 3 SA2s of an LGA in the highest-need 10% of NSW SA2s, highest first', () => {
+    // Bidwill - Hebersham - Emerton is the fourth pocket in Blacktown, so it is left out
+    expect(texts(pockets(buildNarrative(run(['lga_blacktown']), sa2)))).toEqual([BLACKTOWN]);
+  });
+
+  test('says so when no SA2 of the LGA is in the highest-need 10%', () => {
+    expect(texts(pockets(buildNarrative(run(['lga_mosman']), sa2)))).toEqual([MOSMAN]);
+  });
+
+  test('the 10% is by rank (P2-R15): rank 5 of 50 is a pocket, rank 6 is not; one pocket reads in the singular', () => {
+    expect(texts(pockets(buildNarrative(run(['lga_penrith']), sa2)))).toEqual([PENRITH]);
+  });
+
+  test('a low-population SA2 is never a pocket, however extreme its values', () => {
+    expect(narrativeToPlainText(buildNarrative(run(['lga_blacktown']), sa2))).not.toContain('Prospect Reservoir');
+  });
+
+  test('pocket sentences cite the SA2 sources', () => {
+    const expected = Array.from(new Set(SA2_INDICATOR_IDS.map(id => INDICATOR_BY_ID[id].source)));
+    const sections = buildNarrative(run(['lga_blacktown', 'lga_mosman']), sa2);
+    for (const p of pockets(sections).paragraphs) {
+      expect(p.citations).toEqual(expected);
+      expect(p.citations.every(c => sourceNumber(c) > 0)).toBe(true);
+    }
+    expect(expected.map(s => s.short)).toContain('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
+  });
+
+  test('combined mode writes one pockets paragraph per member LGA', () => {
+    const combined = buildNarrative(run(['lga_blacktown', 'lga_penrith', 'lga_mosman'], 'combined'), sa2);
+    expect(texts(pockets(combined))).toEqual([BLACKTOWN, PENRITH, MOSMAN]);
+    // P2-R6: pockets belong to the member LGAs, never to "the combined area"
+    expect(texts(pockets(combined)).join(' ')).not.toContain('combined area');
+  });
+
+  test('separate mode writes one paragraph per area, in selection order', () => {
+    expect(texts(pockets(buildNarrative(run(['lga_mosman', 'lga_blacktown']), sa2)))).toEqual([MOSMAN, BLACKTOWN]);
+  });
+
+  test('the pockets section follows the domains, before further findings and the data notes', () => {
+    const sections = buildNarrative(run(['lga_blacktown', 'lga_newcastle']), sa2);
+    expect(sections.map(s => s.id)).toEqual(['key_findings', 'summary', 'transport', 'socio', 'growth', 'pockets', 'insights', 'notes']);
+    expect(pockets(sections).heading).toBe('Pockets of need');
+  });
+
+  test('without the SA2 file there is no pockets section and no SA2 note', () => {
+    const sections = buildNarrative(run(['lga_blacktown']));
+    expect(sections.map(s => s.id)).not.toContain('pockets');
+    expect(narrativeToPlainText(sections)).not.toContain('SA2');
+  });
+
+  test('the data notes say what an SA2 score covers and how SA2s are ranked, before the method sentence', () => {
+    const notes = texts(section(buildNarrative(run(['lga_blacktown']), sa2), 'notes'));
+    expect(notes[notes.length - 1]).toBe(METHOD_SENTENCE);
+    expect(notes[notes.length - 2]).toBe(
+      'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near AM-peak '
+      + 'public transport by straight-line distance, so they cover the transport and socio-economic domains and not '
+      + 'growth. '
+      + 'SA2s are ranked against the 50 NSW SA2s with 100 or more residents and a place on the map, and an SA2 is '
+      + 'listed for an LGA when at '
+      + 'least 10% of its residents live there.',
+    );
+  });
+
+  test('on real data: one clean sentence per LGA, naming only its SA2s ranked in the highest-need 10%', () => {
+    const file = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../public/data/sa2-needs.json'), 'utf-8'),
+    ) as Sa2NeedsFile;
+    const ranking = rankSa2s(file);
+    expect(ranking.pocketRank).toBe(Math.floor(0.1 * ranking.ranked));
+    const codes = new Map(file.records.map(r => [r.name, r.sa2Code]));
+    for (const record of NEEDS_SNAPSHOT.records) {
+      const [p, ...rest] = pockets(buildNarrative(run([record.areaId]), { file })).paragraphs;
+      expect(rest).toHaveLength(0);
+      const named = /^Within (.+?), (.+) (?:is|are) in the highest-need 10% of NSW SA2s\.$/.exec(p.text);
+      if (!named) {
+        expect(p.text).toBe(`No SA2 in ${record.name} is in the highest-need 10% of NSW SA2s.`);
+        continue;
+      }
+      expect(named[1]).toBe(record.name);
+      const drillDown = new Set(sa2sForLgas(file, [record.areaId]).map(r => r.sa2Code));
+      const listed = named[2].split(/, | and /);
+      expect(listed.length).toBeLessThanOrEqual(3);
+      for (const name of listed) {
+        const code = codes.get(name)!;
+        expect(drillDown.has(code)).toBe(true);
+        expect(ranking.byCode.get(code)!.overallRank).toBeLessThanOrEqual(ranking.pocketRank);
+      }
+    }
   });
 });

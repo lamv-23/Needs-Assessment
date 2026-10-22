@@ -1,15 +1,19 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { partialBenchmarkNotes, partialBenchmarks } from '@/lib/needs/coverage';
-import { INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
 import { buildInsights, WFH_CAVEAT_CITATION } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
+  CATCHMENT_TITLE, citationSegments, comparisonLabel, exportWaitingFor, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
   GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
-  sourceNumber, stripIndicatorIds, trendsCaption,
+  SA2_TABLE_CAPTION, SA2_TABLE_COLUMNS, SA2_TABLE_SIZE, sa2Table, sourceNumber, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
-import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Universe } from '@/lib/needs/types';
+import { rankSa2s, SA2_INDICATOR_IDS } from '@/lib/needs/sa2';
+import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Sa2NeedsFile, Universe } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 const score = (id: IndicatorId, overrides: Partial<IndicatorScore> = {}): IndicatorScore => ({
   id, value: 1, percentile: 50, rank: 64, ranked: 128, unranked: false, keyNeed: false, approximate: false, partial: false,
@@ -52,11 +56,14 @@ describe('insight figure captions', () => {
   const short = (...sources: Array<{ short: string }>) => sources.map(s => s.short).join('; ');
 
   test('the mismatch figure cites car dependency and the predictor of each setting drawn', () => {
-    expect(mismatchCaption(assess(['lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.gtfs));
+    // P2-R4: the metro predictor is the frequent-service catchment
+    expect(mismatchCaption(assess(['lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.catchments));
     expect(mismatchCaption(assess(['lga_newcastle']))).toBe(short(SOURCES.g62, SOURCES.g01));
-    expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))).toBe(short(SOURCES.g62, SOURCES.gtfs, SOURCES.g01));
+    expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle'])))
+      .toBe(short(SOURCES.g62, SOURCES.catchments, SOURCES.g01));
     // The same either way round; a combined area spanning both settings has no chart, only car dependency's source
-    expect(mismatchCaption(assess(['lga_newcastle', 'lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.gtfs, SOURCES.g01));
+    expect(mismatchCaption(assess(['lga_newcastle', 'lga_blacktown'])))
+      .toBe(short(SOURCES.g62, SOURCES.catchments, SOURCES.g01));
     expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle'], 'combined'))).toBe(short(SOURCES.g62));
   });
 
@@ -198,12 +205,14 @@ describe('indicatorTable', () => {
     expect(seifa.cells[0].startsWith('≈ ')).toBe(true);
   });
 
-  test('the context-only indicator is marked "(context)" and keeps its percentile', () => {
+  test('the context-only indicators are marked "(context)" and keep their percentile', () => {
     const table = indicatorTable(assess(['lga_blacktown']));
-    const context = table.rows.find(r => r.id === 'indigenous_share')!;
-    expect(context.label).toBe(`${INDICATOR_BY_ID.indigenous_share.label} (context)`);
-    expect(context.cells[0]).toMatch(/\(p\d+\)$/);
-    expect(table.rows.filter(r => r.label.includes('(context)'))).toHaveLength(1);
+    for (const id of ['indigenous_share', 'frequent_stop_share'] as const) {
+      const context = table.rows.find(r => r.id === id)!;
+      expect(context.label).toBe(`${INDICATOR_BY_ID[id].label} (context)`);
+      expect(context.cells[0]).toMatch(/\(p\d+\)$/);
+    }
+    expect(table.rows.filter(r => r.label.includes('(context)'))).toHaveLength(2);
   });
 
   test('rows carry the source and domain of their indicator', () => {
@@ -268,9 +277,23 @@ describe('sources', () => {
     for (const def of INDICATORS) expect(sourceNumber(def.source)).toBeGreaterThan(0);
   });
 
-  test('the 14 indicator sources come first, then ABS ERP, the 2011 and 2016 travel to work tables and the WFH caveat', () => {
-    expect(NEEDS_SOURCES).toHaveLength(18);
+  test('the 15 indicator sources come first, then ABS ERP, the 2011 and 2016 travel to work tables and the WFH caveat', () => {
+    expect(NEEDS_SOURCES).toHaveLength(19);
     expect(NEEDS_SOURCES.slice(-4)).toEqual([SOURCES.erp, SOURCES.b46, SOURCES.g59, WFH_CAVEAT_CITATION]);
+  });
+
+  test('P2-R13: no short name contains "; ", the separator of a figure caption\'s sources', () => {
+    expect(NEEDS_SOURCES.filter(s => s.short.includes('; ')).map(s => s.short)).toEqual([]);
+    expect(SOURCES.catchments.short).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
+  });
+
+  test('P2-R17: the catchment figure title says AM-peak and straight-line distance', () => {
+    expect(CATCHMENT_TITLE).toBe('Residents near AM-peak public transport (straight-line distance)');
+  });
+
+  test('P2-R3: the straight-line catchment source has a citation number, after TfNSW GTFS', () => {
+    expect(sourceNumber(SOURCES.catchments)).toBe(sourceNumber(SOURCES.gtfs) + 1);
+    expect(NEEDS_SOURCES).toContain(SOURCES.catchments);
   });
 
   test('the 2011 B46 and 2016 G59 tables have citation numbers (R59)', () => {
@@ -299,6 +322,72 @@ describe('sources', () => {
     });
     for (const source of cited) expect(sourceNumber(source)).toBeGreaterThan(0);
     expect(new Set(cited.map(s => s.full))).toEqual(new Set(NEEDS_SOURCES.map(s => s.full)));
+  });
+});
+
+describe('sa2Table', () => {
+  const table = (areaIds: string[], mode: NeedsMode = 'separate') => sa2Table(SA2_POCKETS_FILE, assess(areaIds, mode));
+
+  test('the ranked SA2s of the selection, highest overall need first, each once; low-population SA2s are named in a note', () => {
+    const { rows, notes } = table(['lga_blacktown', 'lga_cumberland'], 'combined');
+    expect(rows.map(r => r.name)).toEqual([
+      'Mount Druitt - Whalan', 'Lethbridge Park - Tregear', 'Blackett - Dharruk', 'Bidwill - Hebersham - Emerton',
+      'Toongabbie - West',
+    ]);
+    expect(rows[4].lgas).toBe('Blacktown (71%), Cumberland (29%)');
+    expect(notes[0]).toMatch(/^All 5 ranked SA2s in the selection, by overall SA2 need score\./);
+    expect(notes[0]).toContain('ranked against the 50 NSW SA2s with 100 or more residents and a place on the map.');
+    expect(notes[1]).toBe('Not ranked (fewer than 100 residents, or no score): Prospect Reservoir.');
+  });
+
+  test('a row: band and floored score, rank among NSW SA2s (R57), domain scores and the frequent catchment', () => {
+    const [row] = table(['lga_blacktown']).rows;
+    const { assessment } = rankSa2s(SA2_POCKETS_FILE).byCode.get('116031317')!;
+    const domain = (d: string) => String(Math.floor(assessment.domains.find(x => x.domain === d)!.score!));
+    expect(row).toEqual({
+      code: '116031317',
+      name: 'Mount Druitt - Whalan',
+      lgas: 'Blacktown (100%)',
+      overall: `${assessment.band} (${Math.floor(assessment.overall!)})`,
+      rank: 'ranks in the highest-need 2% of NSW SA2s',
+      transport: domain('transport'),
+      socio: domain('socio'),
+      frequent: '50.0%',
+    });
+  });
+
+  test('at most 10 rows, and the notes say so; the catchment note says straight-line distance', () => {
+    const file = JSON.parse(fs.readFileSync(path.join(__dirname, '../../public/data/sa2-needs.json'), 'utf-8')) as Sa2NeedsFile;
+    const { rows, notes } = sa2Table(file, assess(['lga_blacktown']));
+    expect(SA2_TABLE_SIZE).toBe(10);
+    expect(rows).toHaveLength(10);
+    expect(notes[0]).toMatch(/^The 10 highest-need of the 23 ranked SA2s in the selection/);
+    expect(notes[1]).toBe('Not ranked (fewer than 100 residents, or no score): Prospect Reservoir.');
+    expect(notes[2]).toBe(CATCHMENT_NOTE);
+    expect(notes[2]).toMatch(/straight-line distance/i);
+    expect(rows.map(r => r.name)).not.toContain('Prospect Reservoir');
+  });
+});
+
+describe('SA2 table columns and source (P2-R18)', () => {
+  test('the page and Word share the columns; the catchment column says AM-peak and straight-line distance', () => {
+    expect(SA2_TABLE_COLUMNS.map(c => c.header)).toEqual([
+      'SA2', 'LGA (share of residents)', 'Overall need', 'Transport score', 'Socio-economic score',
+      'Near frequent AM-peak public transport (straight-line distance)',
+    ]);
+  });
+
+  test('the source caption names the sources of the SA2 indicators behind the scores (R31)', () => {
+    expect(SA2_TABLE_CAPTION).toBe(figureCaption(SA2_INDICATOR_IDS));
+  });
+});
+
+describe('exportWaitingFor (P2-R5, P2-R19)', () => {
+  test('the Word export waits for the SA2 file, then for the map boundaries', () => {
+    expect(exportWaitingFor({ sa2Data: true, boundaries: true })).toBe('SA2 data');
+    expect(exportWaitingFor({ sa2Data: false, boundaries: true })).toBe('map boundaries');
+    expect(exportWaitingFor({ sa2Data: true, boundaries: false })).toBe('SA2 data');
+    expect(exportWaitingFor({ sa2Data: false, boundaries: false })).toBeNull();
   });
 });
 

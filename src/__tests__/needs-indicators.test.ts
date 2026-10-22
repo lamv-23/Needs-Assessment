@@ -1,12 +1,12 @@
-import { INDICATORS, INDICATOR_BY_ID, DOMAIN_LABELS } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, INDICATORS, INDICATOR_BY_ID, DOMAIN_LABELS, SOURCES } from '@/lib/needs/indicators';
 import { extractIndicators, extractSeries } from '@/lib/needs/extract';
 import type { IndicatorId } from '@/lib/needs/types';
 import { makeBundle } from './fixtures/needs';
 
 describe('indicator registry', () => {
-  test('registry has 16 indicators with unique ids and a source each', () => {
-    expect(INDICATORS).toHaveLength(16);
-    expect(new Set(INDICATORS.map(d => d.id)).size).toBe(16);
+  test('registry has 18 indicators with unique ids and a source each', () => {
+    expect(INDICATORS).toHaveLength(18);
+    expect(new Set(INDICATORS.map(d => d.id)).size).toBe(18);
     for (const def of INDICATORS) {
       expect(def.source.short.length).toBeGreaterThan(0);
       expect(def.source.full.length).toBeGreaterThan(0);
@@ -14,27 +14,67 @@ describe('indicator registry', () => {
     }
   });
 
-  test('indicators follow the spec table order, grouped by domain', () => {
+  test('indicators follow the spec table order, grouped by domain; the catchments follow the frequent-stop share', () => {
     expect(INDICATORS.map(d => d.id)).toEqual([
-      'car_dependency', 'zero_car_households', 'frequent_stop_share', 'am_peak_departures_per_1000',
-      'commute_distance_km', 'crash_rate',
+      'car_dependency', 'zero_car_households', 'frequent_stop_share', 'frequent_service_catchment',
+      'any_service_catchment', 'am_peak_departures_per_1000', 'commute_distance_km', 'crash_rate',
       'seifa_irsd', 'unemployment_rate', 'low_income_households', 'needs_assistance',
       'limited_english', 'older_residents', 'indigenous_share',
       'pop_growth_2041', 'job_growth_2041', 'approvals_per_1000',
     ]);
-    expect(INDICATORS.filter(d => d.domain === 'transport')).toHaveLength(6);
+    expect(INDICATORS.filter(d => d.domain === 'transport')).toHaveLength(8);
     expect(INDICATORS.filter(d => d.domain === 'socio')).toHaveLength(7);
     expect(INDICATORS.filter(d => d.domain === 'growth')).toHaveLength(3);
   });
 
-  test('need direction is lower for SEIFA and the two service-frequency indicators only', () => {
+  test('need direction is lower for SEIFA, the service-frequency indicators and the catchments only', () => {
     expect(INDICATORS.filter(d => d.direction === 'lower').map(d => d.id)).toEqual([
-      'frequent_stop_share', 'am_peak_departures_per_1000', 'seifa_irsd',
+      'frequent_stop_share', 'frequent_service_catchment', 'any_service_catchment', 'am_peak_departures_per_1000',
+      'seifa_irsd',
     ]);
   });
 
-  test('indigenous_share is the only unscored indicator', () => {
-    expect(INDICATORS.filter(d => !d.scored).map(d => d.id)).toEqual(['indigenous_share']);
+  test('registry: catchment indicators scored; frequent_stop_share and indigenous_share unscored', () => {
+    expect(INDICATORS.filter(d => !d.scored).map(d => d.id)).toEqual(['frequent_stop_share', 'indigenous_share']);
+    expect(INDICATOR_BY_ID.frequent_service_catchment.scored).toBe(true);
+    expect(INDICATOR_BY_ID.any_service_catchment.scored).toBe(true);
+  });
+
+  test('the catchments are transport percentages of residents, summed as ratios, with the straight-line source (P2-R3)', () => {
+    for (const id of ['frequent_service_catchment', 'any_service_catchment'] as const) {
+      expect(INDICATOR_BY_ID[id]).toMatchObject({
+        domain: 'transport', unit: '%', direction: 'lower', aggregation: 'ratio', scale: 100, decimals: 1,
+        source: SOURCES.catchments,
+      });
+      expect(INDICATOR_BY_ID[id].label).toContain('(straight-line distance)');
+    }
+    expect(SOURCES.catchments.short).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
+    expect(SOURCES.catchments.full).toContain('straight-line distance');
+  });
+
+  test('P2-R17: the catchment labels say AM-peak, since only stops with weekday 7-9am departures count', () => {
+    expect(INDICATOR_BY_ID.frequent_service_catchment.label)
+      .toBe('Residents near frequent AM-peak public transport (straight-line distance)');
+    expect(INDICATOR_BY_ID.any_service_catchment.label)
+      .toBe('Residents near any AM-peak public transport (straight-line distance)');
+  });
+
+  test('P2-R17: the catchment note defines both measures', () => {
+    expect(CATCHMENT_NOTE).toBe(
+      'Share of residents living within a straight-line 400 m (bus, light rail) or 800 m (train, metro, ferry) of a '
+      + 'stop with weekday 7–9am departures — frequent: 8 or more departures; any: at least 1. School-only services '
+      + 'are excluded. Straight-line distance overstates real walking access.',
+    );
+  });
+
+  test('every indicator is assessed for LGAs; SA2s get the spec subset (no growth domain)', () => {
+    expect(INDICATORS.every(d => d.levels.includes('lga'))).toBe(true);
+    expect(INDICATORS.filter(d => d.levels.includes('sa2')).map(d => d.id)).toEqual([
+      'car_dependency', 'zero_car_households', 'frequent_service_catchment', 'any_service_catchment',
+      'seifa_irsd', 'unemployment_rate', 'low_income_households', 'needs_assistance', 'limited_english',
+      'older_residents', 'indigenous_share',
+    ]);
+    expect(INDICATORS.filter(d => d.levels.includes('sa2') && d.domain === 'growth')).toEqual([]);
   });
 
   test('car dependency, commute distance, SEIFA and unemployment aggregate as weighted means; the rest as ratios', () => {
@@ -76,6 +116,8 @@ describe('extractIndicators', () => {
     expect(v.zero_car_households).toEqual({ value: expect.closeTo(6.74, 2), numerator: 8045, denominator: 119420 });
     expect(v.frequent_stop_share).toMatchObject({ value: 25, numerator: 50, denominator: 200 });
     expect(v.am_peak_departures_per_1000).toMatchObject({ value: 12, numerator: 4800, denominator: 400000 });
+    expect(v.frequent_service_catchment).toEqual({ value: 60, numerator: 240000, denominator: 400000 });
+    expect(v.any_service_catchment).toEqual({ value: 95, numerator: 380000, denominator: 400000 });
     expect(v.pop_growth_2041).toMatchObject({ value: 50, numerator: 200000, denominator: 400000 });
     expect(v.job_growth_2041.value).toBe(50);
     expect(v.crash_rate.value).toBe(25);           // latest year 2023: 1000 / 400000 (2021 ERP, the nearest) × 10,000
@@ -121,8 +163,12 @@ describe('extractIndicators', () => {
   });
 
   test('missing sources yield null, never 0', () => {
-    const v = extractIndicators(makeBundle({ transport: { ptFrequency: undefined, crashTrend: [], commuteDistance2016: undefined } }));
+    const v = extractIndicators(makeBundle({
+      transport: { ptFrequency: undefined, crashTrend: [], commuteDistance2016: undefined, catchment: undefined },
+    }));
     expect(v.frequent_stop_share.value).toBeNull();
+    expect(v.frequent_service_catchment).toEqual({ value: null });
+    expect(v.any_service_catchment).toEqual({ value: null });
     expect(v.am_peak_departures_per_1000.value).toBeNull();
     expect(v.crash_rate.value).toBeNull();
     expect(v.commute_distance_km.value).toBeNull();
@@ -147,12 +193,14 @@ describe('extractIndicators', () => {
       transport: {
         vehicleOwnershipRaw: { noCar: 0, oneCar: 0, twoCars: 0, threePlusCars: 0, totalDwellings: 0 },
         ptFrequency: { totalStops: 0, frequentStops: 0 },
+        catchment: { persons: 0, frequentPersons: 0, anyPersons: 0, frequentShare: null, anyShare: null },
       },
       economy: { householdIncomeDistribution: [] },
       growth: { populationHistory: [{ year: 2021, population: 0 }] },   // crash_rate's denominator is the ERP
     }));
     for (const id of ['older_residents', 'indigenous_share', 'needs_assistance', 'limited_english', 'crash_rate',
-      'approvals_per_1000', 'zero_car_households', 'frequent_stop_share', 'low_income_households'] as const) {
+      'approvals_per_1000', 'zero_car_households', 'frequent_stop_share', 'low_income_households',
+      'frequent_service_catchment', 'any_service_catchment'] as const) {
       expect(v[id]).toEqual({ value: null });
     }
   });
@@ -160,8 +208,12 @@ describe('extractIndicators', () => {
   test('a genuine zero is kept as a value', () => {
     const v = extractIndicators(makeBundle({
       demographics: { indigenousPopulation: 0 },
-      transport: { ptFrequency: { frequentStops: 0, frequentStopShare: 0, amPeakDepartures: 0, departuresPer1000Residents: 0 } },
+      transport: {
+        ptFrequency: { frequentStops: 0, frequentStopShare: 0, amPeakDepartures: 0, departuresPer1000Residents: 0 },
+        catchment: { frequentPersons: 0, frequentShare: 0 },
+      },
     }));
+    expect(v.frequent_service_catchment).toEqual({ value: 0, numerator: 0, denominator: 400000 });
     expect(v.indigenous_share).toMatchObject({ value: 0, numerator: 0, denominator: 400000 });
     expect(v.frequent_stop_share).toMatchObject({ value: 0, numerator: 0, denominator: 200 });
     expect(v.am_peak_departures_per_1000).toMatchObject({ value: 0, numerator: 0, denominator: 400000 });

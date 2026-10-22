@@ -25,7 +25,7 @@ import {
 } from './sample-data';
 import { getProjectionsForArea } from './nsw-projections-data';
 import { getLiveTfNSWTransportData } from '../tfnsw-api';
-import { getPtFrequency, getTravelSurvey, getCommuteFlows } from './transport-service-demand';
+import { getCatchment, getPtFrequency, getTravelSurvey, getCommuteFlows } from './transport-service-demand';
 import {
   getEmploymentProjections,
   type EmploymentProjection,
@@ -589,9 +589,10 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     sampleFields.push('ptStops', 'ptRoutes');
   }
 
-  // PT service frequency (GTFS), all-purpose travel (HTS) and commuting flows
-  // between LGAs (Census) — see transport-service-demand.ts
+  // PT service frequency (GTFS), walking catchments (mesh blocks + GTFS), all-purpose travel (HTS) and
+  // commuting flows between LGAs (Census) — see transport-service-demand.ts
   const ptFrequency = lgaCode ? await getPtFrequency(lgaCode) : null;
+  const catchment = lgaCode ? await getCatchment(lgaCode) : null;
   const travelSurvey = lgaCode ? await getTravelSurvey(lgaCode) : null;
   const commuteFlows = lgaCode ? getCommuteFlows(lgaCode) : null;
   if (ptFrequency) {
@@ -600,6 +601,9 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
   } else {
     sampleFields.push('ptFrequency');
   }
+  // P2-R22: the catchments are for the needs engine, which cites them through NEEDS_SOURCES. /transport does not show
+  // them, so they stay out of its badge's sources and reference-value fields.
+  if (catchment) liveFields.push('catchment');
   if (travelSurvey) {
     liveFields.push('travelSurvey');
     if (!sources.includes('TfNSW Household Travel Survey')) sources.push('TfNSW Household Travel Survey');
@@ -627,6 +631,7 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
       ptStops,
       ptRoutes,
       ptFrequency: ptFrequency ?? undefined,
+      catchment: catchment ?? undefined,
       travelSurvey: travelSurvey ?? undefined,
       commuteFlows: commuteFlows ?? undefined,
     },

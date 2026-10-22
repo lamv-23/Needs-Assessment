@@ -1,4 +1,21 @@
+import type { DemographicsData, EconomyData, GrowthData, TransportData } from '@/lib/data/sample-data';
 import type { IndicatorId, IndicatorValue, InsightSeries, LiveBundle } from './types';
+
+/**
+ * The live data fields the indicators read. A LiveBundle has them all; an SA2's decoded Census tables fill the ones
+ * its indicators need (see sa2.ts), so both go through the same formulas. A SEIFA score or unemployment rate
+ * that is missing is null.
+ */
+export interface IndicatorInputs {
+  demographics: Pick<
+    DemographicsData, 'totalPopulation' | 'ageDistribution' | 'needsAssistance' | 'limitedEnglish' | 'indigenousPopulation'
+  > & { seifaScore: number | null };
+  transport: Pick<
+    TransportData, 'journeyToWork' | 'vehicleOwnershipRaw' | 'ptFrequency' | 'commuteDistance2016' | 'crashTrend' | 'catchment'
+  >;
+  economy: Pick<EconomyData, 'lowIncomeHouseholds' | 'householdIncomeDistribution'> & { unemploymentRate: number | null };
+  growth: Pick<GrowthData, 'populationHistory' | 'populationProjections' | 'employmentGrowth' | 'rollingAnnualApprovals'>;
+}
 
 const isNum = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
 
@@ -56,7 +73,7 @@ function carShareOfTravellers(car: number | undefined, workFromHome: number | un
 }
 
 /** 2021 car dependency (work from home excluded) from method of travel to work: the car_dependency indicator. */
-function carDependency2021(transport: LiveBundle['transport']): number | null {
+function carDependency2021(transport: Pick<TransportData, 'journeyToWork'>): number | null {
   const modeShare = (name: string) => transport.journeyToWork.find(m => m.name === name)?.value;
   const carDriver = modeShare('Car (driver)');
   const carPassenger = modeShare('Car (passenger)');
@@ -65,8 +82,8 @@ function carDependency2021(transport: LiveBundle['transport']): number | null {
     : null;
 }
 
-/** Turn one LGA's live data into the 16 indicator values. */
-export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, IndicatorValue> {
+/** Turn one LGA's live data (or an SA2's Census tables, as `IndicatorInputs`) into the 18 indicator values. */
+export function extractIndicators(bundle: IndicatorInputs): Record<IndicatorId, IndicatorValue> {
   const { demographics, transport, economy, growth: growthData } = bundle;
   const population = demographics.totalPopulation;
 
@@ -87,6 +104,9 @@ export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, Indic
 
   const latestCrashYear = latest((transport.crashTrend ?? []).filter(c => isNum(c.totalCrashes)));
 
+  // Straight-line walking catchments: residents (mesh-block persons) near a stop with frequent or any service
+  const catchment = transport.catchment;
+
   const vehicles = transport.vehicleOwnershipRaw;
   const incomeHouseholds = economy.householdIncomeDistribution
     ?.reduce((sum, band) => sum + (isNum(band.count) ? band.count : 0), 0);
@@ -105,6 +125,8 @@ export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, Indic
     car_dependency: carDependency,
     zero_car_households: ratio(vehicles?.noCar, vehicles?.totalDwellings, 100),
     frequent_stop_share: frequentStopShare,
+    frequent_service_catchment: ratio(catchment?.frequentPersons, catchment?.persons, 100),
+    any_service_catchment: ratio(catchment?.anyPersons, catchment?.persons, 100),
     am_peak_departures_per_1000: departuresPer1000,
     commute_distance_km: isNum(transport.commuteDistance2016?.avgKm)
       ? { value: transport.commuteDistance2016.avgKm }

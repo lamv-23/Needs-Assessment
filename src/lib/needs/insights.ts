@@ -18,7 +18,7 @@ export interface LinearFit {
   /** Standard error of the regression, √(SSE ÷ (n − 2)). */
   residualSd: number;
   n: number;
-  predictor: 'frequent_stop_share' | 'ln_population';
+  predictor: 'frequent_service_catchment' | 'ln_population';
   setting: 'metro' | 'non_metro';
 }
 
@@ -130,9 +130,13 @@ export function fitLinear(points: { x: number; y: number }[]): Omit<LinearFit, '
 
 const carDependencyOf = (record: AssessableRecord): number | null => record.values.car_dependency?.value ?? null;
 
-/** Frequent-stop share in Sydney; outside it service explains almost nothing (R² 0.02), so ln(population). */
+/**
+ * In Sydney, the share of residents near frequent AM-peak public transport (straight-line catchment): R² 0.63 across
+ * the 34 metropolitan LGAs, against 0.51 for the share of stops with frequent service, so it replaced that (P2-R4, gain
+ * >= 0.05). Outside Sydney service explains almost nothing (R² 0.03), so ln(population).
+ */
 export function predictorOf(record: AssessableRecord, setting: Setting): number | null {
-  if (setting === 'metro') return record.values.frequent_stop_share?.value ?? null;
+  if (setting === 'metro') return record.values.frequent_service_catchment?.value ?? null;
   return record.population > 0 ? Math.log(record.population) : null;
 }
 
@@ -145,7 +149,7 @@ export function expectedCarDependencyModel(records: LgaIndicatorRecord[], settin
       const y = carDependencyOf(r);
       return x !== null && y !== null ? [{ x, y }] : [];
     });
-  return { ...fitLinear(points), predictor: setting === 'metro' ? 'frequent_stop_share' : 'ln_population', setting };
+  return { ...fitLinear(points), predictor: setting === 'metro' ? 'frequent_service_catchment' : 'ln_population', setting };
 }
 
 const isAggregate = (record: AssessableRecord): record is AggregatedRecord => 'memberIds' in record;
@@ -417,7 +421,11 @@ export function keyNeedText(
 }
 
 const MODEL_WORDING: Record<Setting, { basis: string; group: string; source: SourceRef }> = {
-  metro: { basis: 'for its level of frequent public transport service', group: 'metropolitan LGAs', source: SOURCES.gtfs },
+  metro: {
+    basis: 'for its share of residents near frequent AM-peak public transport, measured by straight-line distance',
+    group: 'metropolitan LGAs',
+    source: SOURCES.catchments,
+  },
   non_metro: { basis: 'for an LGA of its population size', group: 'non-metropolitan LGAs', source: SOURCES.g01 },
 };
 

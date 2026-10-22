@@ -1,12 +1,13 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels, domainChartData, heatmapRowLabel, labelSide,
+  CATCHMENT_PANELS, HEATMAP_CATCHMENT_NOTE, HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels,
+  catchmentChartData, domainChartData, heatmapRowLabel, heatmapRowName, labelSide,
   axisFraction, niceAxis, stripData, wrapLabel,
 } from '@/lib/needs/chart-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { AREA_PALETTE_SIZE, DOMAIN_COLORS, areaColor, labelledIds } from '@/lib/needs/colors';
-import { DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { CHART_COLORS } from '@/lib/utils';
 import type { AreaAssessment, NeedsAssessment, NeedsMode, Universe } from '@/lib/needs/types';
 
@@ -135,13 +136,30 @@ describe('heatmapRowLabel', () => {
       expect(lines.length + (hint ? 1 : 0)).toBeLessThanOrEqual(2);
       expect(lines.some(l => l.endsWith('…'))).toBe(false);
       expect(lines.every(l => l.length <= HEATMAP_LABEL_CHARS)).toBe(true);
-      expect(lines.join(' ').replace(/ \(context\)$/, '').replace(/- /g, '-')).toBe(def.label);
+      expect(lines.join(' ').replace(/ \(context\)$/, '').replace(/- /g, '-')).toBe(heatmapRowName(def));
     }
   });
 
-  test('a hint line appears exactly for indicators where a lower value means more need', () => {
-    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_stop_share).hint).toBe('(lower value = more need)');
+  test('a hint line appears exactly for scored indicators where a lower value means more need', () => {
+    expect(heatmapRowLabel(INDICATOR_BY_ID.am_peak_departures_per_1000).hint).toBe('(lower value = more need)');
     expect(heatmapRowLabel(INDICATOR_BY_ID.car_dependency).hint).toBeNull();
+    // A context row is unshaded, so its colour never runs against the number
+    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_stop_share)).toEqual({
+      lines: ['Stops with frequent AM-peak service', '(context)'], hint: null,
+    });
+  });
+
+  test('the catchment rows have short names that keep AM-peak (P2-R17); the heatmap notes define them', () => {
+    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_service_catchment)).toEqual({
+      lines: ['Near frequent AM-peak public transport'], hint: '(lower value = more need)',
+    });
+    expect(heatmapRowName(INDICATOR_BY_ID.any_service_catchment)).toBe('Near any AM-peak public transport');
+    expect(heatmapRowName(INDICATOR_BY_ID.car_dependency)).toBe('Car dependency');
+    // The heatmap notes are the shared catchment note, wrapped to the legend
+    expect(HEATMAP_CATCHMENT_NOTE.join(' ').replace(/- /g, '-')).toBe(CATCHMENT_NOTE);
+    expect(HEATMAP_CATCHMENT_NOTE.join(' ')).toContain('straight-line');
+    // Each note line fits the 700 px legend at 11 px
+    for (const line of HEATMAP_CATCHMENT_NOTE) expect(line.length).toBeLessThanOrEqual(110);
   });
 
   test('an unscored indicator is marked as context', () => {
@@ -383,5 +401,48 @@ describe('stripData', () => {
     const s = stripData({ ...base, areas: [base.areas[0], twin] }, 'unemployment_rate');
     expect(s.selected.map(p => p.x)[0]).toBe(s.selected.map(p => p.x)[1]);
     expect(s.selected[0].level).not.toBe(s.selected[1].level);
+  });
+});
+
+describe('catchmentChartData', () => {
+  test('one panel per measure, a bar per selected LGA, Greater Sydney and NSW as reference lines', () => {
+    const data = catchmentChartData(assess(['lga_blacktown', 'lga_penrith']));
+    expect(data.panels.map(p => p.id)).toEqual(['frequent_service_catchment', 'any_service_catchment']);
+    expect(data.panels.map(p => p.title)).toEqual(CATCHMENT_PANELS.map(p => p.title));
+    const [frequent, any] = data.panels;
+    expect(frequent.bars.map(b => [b.name, b.text])).toEqual([['Blacktown', '59.4%'], ['Penrith', '40.7%']]);
+    expect(any.bars.map(b => b.text)).toEqual(['95.0%', '90.2%']);
+    expect(frequent.references.map(r => [r.key, r.name, r.text])).toEqual([
+      ['gsyd', 'Greater Sydney', '67.2%'], ['nsw', 'NSW', '46.8%'],
+    ]);
+    expect(any.references.map(r => r.text)).toEqual(['93.5%', '81.2%']);
+    expect(data.axis).toEqual({ lo: 0, hi: 100, ticks: [0, 20, 40, 60, 80, 100] });
+    expect(data.noData).toEqual([]);
+    expect(data.notes).toEqual([]);
+  });
+
+  test('a combined selection is one bar, its residents summed', () => {
+    const data = catchmentChartData(assess(['lga_blacktown', 'lga_penrith'], 'combined'));
+    expect(data.panels[0].bars.map(b => b.name)).toEqual(['Blacktown + Penrith']);
+    const value = data.panels[0].bars[0].value!;
+    expect(value).toBeGreaterThan(40.7);
+    expect(value).toBeLessThan(59.4);
+  });
+
+  test('a missing share is "No data", never 0', () => {
+    const a = assess(['lga_blacktown']);
+    const areas = a.areas.map(area => ({
+      ...area,
+      indicators: area.indicators.map(s => (s.id === 'frequent_service_catchment' ? { ...s, value: null } : s)),
+    }));
+    const data = catchmentChartData({ ...a, areas });
+    expect(data.panels[0].bars[0]).toMatchObject({ value: null, text: 'No data' });
+    expect(data.noData).toEqual(['Blacktown']);
+  });
+
+  test('the panels say what frequent and any service are: weekday 7-9am departures', () => {
+    expect(CATCHMENT_PANELS.map(panel => panel.title)).toEqual([
+      'Near frequent service (8+ weekday 7-9am departures)', 'Near any service (1+ weekday 7-9am departures)',
+    ]);
   });
 });
