@@ -94,7 +94,7 @@ const cmToPx = (cm: number) => (cm * 96) / 2.54;
 export interface FigureLayout { orientation: 'portrait' | 'landscape'; widthCm: number; heightCm: number }
 
 /**
- * Where and how big a figure is drawn: a wide figure (width over 1.6 times its height) in its own landscape section
+ * Where and how big a figure is drawn: a wide figure (width over 1.6 times its height) in a landscape section
  * at the full 24.7 cm, any other at most 16 cm wide. The aspect ratio is kept and the height is kept within the page.
  */
 export function figureLayout(widthPx: number, heightPx: number): FigureLayout {
@@ -108,15 +108,18 @@ export function figureLayout(widthPx: number, heightPx: number): FigureLayout {
     : { orientation, widthCm: maxHeight * ratio, heightCm: maxHeight };
 }
 
-/** The document as a sequence of sections: content joins the open section of the same orientation, else starts one. */
+/**
+ * The document as a sequence of sections: content joins the last section when it has the same orientation, so a run of
+ * wide figures (or of portrait ones) is one section that Word flows across pages, and a new section starts only when
+ * the orientation changes.
+ */
 function createFlow() {
-  const pages: Array<{ orientation: FigureLayout['orientation']; children: FileChild[]; closed: boolean }> = [];
+  const pages: Array<{ orientation: FigureLayout['orientation']; children: FileChild[] }> = [];
   return {
-    /** `alone` puts the content in a section of its own, which nothing else joins. */
-    add(orientation: FigureLayout['orientation'], children: FileChild[], { alone = false } = {}) {
+    add(orientation: FigureLayout['orientation'], children: FileChild[]) {
       const last = pages[pages.length - 1];
-      if (!alone && last && !last.closed && last.orientation === orientation) last.children.push(...children);
-      else pages.push({ orientation, children: [...children], closed: alone });
+      if (last && last.orientation === orientation) last.children.push(...children);
+      else pages.push({ orientation, children: [...children] });
     },
     sections(): ISectionOptions[] {
       return pages.map(page => ({
@@ -375,7 +378,7 @@ export function buildNeedsDocument(input: NeedsDocxInput): Document {
   figures.forEach((figure, i) => {
     const layout = figureLayout(figure.widthPx, figure.heightPx);
     const children = [...(i === 0 ? [heading('Figures')] : []), ...figureBlock(figure, i + 1, layout)];
-    flow.add(layout.orientation, children, { alone: layout.orientation === 'landscape' });
+    flow.add(layout.orientation, children);
   });
 
   flow.add('portrait', [...(notes ? narrativeBlock(notes) : []), ...sourcesBlock(assessment)]);

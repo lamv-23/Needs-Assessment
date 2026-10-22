@@ -281,7 +281,7 @@ describe('buildNeedsDocument: figures', () => {
     expect(extents(xml)).toHaveLength(0);
   });
 
-  test('a figure wider than 1.6 times its height gets its own landscape section at the full text width', async () => {
+  test('a figure wider than 1.6 times its height goes in a landscape section at the full text width', async () => {
     const { xml } = await documentParts(inputFor(assessment, [
       figure('Need map', 1000, 800),
       figure('Need heatmap', 12540, 1100),
@@ -312,9 +312,47 @@ describe('buildNeedsDocument: figures', () => {
     expect(all[heading].xml).toContain('Figure 1. Need map');
   });
 
-  test('two wide figures in a row are two landscape sections', async () => {
-    const { xml } = await documentParts(inputFor(assessment, [figure('A', 3000, 1000), figure('B', 3000, 1000)]));
-    expect(sections(xml).map(s => s.orientation).filter(o => o === 'landscape')).toHaveLength(2);
+  test('consecutive wide figures share one landscape section, flowed by Word with no forced page break', async () => {
+    const strips = Array.from({ length: 6 }, (_, i) => figure(`Strip plot ${i + 1}`, 2910, 1104));
+    const { xml } = await documentParts(inputFor(assessment, strips));
+    const all = sections(xml);
+    // Title to table (portrait), the six strip plots (landscape), then data notes and sources (portrait).
+    expect(all.map(s => s.orientation)).toEqual(['portrait', 'landscape', 'portrait']);
+    const landscape = all[1];
+    expect(extents(landscape.xml)).toHaveLength(6);
+    expect(paragraphs(landscape.xml).filter(p => p.style === 'Caption').map(p => p.text))
+      .toEqual(strips.map((_, i) => `Figure ${i + 1}. Strip plot ${i + 1}. Source: ABS Census 2021 G62`));
+    expect(headings(landscape.xml, 'Heading2')).toEqual(['Figures']);
+    expect(landscape.xml).not.toMatch(/<w:pageBreakBefore|<w:br w:type="page"/);
+  });
+
+  test('every figure image is kept with its caption', async () => {
+    const mixed = [figure('A', 1000, 800), figure('B', 3000, 1000), figure('C', 3000, 1000)];
+    const { xml } = await documentParts(inputFor(assessment, mixed));
+    const images = paragraphs(xml).filter(p => p.xml.includes('<w:drawing>'));
+    expect(images).toHaveLength(3);
+    for (const image of images) expect(image.xml).toContain('<w:keepNext/>');
+  });
+
+  test('a new section starts only when the orientation changes: portrait, landscape, portrait is three sections', async () => {
+    const { xml } = await documentParts(inputFor(assessment, [
+      figure('A', 1000, 800), figure('B', 1000, 800), // portrait, join the portrait text before them
+      figure('C', 3000, 1000), figure('D', 4000, 1000), // landscape
+      figure('E', 1000, 900), figure('F', 1000, 900), // portrait, join the data notes and sources after them
+    ]));
+    const all = sections(xml);
+    expect(all.map(s => s.orientation)).toEqual(['portrait', 'landscape', 'portrait']);
+    expect(all[0].xml).toContain('Figure 2. B.');
+    expect(all[1].xml).toContain('Figure 3. C.');
+    expect(all[1].xml).toContain('Figure 4. D.');
+    expect(all[2].xml).toContain('Figure 5. E.');
+    expect(all[2].xml).toContain('Figure 6. F.');
+    expect(headings(all[2].xml, 'Heading2')).toEqual(['Data notes', 'Sources']);
+  });
+
+  test('wide figures following a landscape table (many areas) continue in the same landscape section', async () => {
+    const { xml } = await documentParts(inputFor(assess(GSYD_IDS.slice(0, 8)), [figure('A', 3000, 1000), figure('B', 3000, 1000)]));
+    expect(sections(xml).map(s => s.orientation)).toEqual(['portrait', 'landscape', 'portrait']);
   });
 });
 
