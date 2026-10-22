@@ -29,6 +29,10 @@ npm run seed:gtfs -- --stop-frequency-only   # 4. AM-peak departures per stop �
 npm run build:catchments       # 5. catchments → build.db sa2_cache CATCHMENT + cache.db tfnsw_cache CATCHMENT_COVERAGE (<1 s; a rerun rewrites fetched_at)
 npm run build:sa2-needs        # 6. public/data/sa2-needs.json (committed; loaded by /needs)
 npm run build:needs            # 7. LGA snapshot picks up the new CATCHMENT_COVERAGE (after build:fallbacks)
+# Reproducibility: step 4 reproduces the committed catchment figures only while the TfNSW bundle still carries the
+# cached service date 20261027 (it defaults to the GTFS_FREQUENCY date in cache.db). After that, rebuilding needs a full
+# `npm run seed:gtfs` (which rewrites the cache.db GTFS rows), then build:catchments, build:sa2-needs and build:needs,
+# and the catchment figures, scores and SA2 rankings will change.
 
 npm run parse:population  # regenerate src/lib/data/nsw-projections-data.ts from XLSX
 npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV (does NOT reproduce the bundled file — see Data Sources)
@@ -145,7 +149,7 @@ Opened through `src/lib/build-db.ts` (`BUILD_DB_PATH` overrides the location). T
 | Table | Key | Content |
 |---|---|---|
 | `sa2_cache` | `(sa2_code, dataset)` | Decoded Census tables per SA2 (`G01`, `G02`, `G13`, `G18`, `G33_INCOME`, `G34`, `LABOUR`, `G62`, `SEIFA`; `npm run seed:sa2`) and its straight-line catchment (`CATCHMENT`; `npm run build:catchments`) |
-| `mesh_blocks` | `mb_code` | 2021 NSW mesh blocks: SA2, persons, centroid lat/lng and the LGA the centroid falls in (lat/lng and LGA null for the non-spatial SA2s' blocks) |
+| `mesh_blocks` | `mb_code` | 2021 NSW mesh blocks: SA2, persons, centroid lat/lng and the LGA the centroid falls in. lat/lng are null for the 9 blocks of the non-spatial SA2s (no ABS centroid). LGA is null for those and for the 327 located blocks outside every LGA (Lord Howe Island, harbour waters, unincorporated areas; 2,151 persons, about 0.03%) |
 | `gtfs_stop_frequency` | `stop_id` | Weekday 07:00–09:00 departures of every GTFS stop on one service date, with its lat/lng and mode |
 
 ## Troubleshooting
