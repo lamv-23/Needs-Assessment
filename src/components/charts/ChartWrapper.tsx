@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { Download, ChevronDown, Clipboard, Check, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { wideCaptureSize } from '@/lib/export/capture-size';
+import { flattenLeafletTransforms } from '@/lib/export/leaflet-capture';
 import { serializeSvg } from '@/lib/export/svg-export';
 import { useFigureRegistry } from '@/components/needs/FigureRegistry';
 
@@ -121,12 +122,17 @@ export default function ChartWrapper({
     await new Promise((resolve) => setTimeout(resolve, 100));
     const root = chartRef.current;
     if (!root) return null;
+    const wide = wideFigureOptions(root, 3);
     return html2canvas(root, {
       backgroundColor: '#ffffff',
       scale: 3,
       useCORS: true,
       ...(excludeCaption && { ignoreElements: isFigureCaption }),
-      ...wideFigureOptions(root, 3),
+      ...wide,
+      onclone: (clonedDocument, cloned) => {
+        flattenLeafletTransforms(cloned);
+        wide?.onclone?.(clonedDocument, cloned);
+      },
     });
   }, []);
 

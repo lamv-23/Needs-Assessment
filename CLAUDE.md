@@ -18,6 +18,7 @@ npm run seed:g62         # re-fetch Census journey-to-work (G62/G59/B46) for all
 npm run seed:transport   # HTS commute time, ABS commute distance, station patronage, crash trends (~2 min, needs gtfs_stops)
 npm run build:fallbacks  # refresh bundled official-fallback-data.ts from live data + Greater Sydney benchmark (run after any seed)
 npm run build:needs      # rebuild the LGA needs-assessment indicator snapshot (src/lib/data/needs-indicators-data.ts); run after build:fallbacks
+npm run build:geo        # regenerate public/geo/lga-nsw-simple.json (the /needs map's boundaries, ~1 MB) from public/geo/lga-nsw.json
 
 npm run parse:population  # regenerate src/lib/data/nsw-projections-data.ts from XLSX
 npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV
