@@ -217,19 +217,19 @@ describe('mismatchExcel', () => {
     const excel = mismatchExcel(a);
     const charts = mismatchChartData(a).charts.filter(c => c.weakMessage === null);
     expect(sheet(excel).header).toEqual([
-      'Setting', 'LGA', 'Selected (Y/N)', 'Stops with frequent AM-peak service (%)', 'Population',
+      'Setting', 'LGA', 'Selected (Y/N)', 'Residents near frequent public transport (%, straight-line distance)', 'Population',
       'Car dependency (%)', 'Expected car dependency (%)', 'Residual (pp)', 'z',
     ]);
     expect(excel.data).toHaveLength(charts.reduce((n, c) => n + c.others.length + c.selected.length, 0));
     const blacktown = excel.data.find(r => r.lga === 'Blacktown')!;
     const m = carDependencyMismatch(a.records.find(r => r.areaId === 'lga_blacktown')!, a.records)!;
     expect(blacktown).toMatchObject({
-      setting: 'Metropolitan', selected: 'Y', population: null,
+      setting: 'Metropolitan', selected: 'Y', catchment: rounded(m.x, 1), population: null,
       actual: rounded(m.actual, 1), expected: rounded(m.expected, 1), residual: rounded(m.residual, 1), z: rounded(m.z, 1),
     });
     expect(typeof excel.data.find(r => r.lga === 'Newcastle')!.population).toBe('number');
     for (const row of excel.data) {
-      for (const key of ['stopShare', 'population', 'actual', 'expected', 'residual', 'z']) expect(isNumberOrBlank(row[key])).toBe(true);
+      for (const key of ['catchment', 'population', 'actual', 'expected', 'residual', 'z']) expect(isNumberOrBlank(row[key])).toBe(true);
       // Every row's residual is its actual less its expected, as shown
       expect(Math.abs((row.actual as number) - (row.expected as number) - (row.residual as number))).toBeLessThan(0.11);
     }

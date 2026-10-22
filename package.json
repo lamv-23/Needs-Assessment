@@ -26,6 +26,7 @@
     "seed:transport": "tsx scripts/seed-official-transport.ts",
     "build:fallbacks": "tsx scripts/build-fallbacks.ts",
     "build:needs": "tsx scripts/build-needs-indicators.ts",
+    "build:sa2-needs": "tsx scripts/build-sa2-needs.ts",
     "build:geo": "mapshaper public/geo/lga-nsw.json -simplify 3% keep-shapes -o precision=0.0001 public/geo/lga-nsw-simple.json",
     "fetch:sa2-boundaries": "tsx scripts/fetch-sa2-boundaries.ts",
     "seed:commute-times": "tsx scripts/seed-commute-times.ts",

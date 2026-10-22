@@ -14,10 +14,13 @@ import type {
 
 // Need profile radar
 
-/** The radar's axes, in order: the case for transport projects in five numbers. */
+/**
+ * The radar's axes, in order: the case for transport projects in five numbers. The service gap is the share of
+ * residents near frequent public transport (straight-line distance; a lower share is more need, P2-R12).
+ */
 export const RADAR_AXES: readonly { id: IndicatorId; label: string }[] = [
   { id: 'car_dependency', label: 'Car dependency' },
-  { id: 'frequent_stop_share', label: 'Public transport service gap' },
+  { id: 'frequent_service_catchment', label: 'Public transport service gap' },
   { id: 'zero_car_households', label: 'Households without a car' },
   { id: 'seifa_irsd', label: 'Socio-economic disadvantage' },
   { id: 'pop_growth_2041', label: 'Population growth to 2041' },

@@ -43,9 +43,12 @@ export function figureCaption(ids: IndicatorId[] = ALL_INDICATOR_IDS): string {
 // The insight figures draw on series that are not all indicators, so their sources are named here. They are the
 // sources the findings cite (insights.ts), without the 2021 Census lockdown caveat, which is a note and not data.
 
-/** Car dependency, and the predictor of each setting drawn: stop service in Sydney, population elsewhere. */
+/**
+ * Car dependency, and the predictor of each setting drawn: residents near frequent service in Sydney (the straight-line
+ * catchments), population elsewhere.
+ */
 export function mismatchCaption(assessment: NeedsAssessment): string {
-  const predictors = { metro: SOURCES.gtfs, non_metro: SOURCES.g01 };
+  const predictors = { metro: SOURCES.catchments, non_metro: SOURCES.g01 };
   return sourcesCaption([
     SOURCES.g62,
     ...mismatchChartData(assessment).charts.map(chart => predictors[chart.setting]),

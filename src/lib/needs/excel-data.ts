@@ -2,7 +2,8 @@ import { domainChartAreas, stripData } from './chart-data';
 import { displayScore } from './format';
 import { DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from './indicators';
 import {
-  growthServiceChartData, jobsHousingChartData, mismatchChartData, trendData, type TrendPanelId, type TrendSeries,
+  growthServiceChartData, jobsHousingChartData, mismatchChartData, SETTING_TEXT, trendData, type TrendPanelId,
+  type TrendSeries,
 } from './insight-chart-data';
 import { mapScores } from './map-data';
 import { inNeedQuadrant, quadrantPanels, radarData, typicalLabel, type QuadrantSpec } from './project-need';
@@ -185,12 +186,13 @@ export function stripExcel(a: NeedsAssessment, id: IndicatorId): FigureExcel {
 // Car dependency against expected
 
 const CAR = INDICATOR_BY_ID.car_dependency;
-const STOPS = INDICATOR_BY_ID.frequent_stop_share;
+const CATCHMENT = INDICATOR_BY_ID.frequent_service_catchment;
 const SETTING_NAMES = { metro: 'Metropolitan', non_metro: 'Non-metropolitan' } as const;
 
 /**
  * Every LGA on each chart whose model is strong enough to draw: its car dependency, the expected value, the residual
- * and z, with the predictor (frequent-stop share in Sydney; elsewhere the population, the model being on its log).
+ * and z, with the predictor (in Sydney the share of residents near frequent public transport, a straight-line
+ * catchment; elsewhere the population, the model being on its log).
  */
 export function mismatchExcel(a: NeedsAssessment): FigureExcel {
   const rows = mismatchChartData(a).charts.filter(chart => chart.weakMessage === null).flatMap(chart => {
@@ -209,7 +211,11 @@ export function mismatchExcel(a: NeedsAssessment): FigureExcel {
     { key: 'setting', header: 'Setting', value: r => SETTING_NAMES[r.setting] },
     { key: 'lga', header: 'LGA', value: r => r.name },
     { key: 'selected', header: 'Selected (Y/N)', value: r => yesNo(r.selected) },
-    { key: 'stopShare', header: withUnit(STOPS), value: r => (r.setting === 'metro' ? roundTo(r.x, STOPS.decimals) : null) },
+    {
+      key: 'catchment',
+      header: SETTING_TEXT.metro.xTitle,
+      value: r => (r.setting === 'metro' ? roundTo(r.x, CATCHMENT.decimals) : null),
+    },
     { key: 'population', header: 'Population', value: r => (r.setting === 'non_metro' ? Math.round(Math.exp(r.x)) : null) },
     { key: 'actual', header: withUnit(CAR), value: r => roundTo(r.actual, CAR.decimals) },
     { key: 'expected', header: `Expected car dependency (${CAR.unit})`, value: r => roundTo(r.expected, CAR.decimals) },

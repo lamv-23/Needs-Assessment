@@ -14,7 +14,8 @@ import type { NeedsAssessment, NeedsMode, NeedsSnapshot, Universe } from '@/lib/
 
 const METHOD_SENTENCE =
   'Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. '
-  + 'Aboriginal and Torres Strait Islander share is shown for context and is not scored.';
+  + 'Aboriginal and Torres Strait Islander share and the share of stops with frequent AM-peak service are shown for '
+  + 'context and are not scored.';
 
 /** A real 1x1 PNG. The display size comes from the transformation, not the bytes. */
 const PNG_1X1 = Uint8Array.from(Buffer.from(

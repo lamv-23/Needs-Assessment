@@ -7,6 +7,7 @@ import {
 import { wrapLabel } from '@/lib/needs/chart-data';
 import { BENCHMARK_COLOR, areaColor } from '@/lib/needs/colors';
 import { displayScore } from '@/lib/needs/format';
+import { CATCHMENT_NOTE } from '@/lib/needs/indicators';
 import { MAX_RADAR_AREAS, TYPICAL_PERCENTILE, groupLabel, radarData, radarGaps, typicalLabel } from '@/lib/needs/project-need';
 import { CHART_TOOLTIP_STYLE } from '@/lib/utils';
 import type { NeedsAssessment } from '@/lib/needs/types';
@@ -118,8 +119,8 @@ export default function NeedsRadar({ assessment }: { assessment: NeedsAssessment
       <ChartNotes>
         <p>
           Each axis is the need percentile within {groupLabel(assessment.areas)}: 100 is the most need, and the dashed ring at{' '}
-          {TYPICAL_PERCENTILE} is a typical LGA. A public transport service gap is a low share of stops with frequent AM-peak
-          service.
+          {TYPICAL_PERCENTILE} is a typical LGA. A public transport service gap is a low share of residents near frequent
+          public transport. {CATCHMENT_NOTE}
         </p>
         {hiddenAreas > 0 && (
           <p>

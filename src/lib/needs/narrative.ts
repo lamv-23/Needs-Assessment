@@ -32,7 +32,8 @@ interface Wording {
 
 const METHOD_NOTE =
   'Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. '
-  + 'Aboriginal and Torres Strait Islander share is shown for context and is not scored.';
+  + 'Aboriginal and Torres Strait Islander share and the share of stops with frequent AM-peak service are shown for '
+  + 'context and are not scored.';
 
 const FALLBACK_NOTES = {
   region: 'The selected LGAs span more than one region, so the combined area is ranked against NSW LGAs.',

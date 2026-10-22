@@ -1,3 +1,4 @@
+import type { CatchmentShare } from '@/lib/catchments';
 import type { GTFSFrequencyData } from '@/lib/gtfs-frequency';
 import type { HTSTravelSurveySummary } from '@/lib/hts-parser';
 import type { JTWFlowSummary } from '@/lib/jtw-flows';
@@ -60,6 +61,11 @@ export interface TransportData {
   ptStops?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
   ptRoutes?: { train: number; bus: number; ferry: number; lightRail: number; metro: number; total: number };
   ptFrequency?: GTFSFrequencyData & { departuresPer1000Residents: number | null };
+  /**
+   * Residents (2021 mesh-block persons) within a straight-line walk of a stop with frequent (8+ weekday 7-9am
+   * departures) or any service: 800 m of train, metro and ferry, 400 m of bus and light rail. Shares are percent.
+   */
+  catchment?: CatchmentShare;
   /** All-purpose weekday travel, TfNSW Household Travel Survey (Sydney GMA LGAs only). */
   travelSurvey?: HTSTravelSurveySummary;
   /** Census journey-to-work flows between LGAs (ABS TableBuilder export). */

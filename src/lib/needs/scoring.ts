@@ -2,13 +2,15 @@ import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { INDICATORS, NEED_DOMAINS } from './indicators';
 import { PEER_GROUP_PLURALS } from './peer-groups';
 import type {
-  AreaAssessment, AssessableRecord, DomainScore, IndicatorId, IndicatorScore, LgaIndicatorRecord, NeedBand,
-  PeerGroup, Universe,
+  AreaAssessment, DomainScore, IndicatorId, IndicatorLevel, IndicatorScore, NeedBand, PeerGroup, ScorableRecord,
+  Universe,
 } from './types';
 
 export const KEY_NEED_PERCENTILE = 80;
 /** A comparison group with fewer LGAs than this is too small to rank in or to take a median of. */
 export const SMALL_GROUP_SIZE = 5;
+/** The only comparison group of an SA2: SA2s are ranked against NSW SA2s. */
+export const SA2_UNIVERSE_LABEL = 'NSW SA2s';
 
 type UniverseTarget = { region: string; peerGroup: PeerGroup | null };
 
@@ -53,11 +55,11 @@ function requireRegion(universe: Universe, target?: UniverseTarget): string {
   return target.region;
 }
 
-export function universeRecords(
-  records: LgaIndicatorRecord[],
+export function universeRecords<R extends Pick<ScorableRecord, 'areaId' | 'region' | 'peerGroup'>>(
+  records: R[],
   universe: Universe,
   target?: UniverseTarget,
-): LgaIndicatorRecord[] {
+): R[] {
   switch (universe) {
     case 'nsw':
       return records;
@@ -74,8 +76,12 @@ export function universeRecords(
   }
 }
 
-/** Plural noun phrase, used verbatim in sentences. */
-export function universeLabelFor(universe: Universe, target?: UniverseTarget): string {
+/** Plural noun phrase, used verbatim in sentences. SA2s have one comparison group, NSW SA2s. */
+export function universeLabelFor(universe: Universe, target?: UniverseTarget, level: IndicatorLevel = 'lga'): string {
+  if (level === 'sa2') {
+    if (universe !== 'nsw') throw new Error(`SA2s are ranked against NSW SA2s only, not universe '${universe}'`);
+    return SA2_UNIVERSE_LABEL;
+  }
   switch (universe) {
     case 'nsw':
       return 'NSW LGAs';
@@ -95,14 +101,19 @@ const mean = (xs: number[]): number => xs.reduce((sum, x) => sum + x, 0) / xs.le
  * the target itself). Equal weights throughout: every scored indicator within a domain, and every
  * domain within the overall score. Context (unscored) indicators get a percentile only. An indicator with fewer than
  * 5 values in the universe is not ranked (R58), so it has no percentile and counts towards no score.
+ *
+ * Only the indicators assessed at `level` are scored, and a domain with no scored indicator at that level is left
+ * out (an SA2 has no growth domain). Every LGA indicator and domain is at the 'lga' level.
  */
 export function assessRecord(
-  target: AssessableRecord,
+  target: ScorableRecord,
   universe: Universe,
-  peers: LgaIndicatorRecord[],
+  peers: ScorableRecord[],
   flags: { approximate?: IndicatorId[]; partial?: IndicatorId[] } = {},
+  level: IndicatorLevel = 'lga',
 ): AreaAssessment {
-  const indicators: IndicatorScore[] = INDICATORS.map(def => {
+  const defs = INDICATORS.filter(def => def.levels.includes(level));
+  const indicators: IndicatorScore[] = defs.map(def => {
     const value = target.values[def.id]?.value ?? null;
     const distribution = peers
       .map(p => p.values[def.id]?.value ?? null)
@@ -124,21 +135,22 @@ export function assessRecord(
     };
   });
 
-  const domains: DomainScore[] = NEED_DOMAINS.map(domain => {
-    const scoredIds = INDICATORS.filter(def => def.domain === domain && def.scored).map(def => def.id);
+  const domains: DomainScore[] = NEED_DOMAINS.flatMap((domain): DomainScore[] => {
+    const scoredIds = defs.filter(def => def.domain === domain && def.scored).map(def => def.id);
+    if (scoredIds.length === 0) return [];
     const percentiles = indicators
       .filter(score => scoredIds.includes(score.id))
       .map(score => score.percentile)
       .filter((p): p is number => p !== null);
     // A domain needs at least half of its scored indicators to be meaningful.
     const score = percentiles.length > 0 && percentiles.length * 2 >= scoredIds.length ? mean(percentiles) : null;
-    return {
+    return [{
       domain,
       score,
       band: score === null ? null : bandFor(score),
       available: percentiles.length,
       total: scoredIds.length,
-    };
+    }];
   });
 
   const domainScores = domains.map(d => d.score).filter((s): s is number => s !== null);
@@ -151,7 +163,7 @@ export function assessRecord(
     population: target.population,
     peerGroup: target.peerGroup,
     universe,
-    universeLabel: universeLabelFor(universe, { region: target.region, peerGroup: target.peerGroup }),
+    universeLabel: universeLabelFor(universe, { region: target.region, peerGroup: target.peerGroup }, level),
     universeSize: peers.length,
     smallGroup: peers.length < SMALL_GROUP_SIZE,
     indicators,

@@ -195,11 +195,11 @@ describe('mismatchChartData', () => {
     expect(data.message).toBeNull();
     expect(data.charts.map(c => c.setting)).toEqual(['metro', 'non_metro']);
     const [metro, nonMetro] = data.charts;
-    expect(metro.subtitle).toBe('R² 0.51 · n = 34');
+    expect(metro.subtitle).toBe('R² 0.63 · n = 34');   // P2-R4: the frequent-service catchment model
     expect(nonMetro.subtitle).toBe('R² 0.52 · n = 94');
     expect(metro.heading).toBe('Metropolitan LGAs');
     expect(nonMetro.heading).toBe('Non-metropolitan LGAs');
-    expect(metro.xTitle).toBe('Stops with frequent AM-peak service (%)');
+    expect(metro.xTitle).toBe('Residents near frequent public transport (%, straight-line distance)');
     expect(nonMetro.xTitle).toBe('Population (log scale)');
     expect(metro.weakMessage).toBeNull();
   });
@@ -273,7 +273,7 @@ describe('mismatchChartData', () => {
   test('tooltip lines state the actual value, the expected value and the residual', () => {
     const [metro, nonMetro] = data.charts;
     expect(metro.selected[0].tooltip).toEqual([
-      'Blacktown', 'Car dependency 83.8%', 'Expected 77.7%', '+6.0 pp above expected (z = +0.7)',
+      'Blacktown', 'Car dependency 83.8%', 'Expected 79.2%', '+4.5 pp above expected (z = +0.6)',
     ]);
     expect(nonMetro.selected[0].tooltip[3]).toBe('−6.8 pp below expected (z = −2.0)');
     expect(metro.others[0].tooltip).toHaveLength(2);
@@ -318,7 +318,7 @@ describe('mismatchChartData', () => {
     const [bt, pn] = [record('lga_blacktown'), record('lga_penrith')];
     const weighted = (v: (r: LgaIndicatorRecord) => number) =>
       (v(bt) * bt.population + v(pn) * pn.population) / (bt.population + pn.population);
-    expect(dot.x).toBeCloseTo(weighted(r => r.values.frequent_stop_share.value!), 9);
+    expect(dot.x).toBeCloseTo(weighted(r => r.values.frequent_service_catchment.value!), 9);
     expect(dot.y).toBeCloseTo(weighted(r => r.values.car_dependency.value!), 9);
     expect(chart.fit.intercept + chart.fit.slope * dot.x).toBeCloseTo(dot.expected, 9);
     expect(chart.others.map(d => d.id)).toEqual(expect.arrayContaining(['lga_blacktown', 'lga_penrith']));
@@ -337,7 +337,7 @@ describe('mismatchChartData', () => {
     const records = GREATER_SYDNEY_GCCSA_AREA_IDS.slice(0, 25).map((id, i) => makeRecord(id, {
       name: `Metro ${i}`, region: 'Greater Sydney', peerGroup: 'metro_middle',
       values: {
-        frequent_stop_share: { value: i === 24 ? 48 : i * 4 },
+        frequent_service_catchment: { value: i === 24 ? 48 : i * 4 },
         car_dependency: { value: i === 24 ? 95 : 70 + (i % 2 === 0 ? 5 : -5) },
       },
     }));

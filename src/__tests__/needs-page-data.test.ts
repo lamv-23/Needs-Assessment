@@ -48,22 +48,48 @@ describe('figureCaption', () => {
   });
 });
 
+/**
+ * The numbered sources a caption names, in order; null when part of it is not one. Captions join short names with
+ * "; ", and the catchment source's short name contains "; " itself (P2-R3), so names are matched longest first.
+ */
+function captionSources(caption: string): string[] | null {
+  const shorts = NEEDS_SOURCES.map(s => s.short).sort((a, b) => b.length - a.length);
+  const found: string[] = [];
+  let rest = caption;
+  while (rest.length > 0) {
+    const name = shorts.find(s => rest === s || rest.startsWith(`${s}; `));
+    if (name === undefined) return null;
+    found.push(name);
+    rest = rest.slice(name.length).replace(/^; /, '');
+  }
+  return found;
+}
+
 describe('insight figure captions', () => {
   const short = (...sources: Array<{ short: string }>) => sources.map(s => s.short).join('; ');
 
+  test('captionSources reads a short name that contains "; " as one source', () => {
+    expect(captionSources(short(SOURCES.g62, SOURCES.catchments, SOURCES.g01)))
+      .toEqual([SOURCES.g62.short, SOURCES.catchments.short, SOURCES.g01.short]);
+    expect(captionSources('ABS Census 2021 G62; Not a source')).toBeNull();
+  });
+
   test('the mismatch figure cites car dependency and the predictor of each setting drawn', () => {
-    expect(mismatchCaption(assess(['lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.gtfs));
+    // P2-R4: the metro predictor is the frequent-service catchment
+    expect(mismatchCaption(assess(['lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.catchments));
     expect(mismatchCaption(assess(['lga_newcastle']))).toBe(short(SOURCES.g62, SOURCES.g01));
-    expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))).toBe(short(SOURCES.g62, SOURCES.gtfs, SOURCES.g01));
+    expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle'])))
+      .toBe(short(SOURCES.g62, SOURCES.catchments, SOURCES.g01));
     // The same either way round; a combined area spanning both settings has no chart, only car dependency's source
-    expect(mismatchCaption(assess(['lga_newcastle', 'lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.gtfs, SOURCES.g01));
+    expect(mismatchCaption(assess(['lga_newcastle', 'lga_blacktown'])))
+      .toBe(short(SOURCES.g62, SOURCES.catchments, SOURCES.g01));
     expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle'], 'combined'))).toBe(short(SOURCES.g62));
   });
 
   test('the mismatch caption covers the sources the mismatch findings cite', () => {
     for (const ids of [['lga_blacktown', 'lga_newcastle'], ['lga_camden', 'lga_hills'], ['lga_broken_hill', 'lga_bourke']]) {
       const a = assess(ids);
-      const caption = mismatchCaption(a).split('; ');
+      const caption = captionSources(mismatchCaption(a));
       for (const insight of buildInsights(a).filter(i => i.kind === 'mismatch')) {
         for (const citation of insight.citations) expect(caption).toContain(citation.short);
       }
@@ -92,7 +118,8 @@ describe('insight figure captions', () => {
     const shorts = new Set(NEEDS_SOURCES.map(s => s.short));
     const trends = trendsCaption(assess(['lga_blacktown']));
     for (const caption of [trends, GROWTH_SERVICE_CAPTION, JOBS_HOUSING_CAPTION, mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))]) {
-      for (const name of caption.split('; ')) expect(shorts).toContain(name);
+      expect(captionSources(caption)).not.toBeNull();
+      for (const name of captionSources(caption)!) expect(shorts).toContain(name);
     }
   });
 });
@@ -198,12 +225,14 @@ describe('indicatorTable', () => {
     expect(seifa.cells[0].startsWith('≈ ')).toBe(true);
   });
 
-  test('the context-only indicator is marked "(context)" and keeps its percentile', () => {
+  test('the context-only indicators are marked "(context)" and keep their percentile', () => {
     const table = indicatorTable(assess(['lga_blacktown']));
-    const context = table.rows.find(r => r.id === 'indigenous_share')!;
-    expect(context.label).toBe(`${INDICATOR_BY_ID.indigenous_share.label} (context)`);
-    expect(context.cells[0]).toMatch(/\(p\d+\)$/);
-    expect(table.rows.filter(r => r.label.includes('(context)'))).toHaveLength(1);
+    for (const id of ['indigenous_share', 'frequent_stop_share'] as const) {
+      const context = table.rows.find(r => r.id === id)!;
+      expect(context.label).toBe(`${INDICATOR_BY_ID[id].label} (context)`);
+      expect(context.cells[0]).toMatch(/\(p\d+\)$/);
+    }
+    expect(table.rows.filter(r => r.label.includes('(context)'))).toHaveLength(2);
   });
 
   test('rows carry the source and domain of their indicator', () => {
@@ -268,9 +297,14 @@ describe('sources', () => {
     for (const def of INDICATORS) expect(sourceNumber(def.source)).toBeGreaterThan(0);
   });
 
-  test('the 14 indicator sources come first, then ABS ERP, the 2011 and 2016 travel to work tables and the WFH caveat', () => {
-    expect(NEEDS_SOURCES).toHaveLength(18);
+  test('the 15 indicator sources come first, then ABS ERP, the 2011 and 2016 travel to work tables and the WFH caveat', () => {
+    expect(NEEDS_SOURCES).toHaveLength(19);
     expect(NEEDS_SOURCES.slice(-4)).toEqual([SOURCES.erp, SOURCES.b46, SOURCES.g59, WFH_CAVEAT_CITATION]);
+  });
+
+  test('P2-R3: the straight-line catchment source has a citation number, after TfNSW GTFS', () => {
+    expect(sourceNumber(SOURCES.catchments)).toBe(sourceNumber(SOURCES.gtfs) + 1);
+    expect(NEEDS_SOURCES).toContain(SOURCES.catchments);
   });
 
   test('the 2011 B46 and 2016 G59 tables have citation numbers (R59)', () => {

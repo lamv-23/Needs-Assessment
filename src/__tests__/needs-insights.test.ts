@@ -42,14 +42,14 @@ const CAR = INDICATOR_BY_ID.car_dependency;
 const METRO_IDS = GREATER_SYDNEY_GCCSA_AREA_IDS;
 
 /**
- * 25 metropolitan LGAs whose car dependency is unrelated to frequent-stop share (R² near 0), with the last
+ * 25 metropolitan LGAs whose car dependency is unrelated to the frequent-service catchment (R² near 0), with the last
  * one far above the rest at the mean share, so its residual is large but the model is too weak to use.
  */
 function weakMetroRecords(): LgaIndicatorRecord[] {
   return METRO_IDS.slice(0, 25).map((id, i) => makeRecord(id, {
     name: `Metro ${i}`, region: 'Greater Sydney', peerGroup: 'metro_middle',
     values: {
-      frequent_stop_share: { value: i === 24 ? 48 : i * 4 },
+      frequent_service_catchment: { value: i === 24 ? 48 : i * 4 },
       car_dependency: { value: i === 24 ? 95 : 70 + (i % 2 === 0 ? 5 : -5) },
     },
   }));
@@ -180,9 +180,22 @@ describe('fitLinear', () => {
 describe('expectedCarDependencyModel', () => {
   test('metro model on the real snapshot', () => {
     const m = expectedCarDependencyModel(NEEDS_SNAPSHOT.records, 'metro');
-    expect(m.n).toBe(34); expect(m.predictor).toBe('frequent_stop_share'); expect(m.setting).toBe('metro');
-    expect(m.r2).toBeGreaterThan(0.4); expect(m.slope).toBeLessThan(0);      // probe: R² 0.51, slope −0.52
-    expect(m.residualSd).toBeCloseTo(8.8, 1);                              // spec: residual SD 8.8 pp
+    expect(m.n).toBe(34); expect(m.predictor).toBe('frequent_service_catchment'); expect(m.setting).toBe('metro');
+    expect(m.r2).toBeCloseTo(0.63, 2); expect(m.slope).toBeLessThan(0);     // R² 0.6279, slope −0.354
+    expect(m.residualSd).toBeCloseTo(7.6, 1);                              // residual SD 7.60 pp
+  });
+
+  test('P2-R4: the frequent-service catchment replaced the frequent-stop share, a metro R² gain of at least 0.05', () => {
+    const metro = NEEDS_SNAPSHOT.records.filter(r => METRO_IDS.includes(r.areaId));
+    const fitOn = (id: 'frequent_stop_share' | 'frequent_service_catchment') => fitLinear(metro.flatMap(r => {
+      const [x, y] = [r.values[id].value, r.values.car_dependency.value];
+      return x !== null && y !== null ? [{ x, y }] : [];
+    }));
+    const [stops, catchment] = [fitOn('frequent_stop_share'), fitOn('frequent_service_catchment')];
+    expect([stops.n, catchment.n]).toEqual([34, 34]);
+    expect(stops.r2).toBeCloseTo(0.51, 2);                                 // 0.5055 (Phase 1 spec: R² 0.51)
+    expect(catchment.r2 - stops.r2).toBeGreaterThanOrEqual(0.05);           // 0.6279 − 0.5055 = 0.122
+    expect(expectedCarDependencyModel(NEEDS_SNAPSHOT.records, 'metro').r2).toBe(catchment.r2);
   });
 
   test('non-metro model uses ln(population)', () => {
@@ -195,9 +208,9 @@ describe('expectedCarDependencyModel', () => {
   test('records without the predictor or car dependency are left out of the fit', () => {
     const records = [
       ...weakMetroRecords(),
-      makeRecord(METRO_IDS[25], { values: { car_dependency: { value: 80 } } }),       // no frequent-stop share
-      makeRecord(METRO_IDS[26], { values: { frequent_stop_share: { value: 10 } } }),  // no car dependency
-      makeRecord('lga_test_0', { values: { car_dependency: { value: 90 }, frequent_stop_share: { value: 5 } } }),
+      makeRecord(METRO_IDS[25], { values: { car_dependency: { value: 80 } } }),       // no frequent-service catchment
+      makeRecord(METRO_IDS[26], { values: { frequent_service_catchment: { value: 10 } } }),  // no car dependency
+      makeRecord('lga_test_0', { values: { car_dependency: { value: 90 }, frequent_service_catchment: { value: 5 } } }),
     ];
     expect(expectedCarDependencyModel(records, 'metro').n).toBe(25);
     expect(expectedCarDependencyModel(records, 'non_metro').n).toBe(1);
@@ -216,7 +229,7 @@ describe('carDependencyMismatch', () => {
 
   test('mismatch is unusable with fewer than 20 LGAs, however strong the fit', () => {
     const records = METRO_IDS.slice(0, 19).map((id, i) => makeRecord(id, {
-      values: { frequent_stop_share: { value: i * 5 }, car_dependency: { value: 90 - i + (i % 2 === 0 ? 0.5 : -0.5) } },
+      values: { frequent_service_catchment: { value: i * 5 }, car_dependency: { value: 90 - i + (i % 2 === 0 ? 0.5 : -0.5) } },
     }));
     const m = carDependencyMismatch(records[0], records)!;
     expect(m.fit.r2).toBeGreaterThan(0.9);
@@ -230,8 +243,8 @@ describe('carDependencyMismatch', () => {
     expect(m.areaId).toBe('lga_blacktown');
     expect(m.fit).toEqual(fit);
     expect(m.actual).toBe(blacktown.values.car_dependency.value);
-    expect(m.x).toBe(blacktown.values.frequent_stop_share.value);
-    expect(m.expected).toBeCloseTo(fit.intercept + fit.slope * blacktown.values.frequent_stop_share.value!, 10);
+    expect(m.x).toBe(blacktown.values.frequent_service_catchment.value);
+    expect(m.expected).toBeCloseTo(fit.intercept + fit.slope * blacktown.values.frequent_service_catchment.value!, 10);
     expect(m.residual).toBeCloseTo(m.actual - m.expected, 10);
     expect(m.z).toBeCloseTo(m.residual / fit.residualSd, 10);
     expect(m.usable).toBe(true);
@@ -247,7 +260,7 @@ describe('carDependencyMismatch', () => {
 
   test('null when the record has no car dependency or no predictor', () => {
     const records = weakMetroRecords();
-    expect(carDependencyMismatch(makeRecord(METRO_IDS[0], { values: { frequent_stop_share: { value: 20 } } }), records)).toBeNull();
+    expect(carDependencyMismatch(makeRecord(METRO_IDS[0], { values: { frequent_service_catchment: { value: 20 } } }), records)).toBeNull();
     expect(carDependencyMismatch(makeRecord(METRO_IDS[0], { values: { car_dependency: { value: 80 } } }), records)).toBeNull();
   });
 
@@ -425,25 +438,29 @@ describe('jobsHousing', () => {
 
 describe('buildInsights', () => {
   test('buildInsights: mismatch text', () => {
-    // Camden: the metropolitan LGA furthest above its expected value (z 1.47 on the 2026-10-22 snapshot)
-    const insights = buildInsights(assess(['lga_camden']));
-    const m = carDependencyMismatch(snapshotRecord('lga_camden'), NEEDS_SNAPSHOT.records)!;
+    // The Hills: the metropolitan LGA furthest above its expected value (z 1.41 against the catchment model)
+    const insights = buildInsights(assess(['lga_hills']));
+    const m = carDependencyMismatch(snapshotRecord('lga_hills'), NEEDS_SNAPSHOT.records)!;
     expect(m.usable).toBe(true);
     expect(m.z).toBeGreaterThanOrEqual(1);
     const [mismatch] = of(insights, 'mismatch');
     expect(mismatch.text).toBe(
-      `Camden's car dependency (${formatValue(CAR, m.actual)}) is ${formatDiff(CAR, Math.abs(m.residual))} higher than expected `
-      + `for its level of frequent public transport service (model across 34 metropolitan LGAs, R² ${m.fit.r2.toFixed(2)}).`,
+      `The Hills Shire's car dependency (${formatValue(CAR, m.actual)}) is ${formatDiff(CAR, Math.abs(m.residual))} higher `
+      + 'than expected for its share of residents near frequent public transport, measured by straight-line distance '
+      + `(model across 34 metropolitan LGAs, R² ${m.fit.r2.toFixed(2)}).`,
     );
+    expect(mismatch.text).toContain('R² 0.63');
     expect(mismatch.severity).toBeCloseTo(Math.min(1, Math.abs(m.z) / 2), 10);
-    expect(mismatch.citations.map(c => c.short)).toEqual(['ABS Census 2021 G62', 'TfNSW GTFS']);
+    expect(mismatch.citations.map(c => c.short)).toEqual([
+      'ABS Census 2021 G62', 'ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments)',
+    ]);
   });
 
   test('a usable mismatch under one residual SD is not an insight, but carDependencyMismatch still returns it', () => {
     const m = carDependencyMismatch(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records)!;
     expect(m.usable).toBe(true);
     expect(Math.abs(m.z)).toBeGreaterThan(0.5);
-    expect(Math.abs(m.z)).toBeLessThan(1);                    // 6.0 pp ÷ 8.8 pp = 0.69
+    expect(Math.abs(m.z)).toBeLessThan(1);                    // 4.5 pp ÷ 7.6 pp = 0.60
     expect(of(buildInsights(assess(['lga_blacktown'])), 'mismatch')).toEqual([]);
   });
 

@@ -99,13 +99,33 @@ export const HEATMAP_LABEL_CHARS = 38;
 const LOWER_IS_MORE_NEED = '(lower value = more need)';
 
 /**
- * Heatmap row label: the indicator name wrapped to the label column ("(context)" appended for an
+ * Heatmap row names of the indicators whose label does not fit the one line beside the hint. The heatmap's notes
+ * give their straight-line definition (HEATMAP_CATCHMENT_NOTE).
+ */
+const HEATMAP_LABELS: Partial<Record<IndicatorId, string>> = {
+  frequent_service_catchment: 'Residents near frequent service',
+  any_service_catchment: 'Residents near any service',
+};
+
+/** Under the heatmap: what its two catchment rows measure, as two lines that fit the legend's width. */
+export const HEATMAP_CATCHMENT_NOTE = [
+  'Residents near frequent or any service: within a straight-line distance of 800 m of a train, metro or ferry',
+  'stop, or 400 m of a bus or light rail stop, with 8+ (frequent) or 1+ (any) weekday 7-9am departures.',
+];
+
+/** The name of `def`'s heatmap row: its label, or a shorter name where the label is too long for the row. */
+export const heatmapRowName = (def: IndicatorDef): string => HEATMAP_LABELS[def.id] ?? def.label;
+
+/**
+ * Heatmap row label: the indicator's row name wrapped to the label column ("(context)" appended for an
  * unscored one), and a separate hint line when a lower value means more need, since the cell
- * colour then runs against the number. At most two lines in all, so rows stay one height.
+ * colour then runs against the number. A context row is unshaded, so it has no hint. At most two lines in all, so
+ * rows stay one height.
  */
 export function heatmapRowLabel(def: IndicatorDef): { lines: string[]; hint: string | null } {
-  const hint = def.direction === 'lower' ? LOWER_IS_MORE_NEED : null;
-  const text = def.scored ? def.label : `${def.label} (context)`;
+  const hint = def.direction === 'lower' && def.scored ? LOWER_IS_MORE_NEED : null;
+  const name = heatmapRowName(def);
+  const text = def.scored ? name : `${name} (context)`;
   return { lines: wrapLabel(text, HEATMAP_LABEL_CHARS, hint ? 1 : 2), hint };
 }
 

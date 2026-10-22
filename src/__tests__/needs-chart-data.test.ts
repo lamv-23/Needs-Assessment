@@ -1,7 +1,8 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels, domainChartData, heatmapRowLabel, labelSide,
+  HEATMAP_CATCHMENT_NOTE, HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels, domainChartData, heatmapRowLabel,
+  heatmapRowName, labelSide,
   axisFraction, niceAxis, stripData, wrapLabel,
 } from '@/lib/needs/chart-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
@@ -135,13 +136,28 @@ describe('heatmapRowLabel', () => {
       expect(lines.length + (hint ? 1 : 0)).toBeLessThanOrEqual(2);
       expect(lines.some(l => l.endsWith('…'))).toBe(false);
       expect(lines.every(l => l.length <= HEATMAP_LABEL_CHARS)).toBe(true);
-      expect(lines.join(' ').replace(/ \(context\)$/, '').replace(/- /g, '-')).toBe(def.label);
+      expect(lines.join(' ').replace(/ \(context\)$/, '').replace(/- /g, '-')).toBe(heatmapRowName(def));
     }
   });
 
-  test('a hint line appears exactly for indicators where a lower value means more need', () => {
-    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_stop_share).hint).toBe('(lower value = more need)');
+  test('a hint line appears exactly for scored indicators where a lower value means more need', () => {
+    expect(heatmapRowLabel(INDICATOR_BY_ID.am_peak_departures_per_1000).hint).toBe('(lower value = more need)');
     expect(heatmapRowLabel(INDICATOR_BY_ID.car_dependency).hint).toBeNull();
+    // A context row is unshaded, so its colour never runs against the number
+    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_stop_share)).toEqual({
+      lines: ['Stops with frequent AM-peak service', '(context)'], hint: null,
+    });
+  });
+
+  test('the catchment rows have short names, and the heatmap notes give their straight-line definition', () => {
+    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_service_catchment)).toEqual({
+      lines: ['Residents near frequent service'], hint: '(lower value = more need)',
+    });
+    expect(heatmapRowName(INDICATOR_BY_ID.any_service_catchment)).toBe('Residents near any service');
+    expect(heatmapRowName(INDICATOR_BY_ID.car_dependency)).toBe('Car dependency');
+    expect(HEATMAP_CATCHMENT_NOTE.join(' ')).toContain('straight-line distance');
+    // Each note line fits the 700 px legend at 11 px
+    for (const line of HEATMAP_CATCHMENT_NOTE) expect(line.length).toBeLessThanOrEqual(110);
   });
 
   test('an unscored indicator is marked as context', () => {

@@ -25,7 +25,7 @@ import {
 } from './sample-data';
 import { getProjectionsForArea } from './nsw-projections-data';
 import { getLiveTfNSWTransportData } from '../tfnsw-api';
-import { getPtFrequency, getTravelSurvey, getCommuteFlows } from './transport-service-demand';
+import { getCatchment, getPtFrequency, getTravelSurvey, getCommuteFlows } from './transport-service-demand';
 import {
   getEmploymentProjections,
   type EmploymentProjection,
@@ -589,9 +589,10 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     sampleFields.push('ptStops', 'ptRoutes');
   }
 
-  // PT service frequency (GTFS), all-purpose travel (HTS) and commuting flows
-  // between LGAs (Census) — see transport-service-demand.ts
+  // PT service frequency (GTFS), walking catchments (mesh blocks + GTFS), all-purpose travel (HTS) and
+  // commuting flows between LGAs (Census) — see transport-service-demand.ts
   const ptFrequency = lgaCode ? await getPtFrequency(lgaCode) : null;
+  const catchment = lgaCode ? await getCatchment(lgaCode) : null;
   const travelSurvey = lgaCode ? await getTravelSurvey(lgaCode) : null;
   const commuteFlows = lgaCode ? getCommuteFlows(lgaCode) : null;
   if (ptFrequency) {
@@ -599,6 +600,12 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
     if (!sources.includes('TfNSW GTFS')) sources.push('TfNSW GTFS');
   } else {
     sampleFields.push('ptFrequency');
+  }
+  if (catchment) {
+    liveFields.push('catchment');
+    sources.push('ABS Mesh Block Counts 2021; TfNSW GTFS (straight-line catchments)');
+  } else {
+    sampleFields.push('catchment');
   }
   if (travelSurvey) {
     liveFields.push('travelSurvey');
@@ -627,6 +634,7 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
       ptStops,
       ptRoutes,
       ptFrequency: ptFrequency ?? undefined,
+      catchment: catchment ?? undefined,
       travelSurvey: travelSurvey ?? undefined,
       commuteFlows: commuteFlows ?? undefined,
     },
