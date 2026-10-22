@@ -2,7 +2,7 @@
  * Build-time SQLite database (data/build.db, gitignored).
  *
  * Holds the large intermediate tables the SA2 catchment pipeline derives its
- * committed outputs from (sa2_cache, and later mesh_blocks and
+ * committed outputs from (sa2_cache, mesh_blocks, and later
  * gtfs_stop_frequency). The app never reads it and it never goes into the
  * committed data/cache.db. Override the location with BUILD_DB_PATH.
  */
@@ -41,6 +41,17 @@ export function getBuildDb(): Database.Database {
       fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (sa2_code, dataset)
     );
+
+    -- 2021 NSW mesh blocks: SA2, 2021 Census persons, centroid and the LGA the centroid falls in.
+    -- lat/lng and lga_id are NULL for the blocks of the two non-spatial SA2s (no geometry, no LGA).
+    CREATE TABLE IF NOT EXISTS mesh_blocks (
+      mb_code TEXT PRIMARY KEY,
+      sa2_code TEXT NOT NULL,
+      lga_id TEXT,
+      persons INTEGER NOT NULL,
+      lat REAL,
+      lng REAL
+    );
   `);
   return db;
 }
@@ -62,4 +73,36 @@ export function getSa2Cache<T = unknown>(sa2Code: string, dataset: string): T | 
     .prepare('SELECT data_json FROM sa2_cache WHERE sa2_code = ? AND dataset = ?')
     .get(sa2Code, dataset) as { data_json: string } | undefined;
   return row ? (JSON.parse(row.data_json) as T) : null;
+}
+
+export interface MeshBlockRow {
+  mb_code: string;
+  sa2_code: string;
+  /** LGA containing the centroid; null when none does, and always null for non-spatial SA2s. */
+  lga_id: string | null;
+  persons: number;
+  /** Centroid (WGS84); null only for blocks of the non-spatial SA2s, which have no geometry. */
+  lat: number | null;
+  lng: number | null;
+}
+
+export const MESH_BLOCK_BATCH_SIZE = 5000;
+
+/** Insert or replace mesh blocks, one transaction per batch of `batchSize`. */
+export function upsertMeshBlocks(rows: readonly MeshBlockRow[], batchSize = MESH_BLOCK_BATCH_SIZE): void {
+  const db = getBuildDb();
+  const stmt = db.prepare(`
+    INSERT INTO mesh_blocks (mb_code, sa2_code, lga_id, persons, lat, lng)
+    VALUES (@mb_code, @sa2_code, @lga_id, @persons, @lat, @lng)
+    ON CONFLICT(mb_code) DO UPDATE SET
+      sa2_code = excluded.sa2_code,
+      lga_id = excluded.lga_id,
+      persons = excluded.persons,
+      lat = excluded.lat,
+      lng = excluded.lng
+  `);
+  const insertBatch = db.transaction((batch: readonly MeshBlockRow[]) => {
+    for (const row of batch) stmt.run(row);
+  });
+  for (let i = 0; i < rows.length; i += batchSize) insertBatch(rows.slice(i, i + batchSize));
 }
