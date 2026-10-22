@@ -44,7 +44,7 @@ function Legend({ universeNote }: { universeNote: string }) {
     { fill: NO_DATA_COLOR, label: 'No score' },
   ];
   return (
-    <div className="mt-2 text-xs text-gray-600">
+    <div data-figure-legend className="mt-2 text-xs text-gray-600">
       <p>
         Shading shows each LGA&apos;s overall need score (0–100); darker means more need. {universeNote}
       </p>

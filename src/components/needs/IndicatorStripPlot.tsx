@@ -159,7 +159,7 @@ export default function IndicatorStripPlot({ assessment, indicatorId }: { assess
           <Scatter name="Selected" data={selected.map(p => ({ ...p, y: 0 }))} shape={<SelectedDot />} isAnimationActive={false} />
         </ScatterChart>
       </ResponsiveContainer>
-      <div className="mt-2 space-y-1 text-xs text-gray-600">
+      <div data-figure-note className="mt-2 space-y-1 text-xs text-gray-600">
         <p>
           Grey dots: the other {others.length} NSW LGAs with data. Dashed line: Greater Sydney; dotted line: NSW.
         </p>

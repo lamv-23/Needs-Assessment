@@ -33,13 +33,15 @@ export function ChartEmpty({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-gray-600">{children}</p>;
 }
 
+/** Notes under a chart. Marked as a figure note, so the figure is not offered as an SVG that would leave them out (R62). */
 export function ChartNotes({ children }: { children: React.ReactNode }) {
-  return <div className="mt-2 space-y-1 text-xs text-gray-600">{children}</div>;
+  return <div data-figure-note className="mt-2 space-y-1 text-xs text-gray-600">{children}</div>;
 }
 
+/** A chart's key, in HTML. Marked as a figure legend, so the figure is not offered as an SVG without it (R62). */
 export function Legend({ children, label }: { children: React.ReactNode; label: string }) {
   return (
-    <ul aria-label={label} className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-700">
+    <ul data-figure-legend aria-label={label} className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-gray-700">
       {children}
     </ul>
   );
