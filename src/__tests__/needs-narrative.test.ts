@@ -2,9 +2,11 @@ import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { displayScore, formatDiff, formatValue } from '@/lib/needs/format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { buildInsights } from '@/lib/needs/insights';
 import { buildNarrative, narrativeToPlainText, type NarrativeSection } from '@/lib/needs/narrative';
+import { sourceNumber } from '@/lib/needs/page-data';
 import type {
-  AreaAssessment, IndicatorId, IndicatorScore, NeedBand, NeedDomain, NeedsAssessment, NeedsMode, Universe,
+  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedBand, NeedDomain, NeedsAssessment, NeedsMode, Universe,
 } from '@/lib/needs/types';
 
 type Score = Partial<Omit<IndicatorScore, 'id'>>;
@@ -758,7 +760,7 @@ describe('buildNarrative on real assessments', () => {
         const notes = section(sections, 'notes');
         expect(notes.paragraphs[notes.paragraphs.length - 1].text).toBe(METHOD_SENTENCE);
         for (const s of sections) {
-          if (s.id === 'summary' || s.id === 'notes') continue;
+          if (!(NEED_DOMAINS as string[]).includes(s.id)) continue;
           for (const p of s.paragraphs.slice(1)) {
             expect(p.citations).toHaveLength(1);
             expect(p.text).toContain('ranks in the highest-need');
@@ -812,5 +814,106 @@ describe('buildNarrative on real assessments', () => {
   test('the benchmarks are not narrated', () => {
     const all = narrativeToPlainText(buildNarrative(run(['lga_blacktown', 'lga_penrith'], 'separate', 'nsw')));
     expect(all).not.toMatch(/benchmark/i);
+  });
+});
+
+describe('buildNarrative: key findings and further findings', () => {
+  const run = (areaIds: string[], mode: NeedsMode = 'separate', universe: Universe = 'nsw') =>
+    runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe });
+  const FURTHER_KINDS: Insight['kind'][] = ['mismatch', 'trend', 'growth_service', 'jobs_housing'];
+  const ids = (sections: NarrativeSection[]) => sections.map(s => s.id);
+
+  const blacktownNewcastle = run(['lga_blacktown', 'lga_newcastle']);
+  const insights = buildInsights(blacktownNewcastle);
+  const sections = buildNarrative(blacktownNewcastle);
+
+  test('key findings come first and hold at most 5 insights, the most severe', () => {
+    expect(ids(sections)).toEqual(['key_findings', 'summary', 'transport', 'socio', 'growth', 'insights', 'notes']);
+    const keyFindings = sections[0];
+    expect(keyFindings.heading).toBe('Key findings');
+    expect(insights.length).toBeGreaterThan(5);
+    expect(keyFindings.paragraphs).toHaveLength(5);
+    expect(texts(keyFindings)).toEqual(insights.slice(0, 5).map(i => i.text));
+  });
+
+  test('every key finding carries at least one citation, and every citation is a numbered source', () => {
+    for (const areaIds of [['lga_blacktown', 'lga_newcastle'], ['lga_sydney'], ['lga_snowy_valleys']]) {
+      for (const mode of ['separate', 'combined'] as const) {
+        for (const s of buildNarrative(run(areaIds, mode)).filter(x => x.id === 'key_findings' || x.id === 'insights')) {
+          expect(s.paragraphs.length).toBeGreaterThan(0);
+          for (const p of s.paragraphs) {
+            expect(p.citations.length).toBeGreaterThanOrEqual(1);
+            for (const citation of p.citations) expect(sourceNumber(citation)).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
+  });
+
+  test('key findings keep the insights\' citations', () => {
+    sections[0].paragraphs.forEach((p, i) => expect(p.citations).toEqual(insights[i].citations));
+  });
+
+  test('further findings are the remaining insights grouped by kind, without key needs', () => {
+    const further = section(sections, 'insights');
+    expect(further.heading).toBe('Further findings');
+    const rest = insights.slice(5).filter(i => i.kind !== 'key_need');
+    const expected = FURTHER_KINDS.flatMap(kind => rest.filter(i => i.kind === kind));
+    expect(expected.length).toBeGreaterThan(0);
+    expect(texts(further)).toEqual(expected.map(i => i.text));
+    // Each remaining insight is in exactly one place
+    const keyTexts = texts(section(sections, 'key_findings'));
+    for (const text of texts(further)) expect(keyTexts).not.toContain(text);
+  });
+
+  test('a key need that is not in the key findings stays in its domain paragraphs only', () => {
+    const lowerKeyNeeds = insights.slice(5).filter(i => i.kind === 'key_need');
+    expect(lowerKeyNeeds.length).toBeGreaterThan(0);
+    const further = texts(section(sections, 'insights'));
+    const domains = NEED_DOMAINS.flatMap(d => texts(section(sections, d)));
+    for (const insight of lowerKeyNeeds) {
+      expect(further).not.toContain(insight.text);
+      expect(domains).toContain(insight.text);
+    }
+  });
+
+  test('on every LGA: at most 5 key findings, none dropped, and no section left empty', () => {
+    for (const record of NEEDS_SNAPSHOT.records) {
+      const a = run([record.areaId]);
+      const all = buildInsights(a);
+      const built = buildNarrative(a);
+      const keyFindings = built.find(s => s.id === 'key_findings');
+      const further = built.find(s => s.id === 'insights');
+      expect(keyFindings?.paragraphs.length ?? 0).toBe(Math.min(5, all.length));
+      expect(further?.paragraphs.length ?? 0).toBe(all.slice(5).filter(i => i.kind !== 'key_need').length);
+      expect(ids(built)[0]).toBe(all.length > 0 ? 'key_findings' : 'summary');
+      expect(built.every(s => s.paragraphs.length > 0)).toBe(true);
+      for (const p of [...(keyFindings?.paragraphs ?? []), ...(further?.paragraphs ?? [])]) {
+        expect(p.citations.length).toBeGreaterThanOrEqual(1);
+        expect(p.citations.every(c => sourceNumber(c) > 0)).toBe(true);
+      }
+    }
+  });
+
+  test('a combined selection writes its findings about "the combined area"', () => {
+    const combined = buildNarrative(run(['lga_blacktown', 'lga_penrith'], 'combined'));
+    const findings = texts(section(combined, 'key_findings'));
+    expect(findings.length).toBeGreaterThan(0);
+    for (const text of findings) expect(text).toMatch(/combined area/);
+  });
+
+  test('findings that cannot be drawn leave no empty section', () => {
+    // No snapshot records to draw series or insights from
+    expect(ids(buildNarrative(makeAssessment([blacktown()])))).toEqual(['summary', 'transport', 'socio', 'growth', 'notes']);
+  });
+
+  test('the plain text copies key findings first and further findings after the domains', () => {
+    const blocks = narrativeToPlainText(sections).split('\n\n');
+    expect(blocks[0]).toBe('Key findings');
+    expect(blocks[1]).toBe(insights[0].text);
+    expect(blocks.indexOf('Further findings')).toBeGreaterThan(blocks.indexOf(DOMAIN_LABELS.growth));
+    expect(blocks.indexOf('Further findings')).toBeLessThan(blocks.indexOf('Data notes'));
+    expect(blocks.indexOf('Summary')).toBe(6);
+    expect(narrativeToPlainText(sections)).not.toMatch(/NaN|undefined|null|Infinity|\[object/);
   });
 });

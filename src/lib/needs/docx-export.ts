@@ -356,9 +356,10 @@ function sourcesBlock(assessment: NeedsAssessment): FileChild[] {
 }
 
 /**
- * The needs assessment as a Word document: title and selection, written findings, the indicator table(s), figures,
- * data notes and sources. The data notes are the narrative's own notes section, which already ends with the method
- * sentence, so it is not added again.
+ * The needs assessment as a Word document: title and selection, written findings (key findings first, then the summary,
+ * the domains and further findings, in the narrative's order), the indicator table(s), figures, data notes and sources.
+ * The data notes are the narrative's own notes section, which already ends with the method sentence, so it is not
+ * added again.
  */
 export function buildNeedsDocument(input: NeedsDocxInput): Document {
   const { title, generatedOn, assessment, narrative, figures } = input;

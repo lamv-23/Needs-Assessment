@@ -1,13 +1,26 @@
 import { displayScore, inSentence, possessive } from './format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, NEED_DOMAINS } from './indicators';
-import { keyNeedText, WFH_CAVEAT } from './insights';
+import { buildInsights, keyNeedText, WFH_CAVEAT } from './insights';
 import { KEY_NEED_PERCENTILE } from './scoring';
-import type { AreaAssessment, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, SourceRef } from './types';
+import type {
+  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedDomain, NeedsAssessment, SourceRef,
+} from './types';
 
 export interface NarrativeParagraph { text: string; citations: SourceRef[] }
-export interface NarrativeSection { id: 'summary' | NeedDomain | 'notes'; heading: string; paragraphs: NarrativeParagraph[] }
+export interface NarrativeSection {
+  id: 'key_findings' | 'summary' | NeedDomain | 'insights' | 'notes';
+  heading: string;
+  paragraphs: NarrativeParagraph[];
+}
 
 const MAX_SUMMARY_NEEDS = 3;
+const MAX_KEY_FINDINGS = 5;
+
+/**
+ * The kinds of insight listed under "Further findings", in order. Key needs are left out: each is already a
+ * sentence of its domain's paragraphs, so listing it again would repeat it in a report.
+ */
+const FURTHER_KINDS: Insight['kind'][] = ['mismatch', 'trend', 'growth_service', 'jobs_housing'];
 
 /** How sentences refer to the areas being narrated. */
 interface Wording {
@@ -182,10 +195,33 @@ function notesParagraphs(assessment: NeedsAssessment, { combined }: Wording): Na
   return notes;
 }
 
+const insightParagraph = ({ text, citations }: Insight): NarrativeParagraph => ({ text, citations });
+
+/**
+ * Key findings (the most severe insights, at most 5) and further findings (the other mismatch, trend, growth
+ * against service and jobs-housing insights, grouped by kind, most severe first within a kind). A section with no
+ * insight to hold is left out.
+ */
+function insightSections(assessment: NeedsAssessment): { keyFindings: NarrativeSection[]; further: NarrativeSection[] } {
+  const insights = buildInsights(assessment);
+  const top = insights.slice(0, MAX_KEY_FINDINGS);
+  const rest = insights.slice(MAX_KEY_FINDINGS);
+  const further = FURTHER_KINDS.flatMap(kind => rest.filter(i => i.kind === kind));
+  return {
+    keyFindings: top.length > 0
+      ? [{ id: 'key_findings', heading: 'Key findings', paragraphs: top.map(insightParagraph) }]
+      : [],
+    further: further.length > 0
+      ? [{ id: 'insights', heading: 'Further findings', paragraphs: further.map(insightParagraph) }]
+      : [],
+  };
+}
+
 /**
  * Written findings for the assessed areas, from templates filled with values, percentiles and the
  * Greater Sydney figure (no LLM). Each paragraph carries the sources of the indicators it uses.
  * With several areas (separate mode) every paragraph names its area. Empty when no area is selected.
+ * Key findings come first and further findings follow the domains.
  */
 export function buildNarrative(assessment: NeedsAssessment): NarrativeSection[] {
   const { areas } = assessment;
@@ -195,13 +231,17 @@ export function buildNarrative(assessment: NeedsAssessment): NarrativeSection[] 
     combined: assessment.mode === 'combined' && assessment.memberIds.length >= 2,
   };
 
+  const { keyFindings, further } = insightSections(assessment);
+
   return [
+    ...keyFindings,
     { id: 'summary', heading: 'Summary', paragraphs: areas.flatMap(a => summaryParagraphs(a, wording)) },
     ...NEED_DOMAINS.map((domain): NarrativeSection => ({
       id: domain,
       heading: DOMAIN_LABELS[domain],
       paragraphs: areas.flatMap(a => domainParagraphs(a, domain, wording, assessment.benchmarks.gsyd)),
     })),
+    ...further,
     { id: 'notes', heading: 'Data notes', paragraphs: notesParagraphs(assessment, wording) },
   ];
 }

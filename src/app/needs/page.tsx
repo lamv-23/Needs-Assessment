@@ -14,13 +14,19 @@ import NeedsHeatmap from '@/components/needs/NeedsHeatmap';
 import DomainScoreChart from '@/components/needs/DomainScoreChart';
 import NeedsRadar from '@/components/needs/NeedsRadar';
 import IndicatorStripPlot from '@/components/needs/IndicatorStripPlot';
+import MismatchScatter from '@/components/needs/MismatchScatter';
+import TrendSmallMultiples from '@/components/needs/TrendSmallMultiples';
+import GrowthServiceChart from '@/components/needs/GrowthServiceChart';
+import JobsHousingChart from '@/components/needs/JobsHousingChart';
 import { useNeedsSelection } from '@/hooks/useNeedsSelection';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
-import { INDICATOR_BY_ID } from '@/lib/needs/indicators';
+import { INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { TREND_FIGURE_SUBTITLE } from '@/lib/needs/insight-chart-data';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  comparisonLabel, figureCaption, formatNeedsDate, indicatorExcelRows, indicatorTable, NEEDS_SOURCES, stripIndicatorIds,
+  comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION, indicatorExcelRows, indicatorTable,
+  JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, stripIndicatorIds, TRENDS_CAPTION,
 } from '@/lib/needs/page-data';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
 import type { NeedsMode, Universe } from '@/lib/needs/types';
@@ -83,12 +89,15 @@ function NeedsContent() {
 
   const { areas } = assessment;
   const hasAreas = areas.length > 0;
+  const keyFindings = sections.find(s => s.id === 'key_findings');
   const summary = sections.find(s => s.id === 'summary');
+  const furtherFindings = sections.find(s => s.id === 'insights');
   const notes = sections.find(s => s.id === 'notes');
-  const domainSections = sections.filter(s => s.id !== 'summary' && s.id !== 'notes');
+  const domainSections = sections.filter(s => NEED_DOMAINS.some(domain => domain === s.id));
   const comparison = comparisonLabel(areas);
   // Every figure shows all the indicators, except a strip plot, which shows one.
   const allSources = figureCaption();
+  const mismatchSources = useMemo(() => mismatchCaption(assessment), [assessment]);
 
   return (
     <FigureRegistryProvider>
@@ -162,6 +171,7 @@ function NeedsContent() {
           </div>
         )}
 
+        {keyFindings && <NarrativeBlock section={keyFindings} />}
         {summary && <NarrativeBlock section={summary} />}
 
         {/* Figures in a fixed order, all mounted together once an area is selected, so the registry's
@@ -216,10 +226,48 @@ function NeedsContent() {
                 <IndicatorStripPlot assessment={assessment} indicatorId={id} />
               </ChartWrapper>
             ))}
+
+            <ChartWrapper
+              figureId="car-dependency-mismatch"
+              title="Car dependency against expected"
+              subtitle="Actual car dependency against the level expected for the LGA's setting, with the model's R² and number of LGAs."
+              caption={mismatchSources}
+            >
+              <MismatchScatter assessment={assessment} />
+            </ChartWrapper>
+
+            <ChartWrapper
+              figureId="trends"
+              title="Trends in car dependency, road crashes and population"
+              subtitle={TREND_FIGURE_SUBTITLE}
+              caption={TRENDS_CAPTION}
+            >
+              <TrendSmallMultiples assessment={assessment} />
+            </ChartWrapper>
+
+            <ChartWrapper
+              figureId="service-in-2041"
+              title="AM-peak service per resident, today and in 2041"
+              subtitle="Weekday 7-9am departures per 1,000 residents, if service stays at today's level while the population grows as projected."
+              caption={GROWTH_SERVICE_CAPTION}
+            >
+              <GrowthServiceChart assessment={assessment} />
+            </ChartWrapper>
+
+            <ChartWrapper
+              figureId="jobs-housing"
+              title="Local jobs per resident, 2021 and 2041"
+              subtitle="TfNSW TZP24 jobs divided by residents: ABS ERP in 2021 and the NSW DPE projection in 2041."
+              caption={JOBS_HOUSING_CAPTION}
+            >
+              <JobsHousingChart assessment={assessment} />
+            </ChartWrapper>
           </>
         )}
 
         {domainSections.map(section => <NarrativeBlock key={section.id} section={section} />)}
+
+        {furtherFindings && <NarrativeBlock section={furtherFindings} />}
 
         {hasAreas && (
           <ChartWrapper

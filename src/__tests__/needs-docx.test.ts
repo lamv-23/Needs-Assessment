@@ -119,17 +119,55 @@ describe('buildNeedsDocument: Blacktown + Penrith combined', () => {
     expect(zip.file(/word\/media\/.*\.png/).length).toBe(1);
   });
 
-  test('uses the built-in heading styles in order: title, then summary, domains, indicators, figures, notes, sources', () => {
+  test('uses the built-in heading styles in order: title, key findings, summary, domains, further findings, indicators, figures, notes, sources', () => {
     const { xml } = parts;
     expect(headings(xml, 'Heading1')).toEqual(['Needs assessment — Blacktown + Penrith']);
     expect(headings(xml, 'Heading2')).toEqual([
+      'Key findings',
       'Summary',
       ...NEED_DOMAINS.map(d => DOMAIN_LABELS[d]),
+      'Further findings',
       'Indicators',
       'Figures',
       'Data notes',
       'Sources',
     ]);
+  });
+
+  test('contains a Key findings heading before Summary', () => {
+    const { xml } = parts;
+    expect(xml.indexOf('Key findings')).toBeGreaterThan(-1);
+    expect(xml.indexOf('Key findings')).toBeLessThan(xml.indexOf('Summary'));
+  });
+
+  test('Key findings are the first narrative: at most 5 paragraphs, each with its citation numbers', () => {
+    const all = paragraphs(parts.xml);
+    const start = all.findIndex(p => p.style === 'Heading2' && p.text === 'Key findings');
+    const end = all.findIndex(p => p.style === 'Heading2' && p.text === 'Summary');
+    expect(start).toBeGreaterThan(-1);
+    const shown = all.slice(start + 1, end);
+    const keyFindings = input.narrative.find(s => s.id === 'key_findings')!;
+    expect(input.narrative[0]).toBe(keyFindings);
+    expect(keyFindings.paragraphs.length).toBeGreaterThan(0);
+    expect(shown).toHaveLength(keyFindings.paragraphs.length);
+    expect(shown.length).toBeLessThanOrEqual(5);
+    keyFindings.paragraphs.forEach((paragraph, i) => {
+      const numbers = paragraph.citations.map(sourceNumber);
+      expect(paragraph.citations.length).toBeGreaterThan(0);
+      expect(numbers.every(n => n > 0)).toBe(true);
+      const citation = citationSegments(numbers).map(({ from, to }) => (from === to ? `${from}` : `${from}–${to}`)).join(', ');
+      expect(shown[i].text).toBe(paragraph.text + citation);
+      expect(shown[i].xml).toContain('<w:vertAlign w:val="superscript"/>');
+    });
+  });
+
+  test('Further findings follow the domains and hold the other insights, each cited', () => {
+    const all = paragraphs(parts.xml);
+    const start = all.findIndex(p => p.style === 'Heading2' && p.text === 'Further findings');
+    const end = all.findIndex(p => p.style === 'Heading2' && p.text === 'Indicators');
+    const further = input.narrative.find(s => s.id === 'insights')!;
+    expect(start).toBeGreaterThan(all.findIndex(p => p.style === 'Heading2' && p.text === DOMAIN_LABELS.growth));
+    expect(all.slice(start + 1, end).map(p => p.text.replace(/[\d–, ]+$/, ''))).toEqual(further.paragraphs.map(p => p.text));
   });
 
   test('states the generation date and the selection: members, mode, universe', () => {
@@ -267,6 +305,21 @@ describe('buildNeedsDocument: figures', () => {
     ]);
     expect(extents(xml)).toHaveLength(2);
     expect(zip.file(/word\/media\/.*\.png/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  test('numbers the insight figures that follow the strip plots, with their sources', async () => {
+    const insightFigures = [
+      figure('Car dependency against expected', 1000, 900, 'ABS Census 2021 G62; TfNSW GTFS; ABS Census 2021 G01'),
+      figure('Trends in car dependency, road crashes and population', 1000, 1400, 'ABS Census 2021 G62; ABS ERP'),
+      figure('AM-peak service per resident, today and in 2041', 1000, 700, 'TfNSW GTFS; ABS ERP; NSW DPE projections'),
+      figure('Local jobs per resident, 2021 and 2041', 1000, 600, 'TfNSW TZP24; ABS ERP; NSW DPE projections'),
+    ];
+    const { xml } = await documentParts(inputFor(assessment, [figure('Need map', 900, 700), ...insightFigures]));
+    const captions = paragraphs(xml).filter(p => p.style === 'Caption').map(p => p.text);
+    expect(captions).toEqual([
+      'Figure 1. Need map. Source: ABS Census 2021 G62',
+      ...insightFigures.map((f, i) => `Figure ${i + 2}. ${f.title}. Source: ${f.caption}`),
+    ]);
   });
 
   test('keeps a figure with its caption', async () => {

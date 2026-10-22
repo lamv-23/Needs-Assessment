@@ -1,5 +1,6 @@
 import { displayScore, formatValue } from './format';
 import { INDICATOR_BY_ID, INDICATORS, SOURCES } from './indicators';
+import { mismatchChartData } from './insight-chart-data';
 import { WFH_CAVEAT_CITATION } from './insights';
 import type {
   AreaAssessment, IndicatorDef, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, SourceRef,
@@ -23,13 +24,43 @@ export function sourceNumber(source: SourceRef): number {
   return NEEDS_SOURCES.findIndex(s => s.full === source.full) + 1;
 }
 
+/** Source line for a figure: the distinct short names of `sources`, in the order given, joined by "; " (R31). */
+function sourcesCaption(sources: SourceRef[]): string {
+  return Array.from(new Set(sources.map(source => source.short))).join('; ');
+}
+
 /**
  * Source line for a figure: the distinct short source names of the indicators it shows, in the order
  * given (the registry order by default), joined by "; ".
  */
 export function figureCaption(ids: IndicatorId[] = ALL_INDICATOR_IDS): string {
-  return Array.from(new Set(ids.map(id => INDICATOR_BY_ID[id].source.short))).join('; ');
+  return sourcesCaption(ids.map(id => INDICATOR_BY_ID[id].source));
 }
+
+// The insight figures draw on series that are not all indicators, so their sources are named here. They are the
+// sources the findings cite (insights.ts), without the 2021 Census lockdown caveat, which is a note and not data.
+
+/** Car dependency, and the predictor of each setting drawn: stop service in Sydney, population elsewhere. */
+export function mismatchCaption(assessment: NeedsAssessment): string {
+  const predictors = { metro: SOURCES.gtfs, non_metro: SOURCES.g01 };
+  return sourcesCaption([
+    SOURCES.g62,
+    ...mismatchChartData(assessment).charts.map(chart => predictors[chart.setting]),
+  ]);
+}
+
+/** Car dependency, crashes (per 10,000 residents on each year's ERP), and population (ERP, then the projection). */
+export const TRENDS_CAPTION = sourcesCaption([
+  SOURCES.g62, SOURCES.crashes, SOURCES.erp, SOURCES.populationProjections,
+]);
+
+/** AM-peak departures, over today's ERP and the 2041 projection. */
+export const GROWTH_SERVICE_CAPTION = sourcesCaption([SOURCES.gtfs, SOURCES.erp, SOURCES.populationProjections]);
+
+/** TZP24 jobs, over 2021 ERP and the 2041 projection. */
+export const JOBS_HOUSING_CAPTION = sourcesCaption([
+  SOURCES.employmentProjections, SOURCES.erp, SOURCES.populationProjections,
+]);
 
 export const STRIP_PLOT_COUNT = 6;
 

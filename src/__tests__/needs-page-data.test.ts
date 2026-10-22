@@ -5,7 +5,8 @@ import { buildInsights, WFH_CAVEAT_CITATION } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
   citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorExcelRows, indicatorTable,
-  indicatorTableNote, NEEDS_SOURCES, sameSelection, sourceNumber, stripIndicatorIds,
+  GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
+  sourceNumber, stripIndicatorIds, TRENDS_CAPTION,
 } from '@/lib/needs/page-data';
 import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Universe } from '@/lib/needs/types';
 
@@ -42,6 +43,44 @@ describe('figureCaption', () => {
   test('with no argument it covers every indicator', () => {
     const shorts = Array.from(new Set(INDICATORS.map(d => d.source.short)));
     expect(figureCaption()).toBe(shorts.join('; '));
+  });
+});
+
+describe('insight figure captions', () => {
+  const short = (...sources: Array<{ short: string }>) => sources.map(s => s.short).join('; ');
+
+  test('the mismatch figure cites car dependency and the predictor of each setting drawn', () => {
+    expect(mismatchCaption(assess(['lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.gtfs));
+    expect(mismatchCaption(assess(['lga_newcastle']))).toBe(short(SOURCES.g62, SOURCES.g01));
+    expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))).toBe(short(SOURCES.g62, SOURCES.gtfs, SOURCES.g01));
+    // The same either way round; a combined area spanning both settings has no chart, only car dependency's source
+    expect(mismatchCaption(assess(['lga_newcastle', 'lga_blacktown']))).toBe(short(SOURCES.g62, SOURCES.gtfs, SOURCES.g01));
+    expect(mismatchCaption(assess(['lga_blacktown', 'lga_newcastle'], 'combined'))).toBe(short(SOURCES.g62));
+  });
+
+  test('the mismatch caption covers the sources the mismatch findings cite', () => {
+    for (const ids of [['lga_blacktown', 'lga_newcastle'], ['lga_camden', 'lga_hills'], ['lga_broken_hill', 'lga_bourke']]) {
+      const a = assess(ids);
+      const caption = mismatchCaption(a).split('; ');
+      for (const insight of buildInsights(a).filter(i => i.kind === 'mismatch')) {
+        for (const citation of insight.citations) expect(caption).toContain(citation.short);
+      }
+    }
+  });
+
+  test('the trends, growth and jobs figures name their sources once each', () => {
+    expect(TRENDS_CAPTION).toBe(short(
+      SOURCES.g62, SOURCES.crashes, SOURCES.erp, SOURCES.populationProjections,
+    ));
+    expect(GROWTH_SERVICE_CAPTION).toBe(short(SOURCES.gtfs, SOURCES.erp, SOURCES.populationProjections));
+    expect(JOBS_HOUSING_CAPTION).toBe(short(SOURCES.employmentProjections, SOURCES.erp, SOURCES.populationProjections));
+  });
+
+  test('every caption source is one of the page\'s numbered sources', () => {
+    const shorts = new Set(NEEDS_SOURCES.map(s => s.short));
+    for (const caption of [TRENDS_CAPTION, GROWTH_SERVICE_CAPTION, JOBS_HOUSING_CAPTION, mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))]) {
+      for (const name of caption.split('; ')) expect(shorts).toContain(name);
+    }
   });
 });
 
