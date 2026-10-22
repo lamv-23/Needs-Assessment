@@ -150,6 +150,7 @@ describe('carDependencyMismatch', () => {
     expect(m.areaId).toBe('lga_blacktown');
     expect(m.fit).toEqual(fit);
     expect(m.actual).toBe(blacktown.values.car_dependency.value);
+    expect(m.x).toBe(blacktown.values.frequent_stop_share.value);
     expect(m.expected).toBeCloseTo(fit.intercept + fit.slope * blacktown.values.frequent_stop_share.value!, 10);
     expect(m.residual).toBeCloseTo(m.actual - m.expected, 10);
     expect(m.z).toBeCloseTo(m.residual / fit.residualSd, 10);
@@ -160,6 +161,7 @@ describe('carDependencyMismatch', () => {
     const newcastle = snapshotRecord('lga_newcastle');
     const m = carDependencyMismatch(newcastle, NEEDS_SNAPSHOT.records)!;
     expect(m.fit.setting).toBe('non_metro');
+    expect(m.x).toBeCloseTo(Math.log(newcastle.population), 10);
     expect(m.expected).toBeCloseTo(m.fit.intercept + m.fit.slope * Math.log(newcastle.population), 10);
   });
 
@@ -180,6 +182,9 @@ describe('carDependencyMismatch', () => {
     expect(m.actual).toBe(combined.values.car_dependency.value);
     expect(m.expected).toBeCloseTo((one[0].expected * members[0].population + one[1].expected * members[1].population) / weight, 10);
     expect(m.residual).toBeCloseTo(m.actual - m.expected, 10);
+    // x is the members' weighted mean predictor, so the combined expected value lies on the fitted line at x
+    expect(m.x).toBeCloseTo((one[0].x * members[0].population + one[1].x * members[1].population) / weight, 10);
+    expect(m.fit.intercept + m.fit.slope * m.x).toBeCloseTo(m.expected, 10);
   });
 
   test('a combined area spanning metropolitan and non-metropolitan LGAs has no single model', () => {

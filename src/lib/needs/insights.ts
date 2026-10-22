@@ -23,6 +23,8 @@ export interface LinearFit {
 export interface MismatchResult {
   areaId: string;
   actual: number;
+  /** The record's value of the model's predictor; a combined area's is its members' population-weighted mean. */
+  x: number;
   expected: number;
   /** actual − expected, in percentage points. */
   residual: number;
@@ -56,17 +58,17 @@ export interface JobsHousingResult { areaId: string; jobsPerResident2021: number
 type Setting = LinearFit['setting'];
 type TrendMetric = TrendResult['metric'];
 /** One LGA, or a combined selection with its members' series rolled up. */
-type SeriesRecord = LgaIndicatorRecord | AggregatedRecord;
+export type SeriesRecord = LgaIndicatorRecord | AggregatedRecord;
 
 // A mismatch model is shown only with enough LGAs and a strong enough fit (spec).
 const MIN_MODEL_N = 20;
 const MIN_MODEL_R2 = 0.3;
 /** A residual of at least this many residual SDs is flagged, and only a flagged one is an insight (R41). */
-const MISMATCH_FLAG_Z = 1;
+export const MISMATCH_FLAG_Z = 1;
 /** Actual and projected population growth this close (percentage points a year) are "in line". */
 const IN_LINE_PP = 0.1;
-const BASE_YEAR = 2021;
-const PROJECTION_YEAR = 2041;
+export const BASE_YEAR = 2021;
+export const PROJECTION_YEAR = 2041;
 
 export const WFH_CAVEAT =
   "The 2021 Census was held during Sydney's COVID-19 lockdown, which inflated working from home. "
@@ -110,12 +112,12 @@ export function fitLinear(points: { x: number; y: number }[]): Omit<LinearFit, '
 }
 
 /** Metropolitan means the ABS Greater Sydney GCCSA, as for the peer groups. */
-const settingOf = (areaId: string): Setting => (GREATER_SYDNEY_GCCSA_AREA_IDS.includes(areaId) ? 'metro' : 'non_metro');
+export const settingOf = (areaId: string): Setting => (GREATER_SYDNEY_GCCSA_AREA_IDS.includes(areaId) ? 'metro' : 'non_metro');
 
 const carDependencyOf = (record: AssessableRecord): number | null => record.values.car_dependency?.value ?? null;
 
 /** Frequent-stop share in Sydney; outside it service explains almost nothing (R² 0.02), so ln(population). */
-function predictorOf(record: AssessableRecord, setting: Setting): number | null {
+export function predictorOf(record: AssessableRecord, setting: Setting): number | null {
   if (setting === 'metro') return record.values.frequent_stop_share?.value ?? null;
   return record.population > 0 ? Math.log(record.population) : null;
 }
@@ -166,11 +168,16 @@ export function carDependencyMismatch(record: AssessableRecord, records: LgaIndi
     ? expectedFor(predictors[0]!)
     : members.reduce((sum, m, i) => sum + expectedFor(predictors[i]!) * m.population, 0) / weight;
   if (!Number.isFinite(expected)) return null;
+  // The model is linear, so the weighted mean of the members' expected values is the model at their weighted mean x.
+  const x = members.length === 1
+    ? predictors[0]!
+    : members.reduce((sum, m, i) => sum + predictors[i]! * m.population, 0) / weight;
 
   const residual = actual - expected;
   return {
     areaId: record.areaId,
     actual,
+    x,
     expected,
     residual,
     z: fit.residualSd > 0 ? residual / fit.residualSd : 0,
@@ -187,15 +194,25 @@ type Measure = (record: SeriesRecord) => TrendWindow | null;
 
 const TREND_METRICS: TrendMetric[] = ['car_dependency', 'crash_rate', 'population_growth', 'approvals'];
 
-function populationIn(series: InsightSeries, year: number): number | null {
+export function populationIn(series: InsightSeries, year: number): number | null {
   const point = series.populationHistory.find(p => p.year === year && p.population > 0);
   return point ? point.population : null;
 }
 
-function latestPopulation(series: InsightSeries): { year: number; population: number } | null {
+export function latestPopulation(series: InsightSeries): { year: number; population: number } | null {
   return series.populationHistory
     .filter(p => p.population > 0)
     .reduce<{ year: number; population: number } | null>((best, p) => (!best || p.year > best.year ? p : best), null);
+}
+
+/**
+ * Crashes per 10,000 residents in `year`, on that year's ERP (the nearest year when it has none), as the
+ * crash_rate indicator; null without a crash count for the year or any ERP.
+ */
+export function crashRate(series: InsightSeries, year: number): number | null {
+  const crashes = series.crashesByYear.find(c => c.year === year)?.total;
+  const population = populationNearest(series.populationHistory, year);
+  return crashes === undefined || population === null ? null : (crashes * 10000) / population;
 }
 
 /** Compound annual growth in % a year. */
@@ -225,13 +242,7 @@ const MEASURES: Record<TrendMetric, (subject: SeriesRecord) => Measure | null> =
     if (years.length < 2) return null;
     const [from, to] = [Math.min(...years), Math.max(...years)];
     return record => {
-      // Per 10,000 residents of each year (ERP, nearest year), as the crash_rate indicator
-      const rate = (year: number) => {
-        const crashes = record.series.crashesByYear.find(c => c.year === year)?.total;
-        const population = populationNearest(record.series.populationHistory, year);
-        return crashes === undefined || population === null ? null : (crashes * 10000) / population;
-      };
-      const [start, end] = [rate(from), rate(to)];
+      const [start, end] = [crashRate(record.series, from), crashRate(record.series, to)];
       return start === null || end === null
         ? null
         : { from: { label: String(from), value: start }, to: { label: String(to), value: end } };
@@ -574,6 +585,17 @@ const INSIGHTS_BY_KIND: Record<Insight['kind'], (c: AreaContext) => Insight[]> =
   },
 };
 
+/** Each assessed area with the record its series come from: its own LGA's, or the roll-up of a combined selection's members. */
+export function areaRecords(a: NeedsAssessment): { area: AreaAssessment; record: SeriesRecord }[] {
+  const byId = new Map(a.records.map(r => [r.areaId, r]));
+  return a.areas.flatMap(area => {
+    const record: SeriesRecord | undefined = a.mode === 'combined'
+      ? aggregateRecords(a.memberIds.flatMap(id => byId.get(id) ?? []), area.name, area.areaId)
+      : byId.get(area.areaId);
+    return record ? [{ area, record }] : [];
+  });
+}
+
 const KIND_ORDER: Insight['kind'][] = ['key_need', 'mismatch', 'trend', 'growth_service', 'jobs_housing'];
 
 /**
@@ -586,23 +608,16 @@ const KIND_ORDER: Insight['kind'][] = ['key_need', 'mismatch', 'trend', 'growth_
  */
 export function buildInsights(a: NeedsAssessment): Insight[] {
   const combined = a.mode === 'combined' && a.memberIds.length >= 2;
-  const byId = new Map(a.records.map(r => [r.areaId, r]));
   const greaterSydney = (id: IndicatorId) => a.benchmarks.gsyd.indicators.find(s => s.id === id)?.value ?? null;
 
-  const contexts = a.areas.flatMap((area): AreaContext[] => {
-    const record: SeriesRecord | undefined = a.mode === 'combined'
-      ? aggregateRecords(a.memberIds.flatMap(id => byId.get(id) ?? []), area.name, area.areaId)
-      : byId.get(area.areaId);
-    if (!record) return [];
-    return [{
-      area,
-      record,
-      subject: subjectFor(area, combined),
-      universe: universeRecords(a.records, area.universe, area),
-      greaterSydney,
-      records: a.records,
-    }];
-  });
+  const contexts = areaRecords(a).map(({ area, record }): AreaContext => ({
+    area,
+    record,
+    subject: subjectFor(area, combined),
+    universe: universeRecords(a.records, area.universe, area),
+    greaterSydney,
+    records: a.records,
+  }));
 
   const insights = KIND_ORDER.flatMap(kind => contexts.flatMap(INSIGHTS_BY_KIND[kind]));
   // Array.prototype.sort is stable, so ties keep the kind-then-area order they were built in.
