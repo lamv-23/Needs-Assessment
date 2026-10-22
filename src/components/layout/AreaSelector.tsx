@@ -3,22 +3,8 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { MapPin, Search, X, ChevronDown } from 'lucide-react';
 import { useAppStore } from '@/store';
-import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
+import { SAMPLE_AREAS, NSW_REGIONS } from '@/lib/data/sample-areas';
 import type { Area } from '@/types';
-
-// Region display order
-const REGION_ORDER = [
-  'Greater Sydney',
-  'Hunter',
-  'Central Coast',
-  'Illawarra-Shoalhaven',
-  'South East & Tablelands',
-  'New England & North West',
-  'North Coast',
-  'Central West & Orana',
-  'Riverina-Murray',
-  'Far West',
-];
 
 export default function AreaSelector() {
   const { selectedArea, setSelectedArea, areaType, setAreaType } = useAppStore();
@@ -61,12 +47,12 @@ export default function AreaSelector() {
         if (!groups[region]) groups[region] = [];
         groups[region].push(area);
       }
-      return REGION_ORDER
+      return NSW_REGIONS
         .filter((r) => groups[r]?.length)
         .map((r) => ({ region: r, areas: groups[r] }))
         .concat(
           Object.entries(groups)
-            .filter(([r]) => !REGION_ORDER.includes(r))
+            .filter(([r]) => !NSW_REGIONS.includes(r))
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([region, areas]) => ({ region, areas }))
         );
