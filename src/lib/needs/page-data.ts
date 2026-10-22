@@ -314,7 +314,7 @@ export function sameSelection(a: SelectionOf, b: SelectionOf): boolean {
 
 /**
  * What the Word export is waiting for, named on its button ("Loading map boundaries…"): the SA2 file (P2-R5), then the
- * boundary files of the maps (P2-R19), so no figure is pictured while it still shows a placeholder. Null when nothing
+ * maps' boundary files and code (P2-R19), so no map is pictured while it still shows a placeholder. Null when nothing
  * the document needs is loading.
  */
 export function exportWaitingFor(loading: { sa2Data: boolean; boundaries: boolean }): string | null {

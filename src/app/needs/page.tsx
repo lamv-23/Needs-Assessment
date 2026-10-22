@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { Suspense, useCallback, useMemo } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Target } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import ChartWrapper from '@/components/charts/ChartWrapper';
@@ -167,6 +167,21 @@ function NeedsContent() {
   let sa2MapUnavailable: string | null = null;
   if (sa2Failed) sa2MapUnavailable = SA2_DATA_FAILED;
   else if (sa2BoundariesFailed) sa2MapUnavailable = BOUNDARIES_FAILED;
+  // The maps' code too: the SA2 map only mounts when its file arrives, so its chunk is loaded as soon as an area is
+  // selected and the export waits for both chunks, so neither map is pictured as its "Loading map…" placeholder.
+  const [mapCodeReady, setMapCodeReady] = useState(false);
+  useEffect(() => {
+    if (!hasAreas || mapCodeReady) return;
+    let current = true;
+    // A chunk that fails to load is the map's own error: the export does not wait on it.
+    const ready = () => {
+      if (current) setMapCodeReady(true);
+    };
+    Promise.all([import('@/components/needs/NeedsMap'), import('@/components/needs/Sa2NeedsMap')]).then(ready, ready);
+    return () => {
+      current = false;
+    };
+  }, [hasAreas, mapCodeReady]);
   const sections = useMemo(
     () => buildNarrative(assessment, sa2File ? { file: sa2File } : undefined),
     [assessment, sa2File],
@@ -267,7 +282,7 @@ function NeedsContent() {
               // left out and named (P2-R5, P2-R19, R22)
               waitingFor={exportWaitingFor({
                 sa2Data: sa2.isLoading,
-                boundaries: lgaBoundaries.isLoading || sa2Boundaries.isLoading,
+                boundaries: lgaBoundaries.isLoading || sa2Boundaries.isLoading || !mapCodeReady,
               })}
             />
           </div>
