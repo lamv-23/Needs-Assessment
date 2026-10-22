@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { Download, ChevronDown, Clipboard, Check, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { wideCaptureSize } from '@/lib/export/capture-size';
 import { serializeSvg } from '@/lib/export/svg-export';
 import { useFigureRegistry } from '@/components/needs/FigureRegistry';
 
@@ -32,6 +33,41 @@ interface ChartWrapperProps {
 
 /** The caption element carries `data-figure-caption` so the registry's capture() can leave it out (Word adds its own). */
 const isFigureCaption = (element: Element) => element.hasAttribute('data-figure-caption');
+
+/**
+ * html2canvas clips content to any ancestor whose overflow is not visible, so a figure wider than
+ * its card (inside a scrolling `.overflow-x-auto`) would lose its right-hand side. For such a
+ * figure, returns the options that capture its full width; for any other, nothing, so the capture
+ * is unchanged.
+ */
+const SCROLLER = '.overflow-x-auto';
+function wideFigureOptions(root: HTMLElement, scale: number): Parameters<typeof html2canvas>[1] {
+  let hiddenWidth = 0;
+  root.querySelectorAll<HTMLElement>(SCROLLER).forEach((el) => {
+    hiddenWidth = Math.max(hiddenWidth, el.scrollWidth - el.clientWidth);
+  });
+  if (hiddenWidth <= 0) return {};
+  const box = root.getBoundingClientRect();
+  const size = wideCaptureSize({
+    rootWidth: box.width,
+    rootHeight: box.height,
+    rootLeft: box.left,
+    hiddenWidth,
+    viewportWidth: window.innerWidth,
+    requestedScale: scale,
+  });
+  return {
+    width: size.width,
+    windowWidth: size.windowWidth,
+    scale: size.scale,
+    // The clone is what gets rendered; the live page keeps its scrollbar.
+    onclone: (_document, cloned) => {
+      cloned.querySelectorAll<HTMLElement>(SCROLLER).forEach((el) => {
+        el.style.overflow = 'visible';
+      });
+    },
+  };
+}
 
 function toHeaderLabel(key: string): string {
   const spaced = key
@@ -83,12 +119,14 @@ export default function ChartWrapper({
 
   const captureCanvas = useCallback(async (excludeCaption = false) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    if (!chartRef.current) return null;
-    return html2canvas(chartRef.current, {
+    const root = chartRef.current;
+    if (!root) return null;
+    return html2canvas(root, {
       backgroundColor: '#ffffff',
       scale: 3,
       useCORS: true,
       ...(excludeCaption && { ignoreElements: isFigureCaption }),
+      ...wideFigureOptions(root, 3),
     });
   }, []);
 

@@ -1,6 +1,6 @@
 import { INDICATOR_BY_ID, DOMAIN_LABELS, NEED_DOMAINS } from './indicators';
 import { formatValue } from './format';
-import { areaColor, BENCHMARK_COLOR, labelledIds } from './colors';
+import { AREA_PALETTE_SIZE, areaColor, BENCHMARK_COLOR, DOMAIN_COLORS, labelledIds } from './colors';
 import type { AreaAssessment, IndicatorDef, IndicatorId, NeedDomain, NeedsAssessment } from './types';
 
 /** Pure data shaping for the needs charts; the components only draw what this returns. */
@@ -129,33 +129,72 @@ const GSYD_KEY = 'gsyd';
 const domainScore = (area: AreaAssessment, domain: NeedDomain): number | null =>
   area.domains.find(d => d.domain === domain)?.score ?? null;
 
-const BAR_PX = 16;
-const BAR_GAP_PX = 3;
-const DOMAIN_GROUP_GAP_PX = 20;
+interface BarLayout { size: number; gap: number; categoryGap: number }
+
+/** One row per domain, a bar per area: up to `AREA_PALETTE_SIZE` areas, each with its own colour. */
+const GROUPED_BARS: BarLayout = { size: 16, gap: 3, categoryGap: 20 };
+/** One row per area, a bar per domain: for more areas than there are colours, so each row is named. */
+const ROW_BARS: BarLayout = { size: 11, gap: 1, categoryGap: 8 };
 /** Legend, band labels, axis and padding around the bars; the legend gets a row per 5 series. */
 const DOMAIN_CHART_MARGIN_PX = 100;
 const LEGEND_ROW_PX = 22;
 
-export const DOMAIN_BAR = { size: BAR_PX, gap: BAR_GAP_PX, categoryGap: DOMAIN_GROUP_GAP_PX };
+type DomainRow = Record<string, string | number | null>;
+
+/** Height of a bar chart with `categories` groups of `bars` bars. */
+function barChartHeight(categories: number, bars: number, layout: BarLayout, legendEntries: number): number {
+  const group = bars * layout.size + (bars - 1) * layout.gap + layout.categoryGap;
+  return DOMAIN_CHART_MARGIN_PX + LEGEND_ROW_PX * Math.ceil(legendEntries / 5) + categories * group;
+}
 
 /**
- * Domain score bars: one row per domain, one series per area (selection order, shared area colours)
- * and a Greater Sydney reference last. Values are the unrounded scores; a missing score is null.
+ * Domain score bars. Values are the unrounded scores; a missing score is null.
+ * - Up to `AREA_PALETTE_SIZE` areas ("by-domain"): one row per domain, one series per area
+ *   (selection order, shared area colours) and a Greater Sydney reference last.
+ * - More areas ("by-area"): colours would repeat and the legend could not tell bars apart, so one
+ *   row per area (named on the axis) with a bar per domain, coloured by domain, and a Greater
+ *   Sydney row last.
  */
 export function domainChartData(assessment: NeedsAssessment) {
+  const sources = [...assessment.areas, assessment.benchmarks.gsyd];
+
+  if (assessment.areas.length > AREA_PALETTE_SIZE) {
+    const series: ChartSeries[] = NEED_DOMAINS.map(domain => ({
+      key: domain, name: DOMAIN_LABELS[domain], color: DOMAIN_COLORS[domain],
+    }));
+    const rows = sources.map(area => {
+      const row: DomainRow = { name: area.name };
+      NEED_DOMAINS.forEach(domain => { row[domain] = domainScore(area, domain); });
+      return row;
+    });
+    return {
+      layout: 'by-area' as const,
+      rows,
+      series,
+      bar: ROW_BARS,
+      /** Name of the Greater Sydney row, which the chart sets apart from the areas. */
+      benchmarkName: assessment.benchmarks.gsyd.name,
+      height: barChartHeight(rows.length, series.length, ROW_BARS, series.length),
+    };
+  }
+
   const series: ChartSeries[] = [
     ...assessment.areas.map((area, i) => ({ key: `a${i}`, name: area.name, color: areaColor(i) })),
-    { key: GSYD_KEY, name: assessment.benchmarks.gsyd.name, color: BENCHMARK_COLOR, benchmark: true },
+    { key: GSYD_KEY, name: assessment.benchmarks.gsyd.name, color: BENCHMARK_COLOR, benchmark: true as const },
   ];
-  const sources = [...assessment.areas, assessment.benchmarks.gsyd];
   const rows = NEED_DOMAINS.map(domain => {
-    const row: Record<string, string | number | null> = { name: DOMAIN_LABELS[domain] };
+    const row: DomainRow = { name: DOMAIN_LABELS[domain] };
     series.forEach((s, i) => { row[s.key] = domainScore(sources[i], domain); });
     return row;
   });
-  const bars = series.length;
-  const group = bars * BAR_PX + (bars - 1) * BAR_GAP_PX + DOMAIN_GROUP_GAP_PX;
-  return { rows, series, height: DOMAIN_CHART_MARGIN_PX + LEGEND_ROW_PX * Math.ceil(bars / 5) + NEED_DOMAINS.length * group };
+  return {
+    layout: 'by-domain' as const,
+    rows,
+    series,
+    bar: GROUPED_BARS,
+    benchmarkName: null,
+    height: barChartHeight(rows.length, series.length, GROUPED_BARS, series.length),
+  };
 }
 
 /** The radar plots at most this many areas, so the shapes stay readable. */

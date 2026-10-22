@@ -1,4 +1,5 @@
 import { CHART_COLORS } from '@/lib/utils';
+import type { NeedDomain } from './types';
 
 /**
  * Sequential need scale, lowest to highest need: five steps, one per 20 percentile points. Light
@@ -40,10 +41,20 @@ export function labelledIds(selected: string[]): string[] {
   return selected.slice(0, MAX_LABELLED);
 }
 
+/** Areas that can be told apart by colour alone; a chart with more areas has to name them another way. */
+export const AREA_PALETTE_SIZE = CHART_COLORS.length;
+
 /** An area's colour on every needs chart, by its position in the selection. */
 export function areaColor(index: number): string {
-  return CHART_COLORS[index % CHART_COLORS.length];
+  return CHART_COLORS[index % AREA_PALETTE_SIZE];
 }
+
+/** A domain's colour where bars are coloured by domain rather than by area. */
+export const DOMAIN_COLORS: Record<NeedDomain, string> = {
+  transport: CHART_COLORS[0],
+  socio: CHART_COLORS[3],
+  growth: CHART_COLORS[2],
+};
 
 /** Benchmark series and reference lines. Dashes, not hue, tell Greater Sydney from NSW. */
 export const BENCHMARK_COLOR = '#475569';

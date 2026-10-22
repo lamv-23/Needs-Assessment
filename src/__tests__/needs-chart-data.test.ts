@@ -4,8 +4,10 @@ import {
   HEATMAP_LABEL_CHARS, LABEL_LEVELS, MAX_RADAR_AREAS, assignLabelLevels, domainChartData, heatmapRowLabel, labelSide,
   axisFraction, niceAxis, radarData, stripData, wrapLabel,
 } from '@/lib/needs/chart-data';
-import { areaColor, labelledIds } from '@/lib/needs/colors';
+import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
+import { AREA_PALETTE_SIZE, DOMAIN_COLORS, areaColor, labelledIds } from '@/lib/needs/colors';
 import { DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { CHART_COLORS } from '@/lib/utils';
 import type { AreaAssessment, NeedsAssessment, NeedsMode } from '@/lib/needs/types';
 
 const NSW_LGAS = NEEDS_SNAPSHOT.records.map(r => r.areaId);
@@ -195,6 +197,65 @@ describe('domainChartData', () => {
 
   test('taller with more areas', () => {
     expect(domainChartData(assess(NSW_LGAS.slice(0, 5))).height).toBeGreaterThan(height);
+  });
+
+  test('up to the palette size every area keeps its own colour, grouped by domain', () => {
+    const ten = domainChartData(assess(NSW_LGAS.slice(0, AREA_PALETTE_SIZE)));
+    expect(ten.layout).toBe('by-domain');
+    expect(ten.rows).toHaveLength(NEED_DOMAINS.length);
+    // ten areas, ten different colours, then the Greater Sydney reference
+    expect(new Set(ten.series.slice(0, AREA_PALETTE_SIZE).map(s => s.color)).size).toBe(AREA_PALETTE_SIZE);
+    expect(domainChartData(a).layout).toBe('by-domain');
+  });
+});
+
+describe('domainChartData for more areas than colours', () => {
+  const eleven = assess(NSW_LGAS.slice(0, AREA_PALETTE_SIZE + 1));
+  const sydney34 = assess(GREATER_SYDNEY_GCCSA_AREA_IDS);
+
+  test('switches to one row per area, named, with Greater Sydney last', () => {
+    const d = domainChartData(eleven);
+    expect(d.layout).toBe('by-area');
+    expect(d.rows.map(r => r.name)).toEqual([...eleven.areas.map(x => x.name), 'Greater Sydney']);
+    expect(d.benchmarkName).toBe('Greater Sydney');
+  });
+
+  test('a bar per domain, coloured by domain (three distinct palette colours), in domain order', () => {
+    const { series } = domainChartData(eleven);
+    expect(series.map(s => s.key)).toEqual(NEED_DOMAINS);
+    expect(series.map(s => s.name)).toEqual(NEED_DOMAINS.map(d => DOMAIN_LABELS[d]));
+    expect(series.map(s => s.color)).toEqual(NEED_DOMAINS.map(d => DOMAIN_COLORS[d]));
+    expect(new Set(series.map(s => s.color)).size).toBe(3);
+    expect(series.every(s => CHART_COLORS.includes(s.color))).toBe(true);
+  });
+
+  test('row values are the unrounded domain scores, null where there is none', () => {
+    const gap = withDomainScore(eleven, 2, 'socio', null);
+    const { rows } = domainChartData(gap);
+    NEED_DOMAINS.forEach(domain => {
+      if (domain === 'socio') return;
+      expect(rows[2][domain]).toBe(gap.areas[2].domains.find(d => d.domain === domain)!.score);
+    });
+    expect(rows[2].socio).toBeNull();
+    expect(rows[eleven.areas.length].transport).toBe(
+      eleven.benchmarks.gsyd.domains.find(d => d.domain === 'transport')!.score,
+    );
+  });
+
+  test('all of Greater Sydney: 34 named rows plus the benchmark, about 1,700 px not 2,300', () => {
+    expect(GREATER_SYDNEY_GCCSA_AREA_IDS.length).toBeGreaterThan(30);
+    const d = domainChartData(sydney34);
+    expect(d.layout).toBe('by-area');
+    expect(d.rows).toHaveLength(sydney34.areas.length + 1);
+    const names = d.rows.map(r => r.name);
+    expect(new Set(names).size).toBe(names.length); // the axis keys rows by name
+    expect(d.height).toBeLessThan(1800);
+    expect(d.height).toBeGreaterThan(d.rows.length * 30);
+  });
+
+  test('area names are unique across NSW, which the by-area axis relies on', () => {
+    const names = NEEDS_SNAPSHOT.records.map(r => r.name);
+    expect(new Set(names).size).toBe(names.length);
   });
 });
 

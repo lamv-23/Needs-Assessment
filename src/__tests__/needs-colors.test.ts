@@ -1,5 +1,5 @@
 import {
-  MAX_LABELLED, NEED_SCALE, NO_DATA_COLOR, areaColor, labelledIds, needColor, needTextColor,
+  AREA_PALETTE_SIZE, DOMAIN_COLORS, MAX_LABELLED, NEED_SCALE, NO_DATA_COLOR, areaColor, labelledIds, needColor, needTextColor,
 } from '@/lib/needs/colors';
 import { CHART_COLORS } from '@/lib/utils';
 
@@ -54,5 +54,17 @@ describe('areaColor', () => {
     expect(areaColor(0)).toBe(CHART_COLORS[0]);
     expect(areaColor(CHART_COLORS.length)).toBe(CHART_COLORS[0]);
     expect(areaColor(CHART_COLORS.length + 2)).toBe(CHART_COLORS[2]);
+  });
+});
+
+describe('domain colours', () => {
+  test('are three distinct colours from the chart palette', () => {
+    const colors = Object.values(DOMAIN_COLORS);
+    expect(new Set(colors).size).toBe(3);
+    expect(colors.every(c => CHART_COLORS.includes(c))).toBe(true);
+  });
+
+  test('the area palette size is the chart palette size', () => {
+    expect(AREA_PALETTE_SIZE).toBe(CHART_COLORS.length);
   });
 });
