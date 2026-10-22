@@ -102,7 +102,7 @@ Analysis beyond rankings, built from data already in the cache. The figures in t
 2. **Trends.**
    - Car dependency (excluding WFH) for 2011 → 2016 → 2021. Coverage is 107 / 123 / 128 LGAs, because 2011 lacks the LGAs amalgamated in 2016.
    - Crashes per 10,000 residents, 2020 → 2024 (all 128).
-   - Population growth rate per year: 2001–2021 (ERP) against 2021–2041 (DPE projections).
+   - Population growth rate per year: actual from 2021 to the latest ERP year, against the DPE projection for 2021–2041. This answers "growing faster or slower than projected". The cached ERP covers only 2021–2025 for 123 LGAs, so a 2001–2021 window isn't available (R39).
    - Dwelling approvals in the last 12 months against the previous 12.
    - Each change is compared with the universe median change.
 3. **Growth against service.**
