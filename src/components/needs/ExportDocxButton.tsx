@@ -14,7 +14,7 @@ interface ExportDocxButtonProps {
   sections: NarrativeSection[];
   /** The page's SA2 table for the selection, exported as a native table; null while the SA2 file is not loaded. */
   sa2Table?: Sa2TableData | null;
-  /** What the document needs that is still loading ("SA2 data", "map boundaries"): until then the button waits, disabled. */
+  /** What the document needs that is still loading ("SA2 data", "map boundaries"): the button waits until then. */
   waitingFor?: string | null;
 }
 
@@ -28,7 +28,9 @@ interface ExportDocxButtonProps {
  * selection in a document whose text and table describe the old one. The export is therefore dropped, with a message,
  * if the selection changed at all since the click, checked when the figures are done and again before the download.
  */
-export default function ExportDocxButton({ assessment, sections, sa2Table = null, waitingFor = null }: ExportDocxButtonProps) {
+export default function ExportDocxButton({
+  assessment, sections, sa2Table = null, waitingFor = null,
+}: ExportDocxButtonProps) {
   const registry = useFigureRegistry();
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

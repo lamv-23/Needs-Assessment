@@ -20,6 +20,7 @@ export function useBoundaries(url: string | null): {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     shouldRetryOnError: false,
+    onError: (error) => console.error(`Failed to load map boundaries (${url}):`, error),
   });
   return { boundaries: data ?? null, error: error ?? null, isLoading };
 }

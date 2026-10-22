@@ -32,7 +32,6 @@ export default function NeedsMap({
   boundaries: FeatureCollection | null;
   failed: boolean;
 }) {
-
   // Keyed on the snapshot and universe, not the assessment: toggling the selection must not rebuild the map layer.
   const { records, universe, memberIds } = assessment;
   const scores = useMemo(() => mapScores({ records, universe }), [records, universe]);

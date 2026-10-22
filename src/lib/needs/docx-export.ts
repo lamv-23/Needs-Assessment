@@ -230,6 +230,11 @@ function tableCell(text: string, width: number, style: CellStyle): TableCell {
   });
 }
 
+/** A note or source line under a table, in the table's text size. */
+function tableNote(text: string, before = 0): Paragraph {
+  return new Paragraph({ spacing: { before }, children: [new TextRun({ text, size: TABLE_SIZE })] });
+}
+
 /** A native table at its column widths (twips), fixed layout, with thin grey borders. */
 function nativeTable(widths: number[], rows: TableRow[]): Table {
   return new Table({
@@ -343,12 +348,6 @@ function indicatorBlocks(assessment: NeedsAssessment): Array<{ orientation: Figu
 /** Shares of the text width of the SA2 table's columns, in SA2_TABLE_COLUMNS order. */
 const SA2_COLUMN_SHARES = [0.2, 0.19, 0.25, 0.1, 0.11, 0.15];
 const SA2_RANK_SIZE = 16;
-
-/** A note or source line under a table, in the table's text size. */
-const tableNote = (text: string, before = 0) => new Paragraph({
-  spacing: { before },
-  children: [new TextRun({ text, size: TABLE_SIZE })],
-});
 
 /**
  * The page's SA2 table as a native table (P2-R18): the same columns and cell text, the Overall need cell with its rank

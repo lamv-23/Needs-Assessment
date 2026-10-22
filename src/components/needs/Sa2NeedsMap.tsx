@@ -48,7 +48,6 @@ export default function Sa2NeedsMap({
   boundaries: { sa2: FeatureCollection; lga: FeatureCollection } | null;
   failed: boolean;
 }) {
-
   // Keyed on the LGAs, not the array: a new assessment of the same selection must not rebuild the map layer.
   const lgaKey = lgaIds.join('|');
   const selectedIds = useMemo(() => (lgaKey === '' ? [] : lgaKey.split('|')), [lgaKey]);
