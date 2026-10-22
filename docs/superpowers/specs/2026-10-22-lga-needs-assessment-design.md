@@ -98,7 +98,7 @@ Every sentence carries the citations of the indicators it uses.
 Analysis beyond rankings, built from data already in the cache. The figures in this section come from a probe of `data/cache.db` on 2026-10-22.
 
 1. **Expected car dependency (mismatch).** OLS of `car_dependency` on one predictor, fitted within the LGA's setting:
-   - **Metro (34 LGAs):** predictor `frequent_stop_share`. R² 0.51, residual SD 8.8 pp.
+   - **Metro (34 LGAs):** predictor `frequent_service_catchment` (share of residents within a straight-line walk of a frequent stop), R² 0.63. It was originally `frequent_stop_share` (R² 0.51, residual SD 8.8 pp) and was switched in Phase 2 under P2-R4.
    - **Non-metro (94 LGAs):** predictor ln(population). R² 0.52, residual SD 3.3 pp. Service level explains almost nothing outside Sydney (R² 0.02).
    - **Residual** = actual − expected. Flag it when |residual ÷ residual SD| ≥ 1.
    - **Show only when** n ≥ 20 and R² ≥ 0.3. Otherwise show: "The relationship in {setting} is too weak to estimate an expected value."
