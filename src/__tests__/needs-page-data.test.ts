@@ -5,7 +5,7 @@ import { INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
 import { buildInsights, WFH_CAVEAT_CITATION } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorExcelRows, indicatorTable,
+  citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
   GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
   sourceNumber, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
@@ -253,18 +253,6 @@ describe('partialBenchmarks and their notes (R58)', () => {
     expect(partialBenchmarks(gsyd).map(p => `${p.key}:${p.id}:${p.withData}/${p.members}`)).toEqual([
       'gsyd:commute_distance_km:33/34', 'nsw:commute_distance_km:127/128', 'nsw:job_growth_2041:43/128',
     ]);
-  });
-});
-
-describe('indicatorExcelRows', () => {
-  test('one record per indicator: indicator, a key per column, source', () => {
-    const table = indicatorTable(assess(['lga_blacktown']));
-    const rows = indicatorExcelRows(table);
-    expect(rows).toHaveLength(INDICATORS.length);
-    expect(Object.keys(rows[0])).toEqual(['indicator', 'Blacktown', 'Greater Sydney', 'NSW', 'source']);
-    expect(rows[0].indicator).toBe(table.rows[0].label);
-    expect(rows[0].Blacktown).toBe(table.rows[0].cells[0]);
-    expect(rows[0].source).toBe(table.rows[0].source);
   });
 });
 

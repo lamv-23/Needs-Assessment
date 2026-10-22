@@ -24,9 +24,13 @@ import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { TREND_FIGURE_SUBTITLE } from '@/lib/needs/insight-chart-data';
+import {
+  domainScoresExcel, growthServiceExcel, indicatorTableExcel, jobsHousingExcel, mismatchExcel, needMapExcel, quadrantExcel,
+  radarExcel, stripExcel, trendsExcel,
+} from '@/lib/needs/excel-data';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION, indicatorExcelRows, indicatorTable,
+  comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION, indicatorTable,
   JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
@@ -87,12 +91,20 @@ function NeedsContent() {
   );
   const sections = useMemo(() => buildNarrative(assessment), [assessment]);
   const table = useMemo(() => indicatorTable(assessment), [assessment]);
-  const tableRows = useMemo(() => indicatorExcelRows(table), [table]);
-  const tableHeaders = useMemo(
-    () => ({ indicator: 'Indicator', source: 'Source', ...Object.fromEntries(table.columns.map(c => [c, c])) }),
-    [table],
-  );
   const stripIds = useMemo(() => stripIndicatorIds(assessment.areas), [assessment.areas]);
+  // Every figure's Excel data, as numbers (R64); the heatmap's cells are the indicator table's
+  const excel = useMemo(() => ({
+    map: needMapExcel(assessment),
+    domains: domainScoresExcel(assessment),
+    indicators: indicatorTableExcel(assessment),
+    radar: radarExcel(assessment),
+    quadrants: Object.fromEntries(QUADRANT_SCATTERS.map(spec => [spec.id, quadrantExcel(assessment, spec)])),
+    strips: stripIds.map(id => stripExcel(assessment, id)),
+    mismatch: mismatchExcel(assessment),
+    trends: trendsExcel(assessment),
+    growth: growthServiceExcel(assessment),
+    jobs: jobsHousingExcel(assessment),
+  }), [assessment, stripIds]);
 
   const toggleArea = useCallback(
     (id: string) => setAreaIds(areaIds.includes(id) ? areaIds.filter(a => a !== id) : [...areaIds, id]),
@@ -195,6 +207,7 @@ function NeedsContent() {
           title="Need map"
           subtitle="Overall need score of every NSW LGA. Click an LGA to add it to, or remove it from, the selection."
           caption={allSources}
+          {...excel.map}
         >
           <NeedsMap assessment={assessment} onToggle={toggleArea} />
         </ChartWrapper>
@@ -206,6 +219,7 @@ function NeedsContent() {
               title="Domain scores"
               subtitle="Score out of 100 for each need domain: the equally weighted mean of its indicator percentiles."
               caption={allSources}
+              {...excel.domains}
             >
               <DomainScoreChart assessment={assessment} />
             </ChartWrapper>
@@ -215,6 +229,7 @@ function NeedsContent() {
               title="Need heatmap"
               subtitle="Need percentile of every indicator within the comparison group; darker means more need."
               caption={allSources}
+              {...excel.indicators}
             >
               <NeedsHeatmap assessment={assessment} />
             </ChartWrapper>
@@ -224,6 +239,7 @@ function NeedsContent() {
               title="Need profile"
               subtitle="Need percentile of each area on five measures of the case for transport projects, against a typical LGA of the comparison group."
               caption={radarSources}
+              {...excel.radar}
             >
               <NeedsRadar assessment={assessment} />
             </ChartWrapper>
@@ -235,6 +251,7 @@ function NeedsContent() {
                 title={spec.title}
                 subtitle={QUADRANT_SUBTITLES[spec.id]}
                 caption={figureCaption([spec.x, spec.y])}
+                {...excel.quadrants[spec.id]}
               >
                 <QuadrantScatter assessment={assessment} spec={spec} />
               </ChartWrapper>
@@ -248,6 +265,7 @@ function NeedsContent() {
                 title={`${INDICATOR_BY_ID[id].label}: selected areas against NSW LGAs`}
                 subtitle="One of the six indicators on which the selection ranks highest for need."
                 caption={figureCaption([id])}
+                {...excel.strips[slot]}
               >
                 <IndicatorStripPlot assessment={assessment} indicatorId={id} />
               </ChartWrapper>
@@ -258,6 +276,7 @@ function NeedsContent() {
               title="Car dependency against expected"
               subtitle="Actual car dependency against the level expected for the LGA's setting, with the model's R² and number of LGAs."
               caption={mismatchSources}
+              {...excel.mismatch}
             >
               <MismatchScatter assessment={assessment} />
             </ChartWrapper>
@@ -267,6 +286,7 @@ function NeedsContent() {
               title="Trends in car dependency, road crashes and population"
               subtitle={TREND_FIGURE_SUBTITLE}
               caption={trendSources}
+              {...excel.trends}
             >
               <TrendSmallMultiples assessment={assessment} />
             </ChartWrapper>
@@ -276,6 +296,7 @@ function NeedsContent() {
               title="AM-peak service per resident, today and in 2041"
               subtitle="Weekday 7-9am departures per 1,000 residents, if service stays at today's level while the population grows as projected."
               caption={GROWTH_SERVICE_CAPTION}
+              {...excel.growth}
             >
               <GrowthServiceChart assessment={assessment} />
             </ChartWrapper>
@@ -285,6 +306,7 @@ function NeedsContent() {
               title="Local jobs per resident, 2021 and 2041"
               subtitle="TfNSW TZP24 jobs divided by residents: ABS ERP in 2021 and the NSW DPE projection in 2041."
               caption={JOBS_HOUSING_CAPTION}
+              {...excel.jobs}
             >
               <JobsHousingChart assessment={assessment} />
             </ChartWrapper>
@@ -299,8 +321,7 @@ function NeedsContent() {
           <ChartWrapper
             title="Indicator values"
             subtitle="Each indicator for the selected areas, Greater Sydney and NSW."
-            data={tableRows}
-            headerLabels={tableHeaders}
+            {...excel.indicators}
           >
             <IndicatorTable table={table} comparison={comparison} />
           </ChartWrapper>

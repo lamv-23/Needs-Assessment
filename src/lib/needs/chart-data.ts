@@ -149,6 +149,12 @@ function barChartHeight(categories: number, bars: number, layout: BarLayout, leg
   return DOMAIN_CHART_MARGIN_PX + LEGEND_ROW_PX * Math.ceil(legendEntries / 5) + categories * group;
 }
 
+/** The areas the domain score chart draws: the selected areas, then Greater Sydney when it is drawn (R61). */
+export function domainChartAreas(assessment: NeedsAssessment): AreaAssessment[] {
+  const withBenchmark = BENCHMARK_UNIVERSES.includes(assessment.universe);
+  return [...assessment.areas, ...(withBenchmark ? [assessment.benchmarks.gsyd] : [])];
+}
+
 /**
  * Domain score bars. Values are the unrounded scores; a missing score is null.
  * - Up to `AREA_PALETTE_SIZE` areas ("by-domain"): one row per domain, one series per area
@@ -160,7 +166,7 @@ function barChartHeight(categories: number, bars: number, layout: BarLayout, leg
  */
 export function domainChartData(assessment: NeedsAssessment) {
   const withBenchmark = BENCHMARK_UNIVERSES.includes(assessment.universe);
-  const sources = [...assessment.areas, ...(withBenchmark ? [assessment.benchmarks.gsyd] : [])];
+  const sources = domainChartAreas(assessment);
 
   if (assessment.areas.length > AREA_PALETTE_SIZE) {
     const series: ChartSeries[] = NEED_DOMAINS.map(domain => ({

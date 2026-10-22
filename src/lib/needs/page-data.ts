@@ -143,15 +143,6 @@ export function indicatorTable(assessment: NeedsAssessment): IndicatorTableData 
   };
 }
 
-/** The table as records for the Excel export: `indicator`, one key per column, then `source`. */
-export function indicatorExcelRows(table: IndicatorTableData): Array<Record<string, string>> {
-  return table.rows.map(row => ({
-    indicator: row.label,
-    ...Object.fromEntries(table.columns.map((column, i) => [column, row.cells[i]])),
-    source: row.source,
-  }));
-}
-
 /**
  * Citation numbers in ascending order with runs of three or more consecutive numbers collapsed to a
  * range, so a sentence citing every source reads "1–14", not "1,2,3,…,14". A single number has `from === to`.

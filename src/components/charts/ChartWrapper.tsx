@@ -7,6 +7,7 @@ import { Download, ChevronDown, Clipboard, Check, ChevronUp } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { wideCaptureSize } from '@/lib/export/capture-size';
 import { flattenLeafletTransforms } from '@/lib/export/leaflet-capture';
+import { excelSheetName } from '@/lib/export/sheet-name';
 import { figureBodyParts, serializeSvg, svgExportable } from '@/lib/export/svg-export';
 import { useFigureRegistry } from '@/components/needs/FigureRegistry';
 
@@ -252,8 +253,7 @@ export default function ChartWrapper({
       const dataRows = data.map((row) => allKeys.map((k) => row[k] ?? ''));
       const worksheet = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
       const workbook = XLSX.utils.book_new();
-      const sheetName = title.slice(0, 31);
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      XLSX.utils.book_append_sheet(workbook, worksheet, excelSheetName(title));
       XLSX.writeFile(workbook, `${fileBase}.xlsx`);
     } catch (error) {
       console.error('Failed to export Excel:', error);
