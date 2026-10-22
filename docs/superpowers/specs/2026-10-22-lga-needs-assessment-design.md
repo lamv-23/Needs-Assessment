@@ -122,7 +122,7 @@ These figures show the case for transport projects in the selected areas, compar
 **Need profile radar (5 axes).** It replaces the 3-axis "Domain profile" radar.
 - Axes, in this order:
   1. Car dependency (`car_dependency`)
-  2. Public transport service gap (`frequent_stop_share`; lower share = more need)
+  2. Public transport service gap (`frequent_service_catchment`: share of residents within a straight-line walk of a frequent AM-peak stop, lower = more need. It was originally `frequent_stop_share` and was switched in Phase 2 under P2-R12.)
   3. Households without a car (`zero_car_households`)
   4. Socio-economic disadvantage (`seifa_irsd`)
   5. Population growth to 2041 (`pop_growth_2041`)
