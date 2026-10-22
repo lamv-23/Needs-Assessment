@@ -36,6 +36,8 @@ Need direction: **↑** means a higher value is more need; **↓** means a lower
 | `low_income_households` | socio | Low-income households | lowIncomeHouseholds ÷ Σ householdIncomeDistribution × 100 | ↑ | ABS Census 2021 G33 |
 | `needs_assistance` | socio | People needing assistance | needsAssistance ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G18 |
 | `limited_english` | socio | Limited English proficiency | limitedEnglish ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G13 |
+| `older_residents` | socio | Residents aged 65+ | (65–74 + 75+ persons) ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G01 |
+| `indigenous_share` | socio | Aboriginal and Torres Strait Islander residents | indigenousPopulation ÷ totalPopulation × 100 | ↑ | ABS Census 2021 G01 |
 | `pop_growth_2041` | growth | Population growth 2021–41 | (pop 2041 ÷ pop 2021 − 1) × 100 | ↑ | NSW DPE projections |
 | `job_growth_2041` | growth | Job growth 2021–41 | (jobs 2041 ÷ jobs 2021 − 1) × 100 | ↑ | TfNSW TZP24 |
 | `approvals_per_1000` | growth | Dwelling approvals per 1,000 residents (last 12 months) | rollingAnnualApprovals ÷ population × 1,000 | ↑ | ABS Building Approvals |
@@ -49,7 +51,20 @@ The four domains are **transport** (Transport disadvantage), **socio** (Socio-ec
   - `nsw`: all 128 LGAs.
   - `gsyd`: `GREATER_SYDNEY_GCCSA_AREA_IDS`, 34 LGAs.
   - `region`: LGAs sharing `Area.region`.
+  - `peer`: LGAs in the same peer group (see below).
   - A universe with n < 5 is marked `smallGroup`.
+- **Peer groups.** Density = Census population ÷ boundary area (km²), with area computed from `public/geo/lga-nsw.json`. `metro` means the LGA is in `GREATER_SYDNEY_GCCSA_AREA_IDS`.
+
+  | id | Label | Rule | ≈ n |
+  |---|---|---|---|
+  | `metro_inner` | Inner metropolitan | metro and density ≥ 3,000 | 6 |
+  | `metro_middle` | Middle metropolitan | metro and 1,000 ≤ density < 3,000 | 13 |
+  | `metro_outer` | Outer metropolitan | metro and density < 1,000 (includes Central Coast) | 15 |
+  | `regional_city` | Regional city | not metro and population ≥ 50,000 | 19 |
+  | `regional_town` | Regional town | not metro and 15,000 ≤ population < 50,000 | 23 |
+  | `rural` | Rural and remote | not metro and population < 15,000 | 52 |
+
+  Counts come from the 2026-10-22 cache. Boundary rounding may move one LGA.
 - **Domain score:** the mean of the need percentiles available in that domain. It is `null` when fewer than half of the domain's indicators have a value.
 - **Overall score:** the mean of the non-null domain scores.
 - **Bands:** ≥ 80 Very high · ≥ 60 High · ≥ 40 Moderate · < 40 Lower.
@@ -70,6 +85,32 @@ The narrative is deterministic: templates filled from values, percentiles and be
 - **Data notes:** coverage gaps, approximate values, and the 2021 Census caveat that Sydney was in lockdown, so work-from-home is inflated. Car dependency therefore excludes WFH.
 
 Every sentence carries the citations of the indicators it uses.
+
+## Insights layer (Part B)
+
+Analysis beyond rankings, built from data already in the cache. The figures in this section come from a probe of `data/cache.db` on 2026-10-22.
+
+1. **Expected car dependency (mismatch).** OLS of `car_dependency` on one predictor, fitted within the LGA's setting:
+   - **Metro (34 LGAs):** predictor `frequent_stop_share`. R² 0.51, residual SD 8.8 pp.
+   - **Non-metro (94 LGAs):** predictor ln(population). R² 0.52, residual SD 3.3 pp. Service level explains almost nothing outside Sydney (R² 0.02).
+   - **Residual** = actual − expected. Flag it when |residual ÷ residual SD| ≥ 1.
+   - **Show only when** n ≥ 20 and R² ≥ 0.3. Otherwise show: "The relationship in {setting} is too weak to estimate an expected value."
+   - **The model is always displayed** with its R² and n.
+2. **Trends.**
+   - Car dependency (excluding WFH) for 2011 → 2016 → 2021. Coverage is 107 / 123 / 128 LGAs, because 2011 lacks the LGAs amalgamated in 2016.
+   - Crashes per 10,000 residents, 2020 → 2024 (all 128).
+   - Population growth rate per year: 2001–2021 (ERP) against 2021–2041 (DPE projections).
+   - Dwelling approvals in the last 12 months against the previous 12.
+   - Each change is compared with the universe median change.
+3. **Growth against service.**
+   - AM-peak departures per 1,000 residents today (latest ERP), and in 2041 if service stays at today's level: `amPeakDepartures ÷ pop2041 × 1,000`.
+   - The extra departures needed to hold today's rate: `amPeakDepartures × (pop2041 ÷ latest ERP − 1)`.
+4. **Jobs–housing balance.** TZP24 jobs per resident, 2021 and 2041. Only 29 of 128 LGAs currently resolve TZP24 projections through `getEmploymentProjections`. Part B includes a data check, and the insight is shown only where data exists.
+5. **Key findings.** Each insight gets a severity. The top 5 across the selection become a "Key findings" section at the top of the narrative and the Word document, and every finding is cited.
+
+## Phase 2 (separate plan)
+
+SA2-level indicators (644 NSW SA2s) and population within walking distance of a frequent stop. See `docs/superpowers/specs/2026-10-22-sa2-catchments-design.md`.
 
 ## Out of scope (v1)
 

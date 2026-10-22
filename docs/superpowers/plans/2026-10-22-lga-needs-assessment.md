@@ -2,10 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `/needs` page that assesses need for one or more NSW LGAs. It ranks each LGA against NSW, Greater Sydney or its region; generates cited written findings; and exports report-ready figures and an editable Word document.
+**Goal:** Add a `/needs` page that assesses need for one or more NSW LGAs. It ranks each LGA against NSW, Greater Sydney, its region or similar LGAs; adds deeper insights (expected-vs-actual car dependency, trends, growth vs service, jobs–housing); generates cited written findings; and exports report-ready figures and an editable Word document.
+
+**Structure:**
+- **Part A (Tasks 1–11)** delivers the scored assessment, the page and the Word export.
+- **Part B (Tasks 12–16)** adds the insights layer on top.
+- **Phase 2** (SA2 data and walking catchments) is a separate plan: `docs/superpowers/plans/2026-10-22-sa2-catchments.md`.
 
 **Architecture:**
-- A build script turns the live SQLite-backed data (`getLive*Data`) into a small bundled snapshot of 14 indicators × 128 LGAs.
+- A build script turns the live SQLite-backed data (`getLive*Data`) into a small bundled snapshot of 16 indicators × 128 LGAs, plus each LGA's density and peer group.
 - Pure modules under `src/lib/needs/` do the scoring, aggregation and narrative. They run client-side over the snapshot, so ranking never fetches 128 payloads.
 - The page reads its selection from the URL and renders charts through an extended `ChartWrapper` that registers each figure for Word export via the `docx` package.
 
@@ -33,6 +38,7 @@
 5. **A large or small selection:**
    - All 34 Greater Sydney LGAs must keep every figure readable. The heatmap scrolls horizontally, and the strip plot labels at most `MAX_LABELLED = 12`.
    - Central Coast, the only region with fewer than 5 LGAs (it has 1), shows the small-group caveat when ranked by region.
+   - **Worktree base:** branch from local `main`, not `origin/main`. On 2026-10-22, `origin/main` was 19 commits behind and lacked `transport-service-demand.ts`, so service frequency read as missing for every LGA.
    - *Pinned in Task 3 (`smallGroup`), Task 5 (caveat) and Task 8 (`labelledIds` cap).*
 
 ---
@@ -43,6 +49,8 @@
 |---|---|
 | `src/lib/needs/types.ts` | Shared types: indicators, records, snapshot, assessment, narrative |
 | `src/lib/needs/indicators.ts` | `INDICATORS` registry plus `DOMAIN_LABELS` |
+| `src/lib/needs/peer-groups.ts` | Peer-group rules and labels |
+| `src/lib/needs/insights.ts` | Part B: model fits, mismatch, trends, growth vs service, jobs–housing, insight ranking |
 | `src/lib/needs/extract.ts` | Live domain data → indicator values for one LGA |
 | `scripts/build-needs-indicators.ts` | Writes the snapshot from `data/cache.db` |
 | `src/lib/data/needs-indicators-data.ts` | Generated `NEEDS_SNAPSHOT` |
@@ -65,6 +73,8 @@
 **Files:**
 - Create: `src/lib/needs/types.ts`, `src/lib/needs/indicators.ts`, `src/lib/needs/extract.ts`
 - Create: `src/__tests__/fixtures/needs.ts`
+- Modify: `src/lib/data/sample-data.ts`. Add `indigenousPopulation?: number` to `DemographicsData`.
+- Modify: `src/lib/data/live-data.ts`. In `getLiveDemographicsData`, set the new field from G01's `indigenousPopulation` and push `'indigenousPopulation'` to `liveFields`.
 - Test: `src/__tests__/needs-indicators.test.ts`
 
 **Interfaces:**
@@ -76,7 +86,9 @@
   export type IndicatorId =
     | 'car_dependency' | 'zero_car_households' | 'frequent_stop_share' | 'am_peak_departures_per_1000'
     | 'commute_distance_km' | 'crash_rate' | 'seifa_irsd' | 'unemployment_rate' | 'low_income_households'
-    | 'needs_assistance' | 'limited_english' | 'pop_growth_2041' | 'job_growth_2041' | 'approvals_per_1000';
+    | 'needs_assistance' | 'limited_english' | 'older_residents' | 'indigenous_share'
+    | 'pop_growth_2041' | 'job_growth_2041' | 'approvals_per_1000';
+  export type PeerGroup = 'metro_inner' | 'metro_middle' | 'metro_outer' | 'regional_city' | 'regional_town' | 'rural';
   export interface SourceRef { short: string; full: string; url?: string }
   export interface IndicatorDef {
     id: IndicatorId; domain: NeedDomain; label: string;
@@ -90,6 +102,7 @@
   export interface IndicatorValue { value: number | null; numerator?: number; denominator?: number }
   export interface LgaIndicatorRecord {
     areaId: string; name: string; region: string; population: number;
+    densityPerKm2: number; peerGroup: PeerGroup;
     values: Record<IndicatorId, IndicatorValue>;
   }
   export interface NeedsSnapshot { generatedAt: string; records: LgaIndicatorRecord[] }
@@ -113,6 +126,8 @@
   - `lowIncomeHouseholds` 10967, with a `householdIncomeDistribution` whose counts sum to 120000
   - `needsAssistance` 21032
   - `limitedEnglish` 20903
+  - `ageDistribution` including `{ ageGroup: '65-74', male: 13000, female: 14000 }` and `{ ageGroup: '75+', male: 7000, female: 6000 }`
+  - `indigenousPopulation` 11812
   - `populationHistory` [{2021, 400000}]
   - `populationProjections` [{2041, 600000}]
   - `employmentGrowth` [{2021, 140000}, {2041, 210000}]
@@ -122,7 +137,13 @@
   - `crashTrend` [{2022, totalCrashes: 900}, {2023, totalCrashes: 1000}]
 
   ```ts
-  test('registry has 14 indicators with unique ids and a source each', ...)
+  test('registry has 16 indicators with unique ids and a source each', ...)
+  test('older residents and Indigenous share', () => {
+    const v = extractIndicators(makeBundle());
+    expect(v.older_residents).toMatchObject({ value: 10, numerator: 40000, denominator: 400000 });
+    expect(v.indigenous_share.value).toBeCloseTo(2.95, 2);
+    expect(extractIndicators(makeBundle({ demographics: { indigenousPopulation: undefined } })).indigenous_share.value).toBeNull();
+  });
   test('car_dependency excludes work from home from the denominator', () => {
     expect(extractIndicators(makeBundle()).car_dependency.value).toBeCloseTo(51.1 / 61 * 100, 1); // 83.8
   });
@@ -156,6 +177,8 @@
   - Growth base = `populationHistory` year 2021, else `populationProjections` year 2021. Growth target = projections year 2041.
   - Crash rate uses the latest `crashTrend` year that has `totalCrashes`.
   - A zero or missing denominator gives `{ value: null }`.
+  - Older residents = the sum of `male + female` over the `'65-74'` and `'75+'` age groups.
+  - **Before wiring `indigenousPopulation`, check the G01 decoder's `get('A_T', '3')` against the C21_G01_LGA PCHAR codelist** (`/rest/dataflow/ABS/C21_G01_LGA?references=all&detail=referencepartial`). Confirm Blacktown's cached value against ABS QuickStats 2021 (Aboriginal and/or Torres Strait Islander people). If the code is wrong, fix `decodeG01` and add a case to `src/__tests__/abs-decoders*.test.ts`.
 
 - [ ] **Step 4: Run the tests.** Expected: PASS.
 
@@ -167,17 +190,41 @@
 
 **Files:**
 - Create: `scripts/build-needs-indicators.ts`, `src/lib/data/needs-indicators-data.ts` (generated)
-- Modify: `package.json` (add a `"build:needs": "tsx scripts/build-needs-indicators.ts"` script)
+- Create: `src/lib/needs/peer-groups.ts`
+- Modify: `package.json`. Add a `"build:needs": "tsx scripts/build-needs-indicators.ts"` script, and `npm i -D @turf/area` (same major as the installed `@turf/helpers`).
 - Modify: `CLAUDE.md`. Add `npm run build:needs` under Commands, and note under Admin Panel: "run after `build:fallbacks`".
 - Test: `src/__tests__/needs-snapshot.test.ts`
 
 **Interfaces:**
 - Consumes: `extractIndicators` from Task 1; `getLive*Data` from `@/lib/data/live-data`; `SAMPLE_AREAS` filtered to `type === 'lga'`.
-- Produces: `export const NEEDS_SNAPSHOT: NeedsSnapshot` in `src/lib/data/needs-indicators-data.ts`.
+- Produces:
+  - `export const NEEDS_SNAPSHOT: NeedsSnapshot` in `src/lib/data/needs-indicators-data.ts`.
+  - In `peer-groups.ts`:
+
+    ```ts
+    export const PEER_GROUP_LABELS: Record<PeerGroup, string>    // 'Inner metropolitan', 'Middle metropolitan', 'Outer metropolitan', 'Regional city', 'Regional town', 'Rural and remote'
+    export const PEER_GROUP_PLURALS: Record<PeerGroup, string>   // 'inner metropolitan LGAs', 'middle metropolitan LGAs', 'outer metropolitan LGAs', 'regional cities', 'regional towns', 'rural and remote LGAs'
+    export function peerGroupFor(input: { areaId: string; population: number; densityPerKm2: number }): PeerGroup
+    ```
+
+    The rules are in the spec's peer-group table. `metro` means `GREATER_SYDNEY_GCCSA_AREA_IDS.includes(areaId)`. The thresholds are 3,000 and 1,000 people/km² for metro, and 50,000 and 15,000 residents for non-metro.
 
 - [ ] **Step 1: Write the failing snapshot test**
 
   ```ts
+  test('peerGroupFor boundaries', () => {
+    expect(peerGroupFor({ areaId: 'lga_sydney', population: 1, densityPerKm2: 3000 })).toBe('metro_inner');
+    expect(peerGroupFor({ areaId: 'lga_sydney', population: 1, densityPerKm2: 2999 })).toBe('metro_middle');
+    expect(peerGroupFor({ areaId: 'lga_blacktown', population: 1, densityPerKm2: 999 })).toBe('metro_outer');
+    expect(peerGroupFor({ areaId: 'lga_newcastle', population: 50000, densityPerKm2: 9999 })).toBe('regional_city');
+    expect(peerGroupFor({ areaId: 'lga_newcastle', population: 15000, densityPerKm2: 1 })).toBe('regional_town');
+    expect(peerGroupFor({ areaId: 'lga_bourke', population: 14999, densityPerKm2: 0.1 })).toBe('rural');
+  });
+  test('every peer group in the snapshot has at least 5 LGAs and Central Coast is outer metro', () => {
+    const counts = countBy(NEEDS_SNAPSHOT.records, r => r.peerGroup);
+    expect(Object.values(counts).every(n => n >= 5)).toBe(true);
+    expect(NEEDS_SNAPSHOT.records.find(r => r.areaId === 'lga_central_coast')!.peerGroup).toBe('metro_outer');
+  });
   test('snapshot covers all 128 LGAs with name, region and population', () => {
     expect(NEEDS_SNAPSHOT.records).toHaveLength(128);
     for (const r of NEEDS_SNAPSHOT.records) { expect(r.region).toBeTruthy(); expect(r.population).toBeGreaterThan(0); }
@@ -190,6 +237,9 @@
     const b = NEEDS_SNAPSHOT.records.find(r => r.areaId === 'lga_blacktown')!;
     expect(b.values.seifa_irsd.value).toBe(987);
     expect(b.values.zero_car_households.value).toBeCloseTo(6.7, 1);
+    expect(b.values.car_dependency.value).toBeCloseTo(83.8, 1);
+    expect(b.values.frequent_stop_share.value).toBeCloseTo(27.9, 1);
+    expect(b.peerGroup).toBe('metro_outer');
   });
   ```
 
@@ -199,12 +249,19 @@
 
   - Mirror `build-fallbacks.ts`: call `getLiveDemographicsData`, `getLiveTransportData`, `getLiveEconomyData` and `getLiveGrowthData` with year 2021 for each LGA.
   - Pass the four `.data` objects to `extractIndicators`, and build each record from the `Area` and `demographics.totalPopulation`.
+  - Area (km²) = `@turf/area` of the matching feature in `public/geo/lga-nsw.json` (match on `properties.id`) ÷ 1e6.
+    - `densityPerKm2` = population ÷ area, unrounded. Do not use the bundled `populationDensity`: it is an integer, and 34 rural LGAs read as 0.
+    - Fail loudly if any LGA has no feature.
+  - `peerGroup` = `peerGroupFor(...)`.
   - Write the file with the auto-generated header, `generatedAt: new Date().toISOString()`, and pretty JSON. Target: under 150 KB.
-  - Print a coverage line per indicator, for example `frequent_stop_share 128/128`.
+  - Print a coverage line per indicator (for example `frequent_stop_share 128/128`) and a count per peer group.
 
-- [ ] **Step 4: Run** `npm run build:needs`, then the test. Expected:
+- [ ] **Step 4: Run** `npm run build:needs`, then the test. Expected, matching the 2026-10-22 probe of the cache:
   - The script prints 128 records.
-  - Coverage is 128/128 for the Census indicators, 128 for GTFS and crash, and about 127 for commute distance.
+  - Census indicators: 128/128.
+  - `frequent_stop_share` and `am_peak_departures_per_1000`: 128 (17 LGAs have 0 departures, which is a real value, not missing).
+  - `crash_rate`: 128. `commute_distance_km`: about 127. `pop_growth_2041`: 123. **`job_growth_2041`: about 29** (see Task 12).
+  - Peer groups are close to 6 / 13 / 15 / 19 / 23 / 52.
   - The tests PASS.
 
 - [ ] **Step 5: Commit** `feat(needs): bundled indicator snapshot for all LGAs` (include the generated file).
@@ -223,12 +280,12 @@
 - Produces (types):
 
   ```ts
-  export type Universe = 'nsw' | 'gsyd' | 'region';
+  export type Universe = 'nsw' | 'gsyd' | 'region' | 'peer';
   export type NeedBand = 'Very high' | 'High' | 'Moderate' | 'Lower';
   export interface IndicatorScore { id: IndicatorId; value: number | null; percentile: number | null; keyNeed: boolean; approximate: boolean; partial: boolean }
   export interface DomainScore { domain: NeedDomain; score: number | null; band: NeedBand | null; available: number; total: number }
   export interface AreaAssessment {
-    areaId: string; name: string; region: string; population: number;
+    areaId: string; name: string; region: string; population: number; peerGroup: PeerGroup | null;  // null for a multi-group combined area
     universe: Universe; universeLabel: string; universeSize: number; smallGroup: boolean;
     indicators: IndicatorScore[]; domains: DomainScore[]; overall: number | null; band: NeedBand | null;
   }
@@ -237,8 +294,10 @@
 - Produces (functions):
   - `needPercentile(value: number, distribution: number[], direction: 'higher' | 'lower'): number`
   - `bandFor(score: number): NeedBand`
-  - `universeRecords(records: LgaIndicatorRecord[], universe: Universe, region?: string): LgaIndicatorRecord[]`
-  - `assessRecord(target: LgaIndicatorRecord, universe: Universe, peers: LgaIndicatorRecord[], flags?: { approximate?: IndicatorId[]; partial?: IndicatorId[] }): AreaAssessment`
+  - `universeRecords(records: LgaIndicatorRecord[], universe: Universe, target?: { region: string; peerGroup: PeerGroup | null }): LgaIndicatorRecord[]`
+  - `universeLabelFor(universe: Universe, target?: { region: string; peerGroup: PeerGroup | null }): string`. This is a plural noun phrase used verbatim in sentences: `'NSW LGAs'`, `'Greater Sydney LGAs'`, `` `LGAs in the ${region} region` ``, or `PEER_GROUP_PLURALS[peerGroup]`.
+  - `type AssessableRecord = Omit<LgaIndicatorRecord, 'peerGroup'> & { peerGroup: PeerGroup | null }` (in `types.ts`)
+  - `assessRecord(target: AssessableRecord, universe: Universe, peers: LgaIndicatorRecord[], flags?: { approximate?: IndicatorId[]; partial?: IndicatorId[] }): AreaAssessment`
 
 - [ ] **Step 1: Write failing tests**
 
@@ -254,8 +313,15 @@
   test('universes from the real snapshot', () => {
     expect(universeRecords(NEEDS_SNAPSHOT.records, 'nsw')).toHaveLength(128);
     expect(universeRecords(NEEDS_SNAPSHOT.records, 'gsyd')).toHaveLength(34);
-    const hunter = universeRecords(NEEDS_SNAPSHOT.records, 'region', 'Hunter');
+    const hunter = universeRecords(NEEDS_SNAPSHOT.records, 'region', { region: 'Hunter', peerGroup: null });
     expect(hunter.every(r => r.region === 'Hunter')).toBe(true);
+    const outer = universeRecords(NEEDS_SNAPSHOT.records, 'peer', { region: 'Greater Sydney', peerGroup: 'metro_outer' });
+    expect(outer.every(r => r.peerGroup === 'metro_outer')).toBe(true);
+  });
+  test('universe labels', () => {
+    expect(universeLabelFor('nsw')).toBe('NSW LGAs');
+    expect(universeLabelFor('region', { region: 'Hunter', peerGroup: null })).toBe('LGAs in the Hunter region');
+    expect(universeLabelFor('peer', { region: 'Hunter', peerGroup: 'regional_city' })).toBe('regional cities');
   });
   test('smallGroup when the universe has fewer than 5 LGAs', ...)
   ```
@@ -264,7 +330,7 @@
 
 - [ ] **Step 3: Implement**
 
-  - `universeLabel`: `'NSW'`, `'Greater Sydney'`, or `` `the ${region} region` ``.
+  - `assessRecord` sets `universeLabel` from `universeLabelFor`.
   - The distribution for each indicator is the peers' non-null values.
   - Leave percentiles unrounded; round only in `format.ts`.
 
@@ -286,7 +352,7 @@
 - Produces:
 
   ```ts
-  export interface AggregatedRecord extends LgaIndicatorRecord { memberIds: string[]; approximate: IndicatorId[]; partial: IndicatorId[] }
+  export type AggregatedRecord = AssessableRecord & { memberIds: string[]; approximate: IndicatorId[]; partial: IndicatorId[] }
   export type NeedsMode = 'separate' | 'combined';
   export interface NeedsAssessment {
     mode: NeedsMode; universe: Universe; universeFallback: boolean;
@@ -320,6 +386,8 @@
   });
   test('combined mode returns one area whose population is the sum', ...)
   test('combined + region across two regions falls back to NSW', () => { /* Blacktown + Newcastle → universe 'nsw', universeFallback true */ });
+  test('combined + peer across two peer groups falls back to NSW', () => { /* Sydney (inner) + Blacktown (outer) → 'nsw', universeFallback true */ });
+  test('combined density is Σpopulation ÷ Σarea', () => { /* A 100k @ 1000/km² + B 100k @ 100/km² → 200k ÷ 1100 km² ≈ 181.8 */ });
   test('separate + region ranks each LGA within its own region', ...)
   test('benchmarks: Greater Sydney aggregates the 34 GCCSA LGAs', ...)
   test('empty areaIds → areas []', ...)
@@ -329,9 +397,12 @@
 
 - [ ] **Step 3: Implement**
 
-  - Benchmarks are assessed against the requested universe. For `region`, use `nsw` for the benchmarks.
+  - Benchmarks are assessed against the requested universe. For `region` and `peer`, use `nsw` for the benchmarks.
   - The combined area's `areaId` is `'combined'`.
   - Its `region` is the shared region, or `'Multiple regions'`.
+  - Its `peerGroup` is the shared group, or `null`.
+  - Its `densityPerKm2` is Σ population ÷ Σ (population ÷ density).
+  - Benchmark records get `peerGroup: null`.
 
 - [ ] **Step 4: Run the tests.** Expected: PASS.
 
@@ -364,7 +435,7 @@
   Use one area with: `name` 'Blacktown'; overall 72.4 / band 'High'; universe 'nsw'; `car_dependency` 83.8 at p92; `zero_car_households` at p30; `frequent_stop_share` null; and a GS benchmark `car_dependency` of 66.3.
 
   ```ts
-  expect(summary.paragraphs[0].text).toBe('Blacktown has high overall need (score 72/100, ranked against NSW).');
+  expect(summary.paragraphs[0].text).toBe('Blacktown has high overall need (score 72/100, ranked against NSW LGAs).');
   expect(summary.paragraphs[1].text).toBe('Its most pronounced needs are car dependency.');   // key needs only, top 3 by percentile, joined 'a, b and c'
   // key-need sentence in the transport section:
   expect(transport.paragraphs.map(p => p.text)).toContain(
@@ -374,8 +445,8 @@
   test('notes list missing indicators', ...)  // 'No data is available for stops with frequent AM-peak service in Blacktown; this is excluded from the scores.'
   test('notes always include the WFH caveat when car dependency is shown', ...) // exact text below
   test('combined approximate values are noted', ...) // 'Values for SEIFA disadvantage (IRSD) are population-weighted approximations because they cannot be summed across LGAs.'
-  test('small group caveat', ...) // 'The Central Coast region has only 1 LGA, so regional percentiles should be read with caution.' (plural 'LGAs' when n > 1)
-  test('no key needs', ...)       // 'No indicator is in the highest-need 20% of NSW.'
+  test('small group caveat', ...) // 'The comparison group (LGAs in the Central Coast region) has only 1 LGA, so percentiles should be read with caution.' (plural 'LGAs' when n > 1)
+  test('no key needs', ...)       // 'No indicator is in the highest-need 20% of NSW LGAs.'
   test('separate mode with 2 areas produces per-area summary paragraphs', ...)
   ```
 
@@ -383,6 +454,7 @@
 
 - [ ] **Step 3: Implement using these fixed templates**
 
+  - `{universeLabel}` is always used verbatim. Never append "LGAs" to it.
   - "Highest-need k%" uses `k = max(1, round(100 − percentile))`.
   - "above/below" is the sign of `value − gsValue`. Omit the Greater Sydney clause when the GS value is null.
   - Domain paragraph 0 is `"{Domain label}: {band lower-case} (score {round}/100)."`, or `"{Domain label}: insufficient data."`.
@@ -423,6 +495,7 @@
   const p = parseNeedsParams(new URLSearchParams('lgas=lga_blacktown,lga_blacktown,lga_x,sa2_sydney_cbd&mode=combined&universe=gsyd'));
   expect(p).toEqual({ areaIds: ['lga_blacktown'], invalidIds: ['lga_x','sa2_sydney_cbd'], mode: 'combined', universe: 'gsyd' });
   expect(parseNeedsParams(new URLSearchParams('mode=bogus'))).toEqual({ areaIds: [], invalidIds: [], mode: 'separate', universe: 'nsw' });
+  expect(parseNeedsParams(new URLSearchParams('universe=peer')).universe).toBe('peer');
   test('serialize round-trips and omits defaults', ...)
   test('lgasInRegion returns only LGAs of that region', ...)   // Hunter: non-empty, all type 'lga', all region 'Hunter'
   test('NSW_REGIONS covers every LGA region', ...)
@@ -588,7 +661,7 @@
 
 - [ ] **Step 1: Build the page top to bottom**
 
-  1. **Controls:** `LgaMultiSelect`; a mode toggle (Separate / Combined); a universe select (NSW / Greater Sydney / Region); an amber notice listing `invalidIds` when non-empty.
+  1. **Controls:** `LgaMultiSelect`; a mode toggle (Separate / Combined); a universe select (NSW / Greater Sydney / Region / Similar LGAs; the last shows each selected LGA's peer-group label); an amber notice listing `invalidIds` when non-empty.
   2. **Empty state** when `areas.length === 0`: "Select one or more LGAs, a region, or click the map to start an assessment." The map stays visible so it can be clicked.
   3. **Summary:** `NarrativeBlock` showing the summary section, with a `CopyTextButton`.
   4. **Figures,** each in a `ChartWrapper` with `figureId` and a `caption` built from the cited sources:
@@ -681,6 +754,247 @@
   - Run `npm test && npm run build`. Expected: all pass.
 
 - [ ] **Step 6: Commit** `feat(needs): editable Word export of the assessment`
+
+---
+
+# Part B — Insights layer
+
+Part B builds on the finished Part A page and docx. The spec section "Insights layer (Part B)" holds the models and their measured fit.
+
+### Task 12: Employment projection coverage check
+
+Only 29 of 128 LGAs resolve TZP24 job projections through `getEmploymentProjections(areaId)`. `CLAUDE.md` reports 86 employment rows in `nsw_projections`. The cause is not known yet.
+
+**Files:**
+- Investigate: `src/lib/data/nsw-employment-projections.ts`, `scripts/parse-employment.js`, `src/lib/data/live-data.ts:1026`
+- Test: `src/__tests__/needs-snapshot.test.ts`
+
+- [ ] **Step 1: Diagnose with superpowers:systematic-debugging**
+
+  Answer three questions:
+  - How many distinct `lgaId`s does `tzp24EmploymentByLGA` hold?
+  - How many of them match a `SAMPLE_AREAS` LGA id?
+  - Which ids fail to match, and why (naming, amalgamated LGAs, or coverage of the source CSV)?
+
+  Write the findings into the commit message.
+
+- [ ] **Step 2: Fix the cause if it is a mapping bug.** Correct the id mapping in `parse-employment.js`, then run `npm run parse:employment && npm run build:needs`.
+
+  If instead the source genuinely covers only some LGAs, leave the data as it is and add a line to `CLAUDE.md` under Data Sources stating the real coverage.
+
+- [ ] **Step 3: Pin the coverage in a test**
+
+  ```ts
+  test('job growth coverage matches the TZP24 source', () => {
+    expect(NEEDS_SNAPSHOT.records.filter(r => r.values.job_growth_2041.value !== null).length).toBe(EXPECTED_TZP24_LGAS);
+  });
+  ```
+
+  `EXPECTED_TZP24_LGAS` is the number established in Step 1.
+
+- [ ] **Step 4: Run** `npm test`. Expected: PASS. **Commit** `fix(data): TZP24 employment coverage` (or `docs: record TZP24 coverage`).
+
+---
+
+### Task 13: Insight series in the snapshot
+
+**Files:**
+- Modify: `src/lib/needs/types.ts`, `src/lib/needs/extract.ts`, `scripts/build-needs-indicators.ts`
+- Regenerate: `src/lib/data/needs-indicators-data.ts`
+- Test: `src/__tests__/needs-indicators.test.ts`, `src/__tests__/needs-snapshot.test.ts`
+
+**Interfaces:**
+- Produces:
+
+  ```ts
+  export interface InsightSeries {
+    carDependencyByYear: { year: 2011 | 2016 | 2021; value: number }[];   // (car ÷ (100 − wfh)) × 100 from modeShareTrend; years with no data omitted
+    crashesByYear: { year: number; total: number }[];                      // crashTrend
+    populationHistory: { year: number; population: number }[];             // ERP, as-is
+    population2041: number | null;
+    amPeakDepartures: number | null;                                       // ptFrequency.amPeakDepartures
+    approvalsLast12: number | null; approvalsPrev12: number | null;        // sums over buildingApprovals months, latest 12 and the 12 before; null if fewer than 24 months
+    jobs2021: number | null; jobs2041: number | null;
+  }
+  // LgaIndicatorRecord gains: series: InsightSeries
+  export function extractSeries(bundle: LiveBundle): InsightSeries
+  ```
+
+- [ ] **Step 1: Write failing tests**
+
+  ```ts
+  test('car dependency by year excludes WFH', () => {
+    // modeShareTrend [{2011, car 70, wfh 5}, {2021, car 60, wfh 25}] → [{2011, 73.68…}, {2021, 80}]
+  });
+  test('approvals need 24 months', ...)        // 23 months → both null; 24 months → sums of the last 12 and the previous 12
+  test('snapshot: car dependency coverage by year', () => {
+    const has = (y: number) => NEEDS_SNAPSHOT.records.filter(r => r.series.carDependencyByYear.some(p => p.year === y)).length;
+    expect([has(2011), has(2016), has(2021)]).toEqual([107, 123, 128]);
+  });
+  test('snapshot stays small', () => { /* fs.statSync(needs-indicators-data.ts).size < 400_000 */ });
+  ```
+
+- [ ] **Step 2: Run** `npx jest src/__tests__/needs-indicators.test.ts src/__tests__/needs-snapshot.test.ts`. Expected: FAIL.
+
+- [ ] **Step 3: Implement `extractSeries`, call it from the builder, and run** `npm run build:needs`.
+
+- [ ] **Step 4: Run the tests.** Expected: PASS. **Commit** `feat(needs): insight time series in the snapshot`
+
+---
+
+### Task 14: Insight engine
+
+**Files:**
+- Create: `src/lib/needs/insights.ts`
+- Modify: `src/lib/needs/types.ts`
+- Test: `src/__tests__/needs-insights.test.ts`
+
+**Interfaces:**
+- Consumes: `LgaIndicatorRecord` with `series`, `NeedsAssessment`, `GREATER_SYDNEY_GCCSA_AREA_IDS`.
+- Produces:
+
+  ```ts
+  export interface LinearFit { intercept: number; slope: number; r2: number; residualSd: number; n: number; predictor: 'frequent_stop_share' | 'ln_population'; setting: 'metro' | 'non_metro' }
+  export function fitLinear(points: { x: number; y: number }[]): Omit<LinearFit, 'predictor' | 'setting'>
+  export function expectedCarDependencyModel(records: LgaIndicatorRecord[], setting: 'metro' | 'non_metro'): LinearFit
+  export interface MismatchResult { areaId: string; actual: number; expected: number; residual: number; z: number; fit: LinearFit; usable: boolean }  // usable = n ≥ 20 && r2 ≥ 0.3
+  export function carDependencyMismatch(record: AssessableRecord, records: LgaIndicatorRecord[]): MismatchResult | null  // null when the record's own value or predictor is null
+  export interface TrendResult { areaId: string; metric: 'car_dependency' | 'crash_rate' | 'population_growth' | 'approvals'; from: { label: string; value: number }; to: { label: string; value: number }; change: number; universeMedianChange: number | null }
+  export function trends(record: LgaIndicatorRecord | AggregatedRecord, universe: LgaIndicatorRecord[]): TrendResult[]
+  export interface GrowthServiceResult { areaId: string; per1000Now: number; per1000In2041: number; extraDeparturesNeeded: number }
+  export function growthVsService(record: LgaIndicatorRecord | AggregatedRecord): GrowthServiceResult | null
+  export interface JobsHousingResult { areaId: string; jobsPerResident2021: number; jobsPerResident2041: number }
+  export function jobsHousing(record: LgaIndicatorRecord | AggregatedRecord): JobsHousingResult | null
+  export interface Insight { id: string; areaId: string; kind: 'key_need' | 'mismatch' | 'trend' | 'growth_service' | 'jobs_housing'; severity: number; text: string; citations: SourceRef[] }
+  export function buildInsights(a: NeedsAssessment): Insight[]   // sorted by severity, descending
+  ```
+
+  `AggregatedRecord` gains `series: InsightSeries`, summed across members. Car dependency by year is population-weighted and listed in `approximate`.
+
+- [ ] **Step 1: Write failing tests**
+
+  ```ts
+  expect(fitLinear([{x:0,y:1},{x:1,y:3},{x:2,y:5}])).toMatchObject({ intercept: 1, slope: 2, r2: 1, n: 3 });
+  test('metro model on the real snapshot', () => {
+    const m = expectedCarDependencyModel(NEEDS_SNAPSHOT.records, 'metro');
+    expect(m.n).toBe(34); expect(m.predictor).toBe('frequent_stop_share');
+    expect(m.r2).toBeGreaterThan(0.4); expect(m.slope).toBeLessThan(0);      // probe: R² 0.51, slope −0.52
+  });
+  test('non-metro model uses ln(population)', () => {
+    const m = expectedCarDependencyModel(NEEDS_SNAPSHOT.records, 'non_metro');
+    expect(m.n).toBe(94); expect(m.predictor).toBe('ln_population'); expect(m.r2).toBeGreaterThan(0.4); // probe: R² 0.52
+  });
+  test('mismatch is unusable when the fit is weak', ...)   // synthetic records with r2 < 0.3 → usable false
+  test('mismatch z = residual / residualSd', ...)
+  test('growthVsService', () => {
+    // amPeakDepartures 6000, latest ERP 400000, population2041 500000 → per1000Now 15, per1000In2041 12, extraDeparturesNeeded 1500
+    // amPeakDepartures 0 → null
+  });
+  test('trend change compares with the universe median change', ...)
+  test('trends skip metrics without both endpoints', ...)   // no 2011 → car trend uses 2016 → 2021; one year only → omitted
+  test('jobsHousing null without TZP24 data', ...)
+  test('buildInsights: mismatch text', () => {
+    // exact: "Blacktown's car dependency (83.8%) is 6.1 pp higher than expected for its level of frequent public transport service (model across 34 metropolitan LGAs, R² 0.51)."
+  });
+  test('buildInsights: growth vs service text', () => {
+    // exact: "If AM-peak service stays at today's level, departures per 1,000 residents in Blacktown fall from 32.5 to 25.9 by 2041; holding today's rate needs about 3,700 more AM-peak departures."
+  });
+  test('buildInsights omits unusable mismatches and sorts by severity', ...)
+  ```
+
+  The numbers in the two text tests are illustrative. Build the expected strings from the fixture's own values with the same templates, but keep the wording exactly as written.
+
+- [ ] **Step 2: Run** `npx jest src/__tests__/needs-insights.test.ts`. Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+  - **Severity:**
+    - key need: `percentile / 100`
+    - mismatch: `min(1, |z| / 2)`
+    - trend: `min(1, |change − universeMedianChange| ÷ (2 × the universe's interquartile range of changes))`
+    - growth vs service: `min(1, (1 − per1000In2041 / per1000Now) × 2)`
+    - jobs–housing: `min(1, |jobsPerResident2041 − jobsPerResident2021| × 2)`
+  - **Wording:**
+    - Non-metro mismatch: "…than expected for an LGA of its population size (model across 94 non-metropolitan LGAs, R² 0.52)."
+    - Negative residuals say "lower than expected".
+    - Trend: "{Name}'s {metric label} changed from {from} ({fromLabel}) to {to} ({toLabel}), {faster|slower} than the median change of {median} across {universeLabel}."
+    - Jobs–housing: "{Name} has {j21} local jobs per resident in 2021, projected to be {j41} in 2041 (TfNSW TZP24)."
+  - **Car-trend caveat:** every car-trend insight carries the WFH caveat citation, because the 2021 values are lockdown-affected.
+  - **"Today" in growth vs service** is the latest ERP year in `series.populationHistory`, the same denominator as `am_peak_departures_per_1000`:
+    - `per1000Now = amPeakDepartures ÷ latestERP × 1,000`
+    - `per1000In2041 = amPeakDepartures ÷ population2041 × 1,000`
+    - `extraDeparturesNeeded = amPeakDepartures × (population2041 ÷ latestERP − 1)`, rounded to the nearest 100 in text
+    - Return `null` when `amPeakDepartures` is 0 or null.
+
+- [ ] **Step 4: Run the tests.** Expected: PASS. **Commit** `feat(needs): insight engine (mismatch, trends, growth vs service, jobs–housing)`
+
+---
+
+### Task 15: Insight charts
+
+**Files:**
+- Create: `src/components/needs/MismatchScatter.tsx`, `src/components/needs/TrendSmallMultiples.tsx`, `src/components/needs/GrowthServiceChart.tsx`, `src/components/needs/JobsHousingChart.tsx`
+
+**Interfaces:**
+- Consumes: Task 14 functions; `ChartWrapper` with `figureId` and `caption` (Task 7); `CHART_COLORS`; `labelledIds` (Task 8).
+- Each component takes `{ assessment: NeedsAssessment }` and returns `null` when it has nothing to show.
+
+- [ ] **Step 1: Implement**
+
+  - **`MismatchScatter`:** a Recharts `ScatterChart`.
+    - Plots all LGAs in the selected areas' setting (metro or non-metro) as grey dots, with the fitted line as a two-point `Line`.
+    - Selected LGAs are coloured and labelled up to `MAX_LABELLED`.
+    - Axis titles name the predictor ("Stops with frequent AM-peak service (%)" or "Population (log scale)").
+    - The subtitle is `R² {r2} · n = {n}`.
+    - If the selection spans metro and non-metro, render one chart per setting.
+    - If `usable` is false, render the "too weak to estimate" sentence instead of the chart.
+  - **`TrendSmallMultiples`:** one small `LineChart` per metric that has data (car dependency 2011/16/21, crashes per 10,000 for 2020–24, population index with 2021 = 100 for 2001–2041). Selected LGAs are coloured, with a dashed universe-median line.
+  - **`GrowthServiceChart`:** grouped bars per LGA showing departures per 1,000 now and in 2041 at today's service level.
+  - **`JobsHousingChart`:** a dumbbell (two `Scatter` points joined by a `Line`) of jobs per resident in 2021 and 2041, for LGAs that have data. The footnote counts the selected LGAs without TZP24 data.
+
+- [ ] **Step 2: Verify:** `npx tsc --noEmit && npm run lint` pass. The visual check is in Task 16.
+
+- [ ] **Step 3: Commit** `feat(needs): insight charts`
+
+---
+
+### Task 16: Key findings on the page and in Word
+
+**Files:**
+- Modify: `src/lib/needs/narrative.ts` (add a `'key_findings'` section id), `src/lib/needs/types.ts`
+- Modify: `src/app/needs/page.tsx`, `src/lib/needs/docx-export.ts`
+- Test: `src/__tests__/needs-narrative.test.ts`, `src/__tests__/needs-docx.test.ts`
+
+**Interfaces:**
+- `NarrativeSection['id']` gains `'key_findings'` and `'insights'`.
+- `buildNarrative(a)` now calls `buildInsights(a)`:
+  - **`key_findings`** comes first: the top 5 insights by severity, one paragraph each.
+  - **`insights`** comes after the domain sections: every remaining insight, grouped by kind in the order mismatch, trend, growth_service, jobs_housing.
+
+- [ ] **Step 1: Write failing tests**
+
+  ```ts
+  test('key findings come first and hold at most 5 insights', ...)
+  test('every key finding carries at least one citation', ...)
+  test('docx contains a Key findings heading before Summary', ...)   // indexOf('Key findings') < indexOf('Summary') in document.xml
+  ```
+
+- [ ] **Step 2: Run** `npx jest src/__tests__/needs-narrative.test.ts src/__tests__/needs-docx.test.ts`. Expected: FAIL. **Step 3:** implement. **Step 4:** run them. Expected: PASS.
+
+- [ ] **Step 5: Wire the page**
+
+  - A "Key findings" `NarrativeBlock` goes above Summary.
+  - The four insight figures go after the strip plots, in the order MismatchScatter, TrendSmallMultiples, GrowthServiceChart, JobsHousingChart. Each is registered as a figure, so the docx picks them up automatically.
+
+- [ ] **Step 6: Verify in the running app** at `/needs?lgas=lga_blacktown,lga_newcastle`:
+  - Two mismatch charts appear (metro and non-metro), each with R² and n.
+  - The trend charts show a 2011 point for Blacktown.
+  - Key findings list at most 5 items, each with a citation.
+  - The exported .docx has Key findings first and includes the new figures.
+
+  Then run `npm test && npm run build`. Expected: all pass.
+
+- [ ] **Step 7: Commit** `feat(needs): key findings and insight figures in page and Word export`
 
 ---
 
