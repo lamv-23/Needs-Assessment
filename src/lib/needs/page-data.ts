@@ -142,6 +142,22 @@ export function formatNeedsDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+type SelectionOf = Pick<NeedsAssessment, 'memberIds' | 'mode' | 'requestedUniverse'>;
+
+/**
+ * Whether two assessments are of the same selection: the same LGAs in the same order, the same mode and the same
+ * comparison universe asked for. Compared by value, so a re-render that builds an equal assessment is not a change.
+ */
+export function sameSelection(a: SelectionOf, b: SelectionOf): boolean {
+  return a.mode === b.mode
+    && a.requestedUniverse === b.requestedUniverse
+    && a.memberIds.length === b.memberIds.length
+    && a.memberIds.every((id, i) => id === b.memberIds[i]);
+}
+
+/** Shown, with no download, when the selection changed while the Word export was capturing its figures. */
+export const SELECTION_CHANGED_MESSAGE = 'The selection changed while exporting. Export again.';
+
 const TITLE_PREFIX = 'Needs assessment';
 const MAX_TITLE_NAME_CHARS = 60;
 const SHORT_TITLE_NAMES = 2;

@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileDown, Loader2 } from 'lucide-react';
 import { useFigureRegistry } from '@/components/needs/FigureRegistry';
 import type { NarrativeSection } from '@/lib/needs/narrative';
-import { exportFileName, exportTitle, formatNeedsDate } from '@/lib/needs/page-data';
+import {
+  exportFileName, exportTitle, formatNeedsDate, sameSelection, SELECTION_CHANGED_MESSAGE,
+} from '@/lib/needs/page-data';
 import type { NeedsAssessment } from '@/lib/needs/types';
 
 interface ExportDocxButtonProps {
@@ -16,6 +18,10 @@ interface ExportDocxButtonProps {
  * Downloads the assessment as an editable Word document: the findings, a native table, every figure that can be
  * rendered, data notes and sources. A figure that cannot be rendered (collapsed) is left out and named, so the user can
  * expand it and export again. The Word library is loaded only when the button is clicked.
+ *
+ * The figures are captured from the live page, so a selection changed during the export would put pictures of the new
+ * selection in a document whose text and table describe the old one. The export is therefore dropped, with a message,
+ * if the selection differs from the one at the click when the figures are done and again before the download.
  */
 export default function ExportDocxButton({ assessment, sections }: ExportDocxButtonProps) {
   const registry = useFigureRegistry();
@@ -23,7 +29,16 @@ export default function ExportDocxButton({ assessment, sections }: ExportDocxBut
   const [message, setMessage] = useState<string | null>(null);
   const hasAreas = assessment.areas.length > 0;
 
+  // The assessment the page shows now, which a running export compares with the one it started from.
+  const latest = useRef(assessment);
+  useEffect(() => {
+    latest.current = assessment;
+  }, [assessment]);
+
   const handleExport = async () => {
+    const started = assessment;
+    const figures = registry?.figures() ?? [];
+    const selectionChanged = () => !sameSelection(started, latest.current);
     setWorking(true);
     setMessage(null);
     try {
@@ -31,15 +46,23 @@ export default function ExportDocxButton({ assessment, sections }: ExportDocxBut
         import('docx'),
         import('@/lib/needs/docx-export'),
       ]);
-      const { captured, skipped } = await captureFigures(registry?.figures() ?? []);
-      const title = exportTitle(assessment);
+      const { captured, skipped } = await captureFigures(figures);
+      if (selectionChanged()) {
+        setMessage(SELECTION_CHANGED_MESSAGE);
+        return;
+      }
+      const title = exportTitle(started);
       const blob = await Packer.toBlob(buildNeedsDocument({
         title,
         generatedOn: formatNeedsDate(new Date().toISOString()),
-        assessment,
+        assessment: started,
         narrative: sections,
         figures: captured,
       }));
+      if (selectionChanged()) {
+        setMessage(SELECTION_CHANGED_MESSAGE);
+        return;
+      }
 
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

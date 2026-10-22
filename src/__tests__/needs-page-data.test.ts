@@ -3,7 +3,7 @@ import { runAssessment } from '@/lib/needs/assess';
 import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
 import {
   citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorExcelRows, indicatorTable,
-  indicatorTableNote, NEEDS_SOURCES, sourceNumber, stripIndicatorIds,
+  indicatorTableNote, NEEDS_SOURCES, sameSelection, sourceNumber, stripIndicatorIds,
 } from '@/lib/needs/page-data';
 import type { AreaAssessment, IndicatorId, IndicatorScore } from '@/lib/needs/types';
 
@@ -213,5 +213,44 @@ describe('comparisonLabel, indicatorTableNote and formatNeedsDate', () => {
     expect(formatNeedsDate('2026-10-22T11:41:24.610Z')).toBe('22 October 2026');
     // 14:00 UTC on 22 October is already 23 October in Sydney (AEDT).
     expect(formatNeedsDate('2026-10-22T14:00:00.000Z')).toBe('23 October 2026');
+  });
+});
+
+describe('sameSelection', () => {
+  const pick = (areaIds: string[], mode: 'separate' | 'combined' = 'separate', universe: 'nsw' | 'gsyd' | 'region' | 'peer' = 'nsw') => (
+    runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe })
+  );
+
+  test('the same selection is the same even when it is a fresh assessment object', () => {
+    const a = pick(['lga_blacktown', 'lga_penrith'], 'combined', 'peer');
+    const b = pick(['lga_blacktown', 'lga_penrith'], 'combined', 'peer');
+    expect(a).not.toBe(b);
+    expect(sameSelection(a, b)).toBe(true);
+  });
+
+  test('an LGA added, removed or reordered is a different selection', () => {
+    const base = pick(['lga_blacktown', 'lga_penrith']);
+    expect(sameSelection(base, pick(['lga_blacktown', 'lga_penrith', 'lga_camden']))).toBe(false);
+    expect(sameSelection(base, pick(['lga_blacktown']))).toBe(false);
+    expect(sameSelection(base, pick(['lga_penrith', 'lga_blacktown']))).toBe(false);
+    expect(sameSelection(base, pick([]))).toBe(false);
+  });
+
+  test('a different mode or comparison universe is a different selection', () => {
+    const base = pick(['lga_blacktown', 'lga_penrith'], 'separate', 'nsw');
+    expect(sameSelection(base, pick(['lga_blacktown', 'lga_penrith'], 'combined', 'nsw'))).toBe(false);
+    expect(sameSelection(base, pick(['lga_blacktown', 'lga_penrith'], 'separate', 'gsyd'))).toBe(false);
+  });
+
+  test('the universe that was asked for counts, not the one a combined fallback used', () => {
+    // Blacktown (outer metro) + Newcastle (regional city) span two peer groups, so "peer" falls back to NSW.
+    const peer = pick(['lga_blacktown', 'lga_newcastle'], 'combined', 'peer');
+    const nsw = pick(['lga_blacktown', 'lga_newcastle'], 'combined', 'nsw');
+    expect(peer.universe).toBe('nsw');
+    expect(sameSelection(peer, nsw)).toBe(false);
+  });
+
+  test('ids the page does not recognise are not part of the selection', () => {
+    expect(sameSelection(pick(['lga_blacktown']), pick(['lga_blacktown', 'lga_nowhere']))).toBe(true);
   });
 });
