@@ -604,9 +604,10 @@ const KIND_ORDER: Insight['kind'][] = ['key_need', 'mismatch', 'trend', 'growth_
  * Cited findings for every assessed area, most severe first. Severity (0-1): key need = percentile ÷ 100;
  * mismatch = |z| ÷ 2; trend = |change − universe median change| ÷ (2 × the universe's IQR of changes);
  * growth against service = 2 × the fall in departures per 1,000 as a share; quadrant = the mean of the two need
- * percentiles ÷ 100; jobs-housing = 2 × |change in jobs per resident|; each capped at 1. Ties keep kind order
- * (as KIND_ORDER), then area order. A mismatch is an insight only when the model is usable and |z| ≥ 1. Nothing
- * is drawn from missing data. A combined selection of two or more LGAs is "the combined area" throughout.
+ * percentiles within its panel group ÷ 100; jobs-housing = 2 × |change in jobs per resident|; each capped at 1.
+ * Ties keep kind order (as KIND_ORDER), then area order. A mismatch is an insight only when the model is usable
+ * and |z| ≥ 1. Nothing is drawn from missing data. A combined selection of two or more LGAs is "the combined
+ * area" throughout.
  */
 export function buildInsights(a: NeedsAssessment): Insight[] {
   const combined = a.mode === 'combined' && a.memberIds.length >= 2;

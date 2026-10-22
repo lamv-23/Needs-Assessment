@@ -1,7 +1,7 @@
 import { INDICATOR_BY_ID } from './indicators';
 import { formatValue } from './format';
 import { settingOf, type Setting } from './peer-groups';
-import { universeRecords } from './scoring';
+import { needPercentile, universeRecords } from './scoring';
 import type {
   AreaAssessment, IndicatorDef, IndicatorId, Insight, LgaIndicatorRecord, NeedsAssessment, Universe,
 } from './types';
@@ -318,19 +318,27 @@ const QUADRANT_WORDING: Record<QuadrantSpec['id'], { group: string; measure: (x:
   },
 };
 
+/** The need percentile of `value` among the group's LGAs that have a value of `id`; null when none has. */
+function percentileInGroup(group: QuadrantGroup, id: IndicatorId, value: number): number | null {
+  const distribution = group.records.map(r => valueOf(r, id)).filter((v): v is number => v !== null);
+  return distribution.length > 0 ? needPercentile(value, distribution, INDICATOR_BY_ID[id].direction) : null;
+}
+
 /**
  * A cited insight for each chart whose need quadrant the area is in, against the same group, medians and label as
  * the chart's panel for the area, so the shading and the sentence always agree. `subject` starts the sentence
- * ("Blacktown", "The combined area"). Severity is the mean of the area's two need percentiles over 100. Nothing
- * for an area missing either value.
+ * ("Blacktown", "The combined area"). Severity is the mean of the area's two need percentiles over 100, ranked
+ * within that same group (R52), not in the universe the area is scored in: against NSW, Sydney's service looks good
+ * and its findings would rank below the panel that shows them. Nothing for an area missing either value.
  */
 export function areaQuadrantInsights(a: NeedsAssessment, area: AreaAssessment, subject: string): Insight[] {
   const group = quadrantGroupOf(a, area);
   return QUADRANT_SCATTERS.flatMap((spec): Insight[] => {
     const [x, y] = [scoreValue(area, spec.x), scoreValue(area, spec.y)];
-    const percentiles = [spec.x, spec.y].map(id => area.indicators.find(s => s.id === id)?.percentile ?? null);
     const { medians } = statsOf(group, spec);
-    if (x === null || y === null || percentiles.some(p => p === null) || !inNeedQuadrant(spec, x, y, medians)) return [];
+    if (x === null || y === null || !inNeedQuadrant(spec, x, y, medians)) return [];
+    const [xPercentile, yPercentile] = [percentileInGroup(group, spec.x, x), percentileInGroup(group, spec.y, y)];
+    if (xPercentile === null || yPercentile === null) return [];
 
     const [xDef, yDef] = [INDICATOR_BY_ID[spec.x], INDICATOR_BY_ID[spec.y]];
     const wording = QUADRANT_WORDING[spec.id];
@@ -338,7 +346,7 @@ export function areaQuadrantInsights(a: NeedsAssessment, area: AreaAssessment, s
       id: `quadrant:${area.areaId}:${spec.id}`,
       areaId: area.areaId,
       kind: 'quadrant',
-      severity: (percentiles[0]! + percentiles[1]!) / 2 / 100,
+      severity: (xPercentile + yPercentile) / 2 / 100,
       text: `${subject} is in the ${wording.group} group: ${wording.measure(formatValue(xDef, x), formatValue(xDef, medians.x))} `
         + `and ${y.toFixed(yDef.decimals)} AM-peak departures per 1,000 residents `
         + `(median ${medians.y.toFixed(yDef.decimals)}) among ${group.label}.`,

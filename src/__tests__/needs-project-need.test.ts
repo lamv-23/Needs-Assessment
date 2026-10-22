@@ -533,6 +533,42 @@ describe('quadrantInsights', () => {
     expect(disadvantage.severity).toBeCloseTo(0.8, 12);
   });
 
+  test('severity is the mean of the area\'s need percentiles within its panel group, not within NSW (R52)', () => {
+    // Five rural LGAs with the least growth, the least service and the least disadvantage push Blacktown up the NSW ranking on
+    // growth and IRSD and down on service: NSW percentiles 95, 35 and 95, but 90, 70 and 90 among the five metropolitan LGAs.
+    const rural = NON_METRO_FIVE.map((id, i) => makeRecord(id, {
+      name: `Rural ${i}`,
+      values: { pop_growth_2041: { value: 0 }, am_peak_departures_per_1000: { value: 1 }, seifa_irsd: { value: 1200 } },
+    }));
+    const mixed = assess(['lga_blacktown'], 'separate', 'nsw', [...fiveRecords(), ...rural]);
+    const area = mixed.areas[0];
+    const assessed = (id: IndicatorId) => area.indicators.find(s => s.id === id)!.percentile!;
+    expect([assessed('pop_growth_2041'), assessed('am_peak_departures_per_1000'), assessed('seifa_irsd')]).toEqual([95, 35, 95]);
+
+    const growth = find('quadrant:lga_blacktown:growth-service', mixed);
+    const disadvantage = find('quadrant:lga_blacktown:disadvantage-service', mixed);
+    expect(growth.text.endsWith(' among metropolitan LGAs.')).toBe(true);
+    // (90 + 70) / 2 / 100, where the NSW percentiles would give (95 + 35) / 2 / 100 = 0.65
+    expect(growth.severity).toBeCloseTo(0.8, 12);
+    // IRSD runs the other way: the lowest of the five is the most need
+    expect(disadvantage.severity).toBeCloseTo(0.8, 12);
+  });
+
+  test('a combined area is ranked within the panel group by its combined values', () => {
+    const member = (id: string, growth: number, departures: number) => makeRecord(id, {
+      name: id,
+      values: {
+        pop_growth_2041: { value: growth, numerator: growth, denominator: 100 },
+        am_peak_departures_per_1000: { value: departures, numerator: departures, denominator: 1000 },
+      },
+    });
+    const filler = [5, 10, 15, 20, 25].map((growth, i) => member(`lga_f${i}`, growth, 60 + i * 10));
+    const records = [member('lga_m1', 50, 30), member('lga_m2', 40, 36), ...filler];
+    // the combined value 45% is above 6 of the 7 non-metropolitan LGAs, and 33 departures is below 6 of them
+    const growth = find('quadrant:combined:growth-service', assess(['lga_m1', 'lga_m2'], 'combined', 'nsw', records));
+    expect(growth.severity).toBeCloseTo(6 / 7, 12);
+  });
+
   test('an area outside the need quadrant has no insight', () => {
     const outside = assess(['lga_liverpool'], 'separate', 'nsw', fiveRecords());
     expect(quadrantInsights(outside)).toEqual([]);
