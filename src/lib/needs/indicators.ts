@@ -3,13 +3,16 @@ import type { IndicatorDef, IndicatorId, NeedDomain, SourceRef } from './types';
 // Indicators that share a source share one SourceRef, so the narrative and
 // Word export can de-duplicate citations on `full`.
 const ABS_CENSUS_URL = 'https://www.abs.gov.au/census';
-const censusSource = (table: string, title: string): SourceRef => ({
-  short: `ABS Census 2021 ${table}`,
-  full: `Australian Bureau of Statistics, 2021 Census of Population and Housing: ${title} (${table})`,
+const censusSource = (table: string, title: string, year = 2021): SourceRef => ({
+  short: `ABS Census ${year} ${table}`,
+  full: `Australian Bureau of Statistics, ${year} Census of Population and Housing: ${title} (${table})`,
   url: ABS_CENSUS_URL,
 });
 
-/** Every source the assessment cites: the indicators use all but `erp`, which the insights use. */
+/**
+ * Every source the assessment cites. The indicators use all but `erp`, `b46` and `g59`, which the insights use:
+ * `b46` and `g59` are the 2011 and 2016 journey to work tables behind the earlier car dependency years.
+ */
 export const SOURCES = {
   g01: censusSource('G01', 'Selected person characteristics'),
   g13: censusSource('G13', 'Language used at home by proficiency in spoken English'),
@@ -18,6 +21,8 @@ export const SOURCES = {
   g34: censusSource('G34', 'Number of motor vehicles by dwellings'),
   g46: censusSource('G46', 'Labour force status'),
   g62: censusSource('G62', 'Method of travel to work'),
+  b46: censusSource('B46', 'Method of travel to work', 2011),
+  g59: censusSource('G59', 'Method of travel to work', 2016),
   gtfs: {
     short: 'TfNSW GTFS',
     full: 'Transport for NSW, GTFS timetable data: weekday 7-9am departures per stop',

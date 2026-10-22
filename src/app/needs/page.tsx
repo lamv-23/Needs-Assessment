@@ -27,7 +27,7 @@ import { TREND_FIGURE_SUBTITLE } from '@/lib/needs/insight-chart-data';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
   comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION, indicatorExcelRows, indicatorTable,
-  JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, stripIndicatorIds, TRENDS_CAPTION,
+  JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
 import { QUADRANT_SCATTERS, RADAR_AXES, type QuadrantSpec } from '@/lib/needs/project-need';
@@ -111,6 +111,7 @@ function NeedsContent() {
   const allSources = figureCaption();
   const radarSources = figureCaption(RADAR_AXES.map(axis => axis.id));
   const mismatchSources = useMemo(() => mismatchCaption(assessment), [assessment]);
+  const trendSources = useMemo(() => trendsCaption(assessment), [assessment]);
 
   return (
     <FigureRegistryProvider>
@@ -265,7 +266,7 @@ function NeedsContent() {
               figureId="trends"
               title="Trends in car dependency, road crashes and population"
               subtitle={TREND_FIGURE_SUBTITLE}
-              caption={TRENDS_CAPTION}
+              caption={trendSources}
             >
               <TrendSmallMultiples assessment={assessment} />
             </ChartWrapper>

@@ -1,8 +1,8 @@
 import { markedValue, notRankedText, partialBenchmarkNotes, partialBenchmarks, type ValueColumn } from './coverage';
 import { displayScore } from './format';
 import { INDICATOR_BY_ID, INDICATORS, SOURCES } from './indicators';
-import { mismatchChartData } from './insight-chart-data';
-import { WFH_CAVEAT_CITATION } from './insights';
+import { mismatchChartData, trendData } from './insight-chart-data';
+import { carDependencySources, WFH_CAVEAT_CITATION } from './insights';
 import type {
   AreaAssessment, IndicatorDef, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, SourceRef,
 } from './types';
@@ -13,11 +13,13 @@ const ALL_INDICATOR_IDS = INDICATORS.map(def => def.id);
 
 /**
  * Every source the page cites: the indicators' sources, unique on the full reference and in registry order,
- * then the two only the insights cite (ABS ERP and the 2021 Census lockdown caveat). A source's position here
- * is its citation number in the narrative and in the sources list.
+ * then those only the insights cite (ABS ERP, the 2011 and 2016 journey to work tables, and the 2021 Census lockdown
+ * caveat). A source's position here is its citation number in the narrative and in the sources list.
  */
 export const NEEDS_SOURCES: SourceRef[] = Array.from(
-  new Map([...INDICATORS.map(def => def.source), SOURCES.erp, WFH_CAVEAT_CITATION].map(s => [s.full, s])).values(),
+  new Map(
+    [...INDICATORS.map(def => def.source), SOURCES.erp, SOURCES.b46, SOURCES.g59, WFH_CAVEAT_CITATION].map(s => [s.full, s]),
+  ).values(),
 );
 
 /** 1-based citation number of `source`; 0 when it is not one of the page's sources. */
@@ -50,10 +52,16 @@ export function mismatchCaption(assessment: NeedsAssessment): string {
   ]);
 }
 
-/** Car dependency, crashes (per 10,000 residents on each year's ERP), and population (ERP, then the projection). */
-export const TRENDS_CAPTION = sourcesCaption([
-  SOURCES.g62, SOURCES.crashes, SOURCES.erp, SOURCES.populationProjections,
-]);
+/**
+ * Car dependency (the Census table of each year the figure draws: 2011 B46, 2016 G59 and 2021 G62, R59), crashes
+ * (per 10,000 residents on each year's ERP), and population (ERP, then the projection).
+ */
+export function trendsCaption(assessment: NeedsAssessment): string {
+  const carYears = trendData(assessment).panels.find(panel => panel.id === 'car_dependency')?.rows.map(row => row.x) ?? [];
+  return sourcesCaption([
+    ...carDependencySources([...carYears, 2021]), SOURCES.crashes, SOURCES.erp, SOURCES.populationProjections,
+  ]);
+}
 
 /** AM-peak departures, over today's ERP and the 2041 projection. */
 export const GROWTH_SERVICE_CAPTION = sourcesCaption([SOURCES.gtfs, SOURCES.erp, SOURCES.populationProjections]);

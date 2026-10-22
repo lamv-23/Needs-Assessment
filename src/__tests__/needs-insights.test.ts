@@ -3,7 +3,7 @@ import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { aggregateRecords } from '@/lib/needs/aggregate';
 import { runAssessment } from '@/lib/needs/assess';
 import { formatDiff, formatValue } from '@/lib/needs/format';
-import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
+import { INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
 import {
   buildInsights, carDependencyMismatch, expectedCarDependencyModel, fitLinear, growthVsService, jobsHousing, keyNeedText,
   trends, WFH_CAVEAT_CITATION,
@@ -524,6 +524,13 @@ describe('buildInsights', () => {
     );
     expect(insight.citations).toContainEqual(WFH_CAVEAT_CITATION);
     expect(insight.citations).toContainEqual(CAR.source);
+  });
+
+  test('a car trend cites the Census table of its first year as well as 2021 G62 (R59)', () => {
+    const carCitations = (areaId: string) => of(buildInsights(assess([areaId])), 'trend')
+      .find(i => i.id.endsWith(':car_dependency'))!.citations;
+    expect(carCitations('lga_blacktown')).toEqual([SOURCES.b46, SOURCES.g62, WFH_CAVEAT_CITATION]);
+    expect(carCitations('lga_canterbury_bankstown')).toEqual([SOURCES.g59, SOURCES.g62, WFH_CAVEAT_CITATION]);
   });
 
   test('crash and approval trend texts', () => {

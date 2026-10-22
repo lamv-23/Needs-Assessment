@@ -81,6 +81,18 @@ export const WFH_CAVEAT =
 /** Cited with every car dependency trend, whose 2021 values are lockdown-affected. */
 export const WFH_CAVEAT_CITATION: SourceRef = { short: '2021 Census lockdown caveat', full: WFH_CAVEAT };
 
+/** The journey to work table each Census year of car dependency comes from (R59). */
+export const CAR_DEPENDENCY_SOURCES: Record<2011 | 2016 | 2021, SourceRef> = {
+  2011: SOURCES.b46,
+  2016: SOURCES.g59,
+  2021: SOURCES.g62,
+};
+
+/** The Census tables behind car dependency in `years`, in year order. */
+export function carDependencySources(years: number[]): SourceRef[] {
+  return ([2011, 2016, 2021] as const).filter(year => years.includes(year)).map(year => CAR_DEPENDENCY_SOURCES[year]);
+}
+
 const CAR = INDICATOR_BY_ID.car_dependency;
 const DEPARTURES = INDICATOR_BY_ID.am_peak_departures_per_1000;
 
@@ -419,7 +431,8 @@ function mismatchText(subject: Subject, m: MismatchResult): string {
 interface RateWording {
   label: string;
   def: IndicatorDef;
-  citations: SourceRef[];
+  /** The sources of a trend's two endpoints. */
+  citations: (trend: TrendResult) => SourceRef[];
   /** An endpoint label as it reads after "between" or "and": years as they are, "the last 12 months". */
   period: (label: string) => string;
 }
@@ -427,17 +440,23 @@ interface RateWording {
 const asIs = (label: string) => label;
 
 const TREND_WORDING: Record<Exclude<TrendMetric, 'population_growth'>, RateWording> = {
-  car_dependency: { label: 'car dependency', def: CAR, citations: [SOURCES.g62, WFH_CAVEAT_CITATION], period: asIs },
+  // R59: the 2011 or 2016 value comes from that Census's own table
+  car_dependency: {
+    label: 'car dependency',
+    def: CAR,
+    citations: trend => [...carDependencySources([Number(trend.from.label), Number(trend.to.label)]), WFH_CAVEAT_CITATION],
+    period: asIs,
+  },
   crash_rate: {
     label: 'road crashes per 10,000 residents',
     def: INDICATOR_BY_ID.crash_rate,
-    citations: [SOURCES.crashes],
+    citations: () => [SOURCES.crashes],
     period: asIs,
   },
   approvals: {
     label: 'dwelling approvals per 1,000 residents',
     def: INDICATOR_BY_ID.approvals_per_1000,
-    citations: [SOURCES.buildingApprovals],
+    citations: () => [SOURCES.buildingApprovals],
     period: label => `the ${label}`,
   },
 };
@@ -580,7 +599,7 @@ const INSIGHTS_BY_KIND: Record<Insight['kind'], (c: AreaContext) => Insight[]> =
         ? trendText(subject, trend, wording, median, area)
         // A population trend exists only when the record has an ERP year after 2021
         : populationTrendText(subject, trend, latestPopulation(record.series)!.year),
-      citations: wording ? wording.citations : POPULATION_CITATIONS,
+      citations: wording ? wording.citations(trend) : POPULATION_CITATIONS,
     }];
   }),
 

@@ -7,7 +7,7 @@ import { buildNarrative } from '@/lib/needs/narrative';
 import {
   citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorExcelRows, indicatorTable,
   GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
-  sourceNumber, stripIndicatorIds, TRENDS_CAPTION,
+  sourceNumber, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
 import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Universe } from '@/lib/needs/types';
 
@@ -71,16 +71,27 @@ describe('insight figure captions', () => {
   });
 
   test('the trends, growth and jobs figures name their sources once each', () => {
-    expect(TRENDS_CAPTION).toBe(short(
-      SOURCES.g62, SOURCES.crashes, SOURCES.erp, SOURCES.populationProjections,
+    expect(trendsCaption(assess(['lga_blacktown']))).toBe(short(
+      SOURCES.b46, SOURCES.g59, SOURCES.g62, SOURCES.crashes, SOURCES.erp, SOURCES.populationProjections,
     ));
     expect(GROWTH_SERVICE_CAPTION).toBe(short(SOURCES.gtfs, SOURCES.erp, SOURCES.populationProjections));
     expect(JOBS_HOUSING_CAPTION).toBe(short(SOURCES.employmentProjections, SOURCES.erp, SOURCES.populationProjections));
   });
 
+  test('the trends figure cites the Census table of each car dependency year it draws (R59)', () => {
+    // Canterbury-Bankstown was formed in 2016, so its car dependency starts then and the panel has no 2011 point
+    const cb = assess(['lga_canterbury_bankstown']);
+    expect(cb.records.find(r => r.areaId === 'lga_canterbury_bankstown')!.series.carDependencyByYear.map(p => p.year))
+      .toEqual([2016, 2021]);
+    expect(trendsCaption(cb)).toBe(short(
+      SOURCES.g59, SOURCES.g62, SOURCES.crashes, SOURCES.erp, SOURCES.populationProjections,
+    ));
+  });
+
   test('every caption source is one of the page\'s numbered sources', () => {
     const shorts = new Set(NEEDS_SOURCES.map(s => s.short));
-    for (const caption of [TRENDS_CAPTION, GROWTH_SERVICE_CAPTION, JOBS_HOUSING_CAPTION, mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))]) {
+    const trends = trendsCaption(assess(['lga_blacktown']));
+    for (const caption of [trends, GROWTH_SERVICE_CAPTION, JOBS_HOUSING_CAPTION, mismatchCaption(assess(['lga_blacktown', 'lga_newcastle']))]) {
       for (const name of caption.split('; ')) expect(shorts).toContain(name);
     }
   });
@@ -269,9 +280,22 @@ describe('sources', () => {
     for (const def of INDICATORS) expect(sourceNumber(def.source)).toBeGreaterThan(0);
   });
 
-  test('the 14 indicator sources come first, then ABS ERP and the WFH caveat', () => {
-    expect(NEEDS_SOURCES).toHaveLength(16);
-    expect(NEEDS_SOURCES.slice(-2)).toEqual([SOURCES.erp, WFH_CAVEAT_CITATION]);
+  test('the 14 indicator sources come first, then ABS ERP, the 2011 and 2016 travel to work tables and the WFH caveat', () => {
+    expect(NEEDS_SOURCES).toHaveLength(18);
+    expect(NEEDS_SOURCES.slice(-4)).toEqual([SOURCES.erp, SOURCES.b46, SOURCES.g59, WFH_CAVEAT_CITATION]);
+  });
+
+  test('the 2011 B46 and 2016 G59 tables have citation numbers (R59)', () => {
+    expect(sourceNumber(SOURCES.b46)).toBeGreaterThan(0);
+    expect(sourceNumber(SOURCES.g59)).toBeGreaterThan(0);
+    expect(SOURCES.b46).toMatchObject({
+      short: 'ABS Census 2011 B46',
+      full: 'Australian Bureau of Statistics, 2011 Census of Population and Housing: Method of travel to work (B46)',
+    });
+    expect(SOURCES.g59).toMatchObject({
+      short: 'ABS Census 2016 G59',
+      full: 'Australian Bureau of Statistics, 2016 Census of Population and Housing: Method of travel to work (G59)',
+    });
   });
 
   test('every source an insight or a narrative paragraph cites has a number, and every number is cited', () => {
@@ -279,6 +303,7 @@ describe('sources', () => {
       [['lga_blacktown', 'lga_newcastle', 'lga_sydney', 'lga_brewarrina'], 'separate', 'nsw'],
       [['lga_camden', 'lga_hills'], 'combined', 'gsyd'],
       [['lga_broken_hill', 'lga_bourke'], 'separate', 'region'],
+      [['lga_canterbury_bankstown'], 'separate', 'gsyd'],
     ];
     const cited = selections.flatMap(([areaIds, mode, universe]) => {
       const a = runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe });
