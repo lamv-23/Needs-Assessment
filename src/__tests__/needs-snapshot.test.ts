@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { peerGroupFor } from '@/lib/needs/peer-groups';
 
@@ -43,4 +45,32 @@ test('Blacktown matches the cache', () => {
   expect(b.values.car_dependency.value).toBeCloseTo(83.8, 1);
   expect(b.values.frequent_stop_share.value).toBeCloseTo(27.9, 1);
   expect(b.peerGroup).toBe('metro_outer');
+});
+
+// The bundled TZP24 extract (src/lib/data/nsw-employment-projections.ts) holds 43 LGAs: all 33 Greater
+// Sydney, Central Coast, Newcastle, Lake Macquarie, five Illawarra-Shoalhaven, Lismore and Coffs Harbour.
+// The other 85 have no bundled source rows, so job growth stays null for them (never proxied).
+const EXPECTED_TZP24_LGAS = 43;
+
+test('job growth coverage matches the TZP24 source', () => {
+  expect(NEEDS_SNAPSHOT.records.filter(r => r.values.job_growth_2041.value !== null).length).toBe(EXPECTED_TZP24_LGAS);
+});
+
+// R60: every NSW LGA resolves its NSW DPE projection (Port Macquarie-Hastings, Mid-Coast, Queanbeyan-Palerang,
+// Mid-Western and Cootamundra-Gundagai were lost to a hyphen in the name lookup).
+test('population projections cover every LGA', () => {
+  const missing = (has: (r: (typeof NEEDS_SNAPSHOT.records)[number]) => boolean) =>
+    NEEDS_SNAPSHOT.records.filter(r => !has(r)).map(r => r.areaId);
+  expect(missing(r => r.values.pop_growth_2041.value !== null)).toEqual([]);
+  expect(missing(r => r.series.population2041 !== null)).toEqual([]);
+});
+
+test('snapshot: car dependency coverage by year', () => {
+  const has = (y: number) => NEEDS_SNAPSHOT.records.filter(r => r.series.carDependencyByYear.some(p => p.year === y)).length;
+  expect([has(2011), has(2016), has(2021)]).toEqual([107, 123, 128]);
+});
+
+test('snapshot stays small', () => {
+  const file = path.join(__dirname, '../lib/data/needs-indicators-data.ts');
+  expect(fs.statSync(file).size).toBeLessThan(400_000);
 });

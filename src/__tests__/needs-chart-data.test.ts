@@ -1,14 +1,15 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  HEATMAP_LABEL_CHARS, LABEL_LEVELS, MAX_RADAR_AREAS, assignLabelLevels, domainChartData, heatmapRowLabel, labelSide,
-  axisFraction, niceAxis, radarData, stripData, wrapLabel,
+  CATCHMENT_PANELS, HEATMAP_CATCHMENT_NOTE, HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels,
+  catchmentChartData, domainChartData, heatmapRowLabel, heatmapRowName, labelSide,
+  axisFraction, niceAxis, stripData, wrapLabel,
 } from '@/lib/needs/chart-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { AREA_PALETTE_SIZE, DOMAIN_COLORS, areaColor, labelledIds } from '@/lib/needs/colors';
-import { DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { CHART_COLORS } from '@/lib/utils';
-import type { AreaAssessment, NeedsAssessment, NeedsMode } from '@/lib/needs/types';
+import type { AreaAssessment, NeedsAssessment, NeedsMode, Universe } from '@/lib/needs/types';
 
 const NSW_LGAS = NEEDS_SNAPSHOT.records.map(r => r.areaId);
 
@@ -135,13 +136,30 @@ describe('heatmapRowLabel', () => {
       expect(lines.length + (hint ? 1 : 0)).toBeLessThanOrEqual(2);
       expect(lines.some(l => l.endsWith('…'))).toBe(false);
       expect(lines.every(l => l.length <= HEATMAP_LABEL_CHARS)).toBe(true);
-      expect(lines.join(' ').replace(/ \(context\)$/, '').replace(/- /g, '-')).toBe(def.label);
+      expect(lines.join(' ').replace(/ \(context\)$/, '').replace(/- /g, '-')).toBe(heatmapRowName(def));
     }
   });
 
-  test('a hint line appears exactly for indicators where a lower value means more need', () => {
-    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_stop_share).hint).toBe('(lower value = more need)');
+  test('a hint line appears exactly for scored indicators where a lower value means more need', () => {
+    expect(heatmapRowLabel(INDICATOR_BY_ID.am_peak_departures_per_1000).hint).toBe('(lower value = more need)');
     expect(heatmapRowLabel(INDICATOR_BY_ID.car_dependency).hint).toBeNull();
+    // A context row is unshaded, so its colour never runs against the number
+    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_stop_share)).toEqual({
+      lines: ['Stops with frequent AM-peak service', '(context)'], hint: null,
+    });
+  });
+
+  test('the catchment rows have short names that keep AM-peak (P2-R17); the heatmap notes define them', () => {
+    expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_service_catchment)).toEqual({
+      lines: ['Near frequent AM-peak public transport'], hint: '(lower value = more need)',
+    });
+    expect(heatmapRowName(INDICATOR_BY_ID.any_service_catchment)).toBe('Near any AM-peak public transport');
+    expect(heatmapRowName(INDICATOR_BY_ID.car_dependency)).toBe('Car dependency');
+    // The heatmap notes are the shared catchment note, wrapped to the legend
+    expect(HEATMAP_CATCHMENT_NOTE.join(' ').replace(/- /g, '-')).toBe(CATCHMENT_NOTE);
+    expect(HEATMAP_CATCHMENT_NOTE.join(' ')).toContain('straight-line');
+    // Each note line fits the 700 px legend at 11 px
+    for (const line of HEATMAP_CATCHMENT_NOTE) expect(line.length).toBeLessThanOrEqual(110);
   });
 
   test('an unscored indicator is marked as context', () => {
@@ -209,6 +227,30 @@ describe('domainChartData', () => {
   });
 });
 
+describe('domainChartData: Greater Sydney only where it is ranked in the same group (R61)', () => {
+  const inUniverse = (areaIds: string[], universe: Universe) =>
+    runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode: 'separate', universe });
+  const names = (a: NeedsAssessment) => domainChartData(a).series.map(s => s.name);
+
+  test('drawn against NSW and Greater Sydney', () => {
+    expect(names(inUniverse(['lga_blacktown'], 'nsw'))).toEqual(['Blacktown', 'Greater Sydney']);
+    expect(names(inUniverse(['lga_blacktown'], 'gsyd'))).toEqual(['Blacktown', 'Greater Sydney']);
+  });
+
+  test('left out against a region or peer group, whose scores are not on the benchmark\'s NSW scale', () => {
+    expect(names(inUniverse(['lga_blacktown'], 'region'))).toEqual(['Blacktown']);
+    expect(names(inUniverse(['lga_blacktown', 'lga_newcastle'], 'peer'))).toEqual(['Blacktown', 'Newcastle']);
+  });
+
+  test('the by-area layout has no Greater Sydney row then', () => {
+    const many = domainChartData(inUniverse(NSW_LGAS.slice(0, AREA_PALETTE_SIZE + 1), 'region'));
+    expect(many.layout).toBe('by-area');
+    expect(many.rows.map(r => r.name)).not.toContain('Greater Sydney');
+    expect(many.rows).toHaveLength(AREA_PALETTE_SIZE + 1);
+    expect(many.benchmarkName).toBeNull();
+  });
+});
+
 describe('domainChartData for more areas than colours', () => {
   const eleven = assess(NSW_LGAS.slice(0, AREA_PALETTE_SIZE + 1));
   const sydney34 = assess(GREATER_SYDNEY_GCCSA_AREA_IDS);
@@ -259,33 +301,6 @@ describe('domainChartData for more areas than colours', () => {
   });
 });
 
-describe('radarData', () => {
-  test('plots the first 6 areas plus Greater Sydney and reports how many are hidden', () => {
-    const a = assess(NSW_LGAS.slice(0, 9));
-    const r = radarData(a);
-    expect(r.series).toHaveLength(MAX_RADAR_AREAS + 1);
-    expect(r.series.slice(0, 6).map(s => s.name)).toEqual(a.areas.slice(0, 6).map(x => x.name));
-    expect(r.series[6].name).toBe('Greater Sydney');
-    expect(r.hiddenCount).toBe(3);
-    expect(r.omitted).toEqual([]);
-  });
-
-  test('one row per domain', () => {
-    const r = radarData(assess(['lga_blacktown']));
-    expect(r.rows.map(row => row.axis)).toEqual(NEED_DOMAINS.map(d => DOMAIN_LABELS[d]));
-    expect(r.hiddenCount).toBe(0);
-  });
-
-  test('an area missing a domain score is left out and named, since a radar cannot show a gap', () => {
-    const a = withDomainScore(assess(['lga_blacktown', 'lga_sydney']), 1, 'transport', null);
-    const r = radarData(a);
-    expect(r.series.map(s => s.name)).toEqual(['Blacktown', 'Greater Sydney']);
-    expect(r.omitted).toEqual(['City of Sydney']);
-    // remaining series keep the colour of their position in the selection
-    expect(r.series[0].color).toBe(areaColor(0));
-  });
-});
-
 describe('stripData', () => {
   const a = assess(['lga_blacktown', 'lga_sydney']);
 
@@ -327,6 +342,20 @@ describe('stripData', () => {
     expect(s.references[0].x).toBe(a.benchmarks.gsyd.indicators.find(i => i.id === 'car_dependency')!.value);
     expect(s.references[0].text).toMatch(/^≈ /);
     expect(stripData(a, 'zero_car_households').references[0].text).not.toMatch(/≈/);
+  });
+
+  test('a benchmark line from only some of its LGAs is marked *, with the note under the plot (R58)', () => {
+    const a = runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds: ['lga_camden'], mode: 'separate', universe: 'nsw' });
+    const jobs = stripData(a, 'job_growth_2041');
+    expect(jobs.references.map(r => r.text.endsWith('*'))).toEqual([false, true]);
+    expect(jobs.notes).toEqual(['* Based on the 43 of 128 LGAs with data.']);
+    const commute = stripData(a, 'commute_distance_km');
+    expect(commute.references.every(r => r.text.endsWith('*'))).toBe(true);
+    expect(commute.notes).toEqual([
+      '* Average commuting distance, Greater Sydney: based on the 33 of 34 LGAs with data.',
+      '* Average commuting distance, NSW: based on the 127 of 128 LGAs with data.',
+    ]);
+    expect(stripData(a, 'car_dependency').notes).toEqual([]);
   });
 
   test('combined mode plots the one combined area, with its approximate value marked', () => {
@@ -372,5 +401,48 @@ describe('stripData', () => {
     const s = stripData({ ...base, areas: [base.areas[0], twin] }, 'unemployment_rate');
     expect(s.selected.map(p => p.x)[0]).toBe(s.selected.map(p => p.x)[1]);
     expect(s.selected[0].level).not.toBe(s.selected[1].level);
+  });
+});
+
+describe('catchmentChartData', () => {
+  test('one panel per measure, a bar per selected LGA, Greater Sydney and NSW as reference lines', () => {
+    const data = catchmentChartData(assess(['lga_blacktown', 'lga_penrith']));
+    expect(data.panels.map(p => p.id)).toEqual(['frequent_service_catchment', 'any_service_catchment']);
+    expect(data.panels.map(p => p.title)).toEqual(CATCHMENT_PANELS.map(p => p.title));
+    const [frequent, any] = data.panels;
+    expect(frequent.bars.map(b => [b.name, b.text])).toEqual([['Blacktown', '59.4%'], ['Penrith', '40.7%']]);
+    expect(any.bars.map(b => b.text)).toEqual(['95.0%', '90.2%']);
+    expect(frequent.references.map(r => [r.key, r.name, r.text])).toEqual([
+      ['gsyd', 'Greater Sydney', '67.2%'], ['nsw', 'NSW', '46.8%'],
+    ]);
+    expect(any.references.map(r => r.text)).toEqual(['93.5%', '81.2%']);
+    expect(data.axis).toEqual({ lo: 0, hi: 100, ticks: [0, 20, 40, 60, 80, 100] });
+    expect(data.noData).toEqual([]);
+    expect(data.notes).toEqual([]);
+  });
+
+  test('a combined selection is one bar, its residents summed', () => {
+    const data = catchmentChartData(assess(['lga_blacktown', 'lga_penrith'], 'combined'));
+    expect(data.panels[0].bars.map(b => b.name)).toEqual(['Blacktown + Penrith']);
+    const value = data.panels[0].bars[0].value!;
+    expect(value).toBeGreaterThan(40.7);
+    expect(value).toBeLessThan(59.4);
+  });
+
+  test('a missing share is "No data", never 0', () => {
+    const a = assess(['lga_blacktown']);
+    const areas = a.areas.map(area => ({
+      ...area,
+      indicators: area.indicators.map(s => (s.id === 'frequent_service_catchment' ? { ...s, value: null } : s)),
+    }));
+    const data = catchmentChartData({ ...a, areas });
+    expect(data.panels[0].bars[0]).toMatchObject({ value: null, text: 'No data' });
+    expect(data.noData).toEqual(['Blacktown']);
+  });
+
+  test('the panels say what frequent and any service are: weekday 7-9am departures', () => {
+    expect(CATCHMENT_PANELS.map(panel => panel.title)).toEqual([
+      'Near frequent service (8+ weekday 7-9am departures)', 'Near any service (1+ weekday 7-9am departures)',
+    ]);
   });
 });

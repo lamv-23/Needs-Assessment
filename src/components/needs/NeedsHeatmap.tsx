@@ -1,10 +1,11 @@
 'use client';
 
-import { heatmapRowLabel, wrapLabel } from '@/lib/needs/chart-data';
+import { HEATMAP_CATCHMENT_NOTE, heatmapRowLabel, wrapLabel } from '@/lib/needs/chart-data';
 import {
   NEED_SCALE, NO_DATA_COLOR, NEUTRAL_FILL, needColor, needTextColor,
 } from '@/lib/needs/colors';
-import { displayScore, formatValue } from '@/lib/needs/format';
+import { markedValue, partialBenchmarkNotes, partialBenchmarks } from '@/lib/needs/coverage';
+import { displayScore } from '@/lib/needs/format';
 import { DOMAIN_LABELS, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
 import type { AreaAssessment, IndicatorDef, IndicatorScore, NeedsAssessment } from '@/lib/needs/types';
 
@@ -19,6 +20,8 @@ const HEADER_MAX_LINES = 4;
 const HEADER_CHARS = 14;
 const LABEL_LINE_H = 14;
 const LEGEND_W = 700;
+const LEGEND_LINE_H = 20;
+const NOT_RANKED_NOTE = 'not ranked: fewer than 5 LGAs with data in the comparison group, so the cell is unshaded.';
 const FONT = 'Inter, system-ui, sans-serif';
 
 const DARK_TEXT = '#111827';
@@ -27,22 +30,29 @@ const CELL_STROKE = '#cbd5e1';
 
 interface Column { key: string; header: string; area: AreaAssessment; benchmark: boolean }
 
-/** How one cell looks: shaded by need only for a scored indicator of a selected area that has a value. */
+/**
+ * How one cell looks: shaded by need only for a ranked, scored indicator of a selected area. A benchmark value made
+ * from only some of its LGAs is marked "*"; a value with fewer than 5 LGAs with data in the group is "not ranked" (R58).
+ */
 function cellAppearance(score: IndicatorScore | undefined, def: IndicatorDef, benchmark: boolean) {
+  const text = markedValue(def, score, benchmark ? 'benchmark' : 'area');
   if (!score || score.value === null) {
-    return { fill: NO_DATA_COLOR, textColor: MUTED_TEXT, text: 'No data', hasValue: false, percentile: null };
+    return { fill: NO_DATA_COLOR, textColor: MUTED_TEXT, text, hasValue: false, percentile: null, notRanked: false };
   }
-  const text = `${score.approximate ? '≈ ' : ''}${formatValue(def, score.value)}`;
-  if (benchmark || !def.scored) {
-    return { fill: NEUTRAL_FILL, textColor: DARK_TEXT, text, hasValue: true, percentile: null };
+  if (benchmark || !def.scored || score.unranked) {
+    return {
+      fill: NEUTRAL_FILL, textColor: DARK_TEXT, text, hasValue: true, percentile: null,
+      notRanked: !benchmark && score.unranked,
+    };
   }
   return {
     fill: needColor(score.percentile), textColor: needTextColor(score.percentile), text, hasValue: true,
-    percentile: score.percentile,
+    percentile: score.percentile, notRanked: false,
   };
 }
 
-function Legend({ x, y, showApproximate }: { x: number; y: number; showApproximate: boolean }) {
+/** The scale, then a line for each note: ≈, "not ranked" and the benchmark values marked "*". */
+function Legend({ x, y, lines }: { x: number; y: number; lines: string[] }) {
   const items = [
     ...NEED_SCALE.map((fill, i) => ({ fill, label: `${i * 20}–${(i + 1) * 20}`, labelWidth: 40 })),
     { fill: NO_DATA_COLOR, label: 'No data', labelWidth: 44 },
@@ -66,19 +76,17 @@ function Legend({ x, y, showApproximate }: { x: number; y: number; showApproxima
           );
         })}
       </g>
-      {showApproximate && (
-        <text x={x} y={44} fontSize={11} fill={MUTED_TEXT}>
-          ≈ population-weighted estimate for a combined selection or benchmark.
-        </text>
-      )}
+      {lines.map((line, i) => (
+        <text key={line} x={x} y={44 + i * LEGEND_LINE_H} fontSize={11} fill={MUTED_TEXT}>{line}</text>
+      ))}
     </g>
   );
 }
 
 /**
  * Indicators (rows, grouped by domain) against the selected areas, Greater Sydney and NSW
- * (columns). Cells are shaded by need percentile; benchmark cells and the context-only indicator
- * are unshaded.
+ * (columns). Cells are shaded by need percentile; benchmark cells, the context-only indicator and values that are not
+ * ranked are unshaded. The notes are drawn inside the SVG, so an SVG download keeps them.
  */
 export default function NeedsHeatmap({ assessment }: { assessment: NeedsAssessment }) {
   const { areas, benchmarks } = assessment;
@@ -99,12 +107,19 @@ export default function NeedsHeatmap({ assessment }: { assessment: NeedsAssessme
   const gridW = columnX(columns.length - 1) + CELL_W;
   const width = Math.max(gridW, LEGEND_W);
   const showApproximate = scoresByColumn.some(scores => Array.from(scores.values()).some(s => s.approximate && s.value !== null));
+  const showNotRanked = areas.some(area => area.indicators.some(s => s.unranked));
+  const legendLines = [
+    ...(showApproximate ? ['≈ population-weighted estimate for a combined selection or benchmark.'] : []),
+    ...(showNotRanked ? [NOT_RANKED_NOTE] : []),
+    ...partialBenchmarkNotes(partialBenchmarks(assessment)),
+    ...HEATMAP_CATCHMENT_NOTE,
+  ];
 
   const blocks = NEED_DOMAINS.map(domain => ({ domain, defs: INDICATORS.filter(def => def.domain === domain) }));
   const blockHeight = (block: (typeof blocks)[number]) => DOMAIN_H + block.defs.length * ROW_H;
   const blockTops = blocks.map((_, i) => headerH + blocks.slice(0, i).reduce((sum, block) => sum + blockHeight(block), 0));
   const gridBottom = headerH + blocks.reduce((sum, block) => sum + blockHeight(block), 0);
-  const height = gridBottom + 24 + (showApproximate ? 64 : 44);
+  const height = gridBottom + 24 + 44 + legendLines.length * LEGEND_LINE_H;
 
   return (
     <div className="overflow-x-auto">
@@ -172,7 +187,8 @@ export default function NeedsHeatmap({ assessment }: { assessment: NeedsAssessme
                       const cell = cellAppearance(score, def, c.benchmark);
                       const detail = [
                         cell.percentile !== null ? `need percentile ${displayScore(cell.percentile)}` : null,
-                        score?.partial ? 'some selected LGAs have no value' : null,
+                        cell.notRanked ? `not ranked: only ${score?.ranked} LGAs with data in the comparison group` : null,
+                        score?.partial ? `some ${c.benchmark ? 'of its' : 'selected'} LGAs have no value` : null,
                       ].filter(Boolean).join('; ');
                       return (
                         <g key={c.key}>
@@ -188,7 +204,7 @@ export default function NeedsHeatmap({ assessment }: { assessment: NeedsAssessme
                           />
                           <text
                             x={columnMid(i)}
-                            y={midY}
+                            y={cell.notRanked ? midY - 6 : midY}
                             textAnchor="middle"
                             fontSize={12}
                             fontStyle={cell.hasValue ? 'normal' : 'italic'}
@@ -196,6 +212,11 @@ export default function NeedsHeatmap({ assessment }: { assessment: NeedsAssessme
                           >
                             {cell.text}
                           </text>
+                          {cell.notRanked && (
+                            <text x={columnMid(i)} y={midY + 8} textAnchor="middle" fontSize={10} fontStyle="italic" fill={MUTED_TEXT}>
+                              not ranked
+                            </text>
+                          )}
                         </g>
                       );
                     })}
@@ -206,7 +227,7 @@ export default function NeedsHeatmap({ assessment }: { assessment: NeedsAssessme
           );
         })}
 
-        <Legend x={8} y={gridBottom + 24} showApproximate={showApproximate} />
+        <Legend x={8} y={gridBottom + 24} lines={legendLines} />
       </svg>
     </div>
   );

@@ -20,8 +20,22 @@ npm run build:fallbacks  # refresh bundled official-fallback-data.ts from live d
 npm run build:needs      # rebuild the LGA needs-assessment indicator snapshot (src/lib/data/needs-indicators-data.ts); run after build:fallbacks
 npm run build:geo        # regenerate public/geo/lga-nsw-simple.json (the /needs map's boundaries, ~1 MB) from public/geo/lga-nsw.json
 
+# SA2 needs and straight-line walking catchments (/needs drill-down) — run in this order.
+# Steps 2-4 write only the gitignored data/build.db; step 5 also writes CATCHMENT_COVERAGE rows into data/cache.db.
+npm run fetch:sa2-boundaries   # 1. 644 NSW SA2s (ABS ArcGIS) → public/geo/sa2-nsw-simple.json + src/lib/data/sa2-areas.ts (~1 min, network)
+npm run seed:sa2               # 2. Census 2021 SA2 tables → build.db sa2_cache (a few minutes, network); -- --dataset G01 for one table
+npm run seed:mesh-blocks       # 3. 112,738 mesh blocks (persons, centroid, LGA) → build.db mesh_blocks; downloads ~15 MB, or -- --counts <xlsx>
+npm run seed:gtfs -- --stop-frequency-only   # 4. AM-peak departures per stop → build.db gtfs_stop_frequency (a full seed:gtfs writes it too)
+npm run build:catchments       # 5. catchments → build.db sa2_cache CATCHMENT + cache.db tfnsw_cache CATCHMENT_COVERAGE (<1 s; a rerun rewrites fetched_at)
+npm run build:sa2-needs        # 6. public/data/sa2-needs.json (committed; loaded by /needs)
+npm run build:needs            # 7. LGA snapshot picks up the new CATCHMENT_COVERAGE (after build:fallbacks)
+# Reproducibility: step 4 reproduces the committed catchment figures only while the TfNSW bundle still carries the
+# cached service date 20261027 (it defaults to the GTFS_FREQUENCY date in cache.db). After that, rebuilding needs a full
+# `npm run seed:gtfs` (which rewrites the cache.db GTFS rows), then build:catchments, build:sa2-needs and build:needs,
+# and the catchment figures, scores and SA2 rankings will change.
+
 npm run parse:population  # regenerate src/lib/data/nsw-projections-data.ts from XLSX
-npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV
+npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV (does NOT reproduce the bundled file — see Data Sources)
 npm run parse:hts         # regenerate src/lib/data/hts-lga-data.ts (HTS all-purpose travel)
 npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-data.ts from a TableBuilder export
 ```
@@ -36,6 +50,7 @@ npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-dat
 - Charts: use `CHART_COLORS` from `@/lib/utils.ts`
 - Path alias: `@/` → `src/`
 - Needs engine: `src/lib/needs/` over `NEEDS_SNAPSHOT`; rebuild with `npm run build:needs`
+- SA2 drill-down on `/needs`: `useSa2Needs()` loads `public/data/sa2-needs.json`; ranking, pockets of need and drill-down membership in `src/lib/needs/sa2.ts`. Every catchment figure, table and sentence says "straight-line distance"
 - Projections store: `useProjectionStore` (`@/store/projectionStore`) — Excel upload to localStorage
 - Live data hook: `useLiveData(areaId, year)` → `/api/live-data/[areaId]` → SQLite cache
 - No `preferRealData` toggle; all pages show refreshed live data where available and bundled official fallback data otherwise
@@ -48,12 +63,15 @@ npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-dat
 | ABS ERP API | Historical population by year (2001–2025) | `npm run seed:abs` |
 | ABS Building Approvals API (BA_LGA2024 / BA_LGA2025) | Monthly residential building approvals by LGA | `npm run seed:abs` |
 | NSW DPE bundled data | Population projections 2021–2041 by LGA | `npm run seed:static` (or `parse:population` then `seed:static`) |
-| TfNSW TZP24 bundled data | Employment projections 2021–2066 by LGA | `npm run seed:static` (or `parse:employment` then `seed:static`) |
+| TfNSW TZP24 bundled data | Employment projections 2021–2066 by LGA. **Bundled extract covers 43 of 128 LGAs** (all 33 Greater Sydney, Central Coast, Newcastle, Lake Macquarie, Wollongong, Shellharbour, Kiama, Shoalhaven, Wingecarribee, Lismore, Coffs Harbour); the other 85 have no rows, so `job_growth_2041` is null for them (never proxied). The `nsw_projections` table's 86 employment rows are those 43 LGAs stored under two keys. Rows carry legacy ids (`lga_innerwest`); `TZP24_ID_BY_AREA_ID` in `nsw-employment-projections.ts` maps the 14 that differ from `SAMPLE_AREAS`. TfNSW publishes TZP24 state-wide (travel-zone basis, "Employment by LGA" CSV), so more LGAs may be recoverable from that CSV, which is not in the repo. `scripts/parse-employment.js` reads an XLSX and emits a different shape (no `lgaId`), so it cannot regenerate this file as it stands | `npm run seed:static` |
 | TfNSW Household Travel Survey (HTS) — commute | Avg weekday commute time by LGA — 45 LGAs (Sydney GMA, Central Coast, Hunter, Illawarra, Shoalhaven) | `npm run seed:transport` |
 | TfNSW Household Travel Survey (all trips) | Mode share of all weekday trips, trip purpose, trips per resident — 45 Sydney GMA LGAs | `npm run parse:hts` regenerates bundled `src/lib/data/hts-lga-data.ts` |
 | TfNSW Station Entries & Exits (Opal) | Monthly rail/metro/light rail entries, joined to LGAs via `gtfs_stops` + `STATION_LGA_OVERRIDES` | `npm run seed:transport` |
 | ABS Data by Region (ABS_REGIONAL_LGA2020) | Census 2016 commuting distance, all LGAs (fallback where HTS has no coverage) | `npm run seed:transport` / `seed:abs` |
 | TfNSW GTFS schedule | Stops/routes per LGA + weekday 7–9am departures per stop (frequent = ≥8, i.e. ≥4/hr; school buses excluded) | `npm run seed:gtfs` — keyless complete bundle from Open Data (~300 MB, ~1 min), or per-feed API if `TFNSW_API_KEY` is set; `-- --zip <path>` to reuse a download |
+| ABS ASGS 2021 ArcGIS services (`geo.abs.gov.au/arcgis/rest/services/ASGS2021/SA2` and `/MB` FeatureServers) | 644 NSW SA2 boundaries (two special-purpose SA2s, Migratory - Offshore - Shipping and No usual address, have no geometry) and the SA2 and centroid of the 112,738 NSW mesh blocks | `npm run fetch:sa2-boundaries` · `npm run seed:mesh-blocks` |
+| ABS Mesh Block Counts, 2021 (XLSX) | Census usual residents per mesh block: the population of the straight-line walking catchments and of each LGA's share of an SA2 | `npm run seed:mesh-blocks` |
+| ABS Census API at SA2 (`C21_G01/G02/G13/G18/G33/G34/G46/G62_SA2`, `ABS_SEIFA2021_SA2`) | SA2 indicators for the `/needs` drill-down (decoded with the LGA decoders) | `npm run seed:sa2` |
 | ABS Census JTW flows (TableBuilder) | LGA of residence × LGA of workplace: self-containment, self-sufficiency, top destinations/origins. No open 2021 LGA→LGA file exists, so it needs a TableBuilder CSV export (spec in `scripts/parse-jtw-flows.ts`) | `npm run parse:jtw-flows -- <export.csv>` regenerates bundled `src/lib/data/jtw-flows-data.ts` (ships empty) |
 | TfNSW transport static | **Modelled** mode share / commute / patronage trends 2019–2026 for 5 LGAs (not official — see header of `src/lib/data/tfnsw-transport.ts`); no longer shown on `/transport`, still used by `/compare` | `npm run seed:static` |
 
@@ -121,9 +139,18 @@ Regions: Greater Sydney · Hunter · Central Coast · Illawarra-Shoalhaven · So
 | `abs_cache` | `(lga_code, dataset)` | JSON blob of parsed ABS data per LGA per dataset |
 | `nsw_projections` | `(lga_name, projection_type)` | Population & employment projections |
 | `transport_static` | `(lga_name, year)` | TfNSW mode share / commute data |
-| `tfnsw_cache` | `(lga_code, dataset)` | GTFS coverage (`GTFS_COVERAGE`), weekday AM-peak service frequency (`GTFS_FREQUENCY`), traffic trends, crash summaries, `HTS_COMMUTE`, `STATION_PATRONAGE`, patronage source metadata |
+| `tfnsw_cache` | `(lga_code, dataset)` | GTFS coverage (`GTFS_COVERAGE`), weekday AM-peak service frequency (`GTFS_FREQUENCY`), straight-line walking catchments (`CATCHMENT_COVERAGE`: residents near frequent / any service, percent, per LGA and the `1GSYD` / `1NSW` benchmarks; written by `npm run build:catchments`), traffic trends, crash summaries, `HTS_COMMUTE`, `STATION_PATRONAGE`, patronage source metadata |
 | `app_config` | `key` | Key-value store (e.g. `abs_last_seeded`) |
 | `refresh_log` | `id` | Audit log of seed runs |
+
+### Build-time SQLite (`data/build.db`, gitignored)
+Opened through `src/lib/build-db.ts` (`BUILD_DB_PATH` overrides the location). The app never reads it: it holds the large intermediate tables behind the committed outputs (`public/data/sa2-needs.json` and the `CATCHMENT_COVERAGE` rows above). Never put these tables in `data/cache.db`.
+
+| Table | Key | Content |
+|---|---|---|
+| `sa2_cache` | `(sa2_code, dataset)` | Decoded Census tables per SA2 (`G01`, `G02`, `G13`, `G18`, `G33_INCOME`, `G34`, `LABOUR`, `G62`, `SEIFA`; `npm run seed:sa2`) and its straight-line catchment (`CATCHMENT`; `npm run build:catchments`) |
+| `mesh_blocks` | `mb_code` | 2021 NSW mesh blocks: SA2, persons, centroid lat/lng and the LGA the centroid falls in. lat/lng are null for the 9 blocks of the non-spatial SA2s (no ABS centroid). LGA is null for those and for the 327 located blocks outside every LGA (Lord Howe Island, harbour waters, unincorporated areas; 2,151 persons, about 0.03%) |
+| `gtfs_stop_frequency` | `stop_id` | Weekday 07:00–09:00 departures of every GTFS stop on one service date, with its lat/lng and mode |
 
 ## Troubleshooting
 - **LGA not found**: add to `LGA_CODE_MAP` in `src/lib/abs-fetchers.ts` and `SAMPLE_AREAS`

@@ -1,11 +1,17 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { runAssessment } from '@/lib/needs/assess';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
-  NO_COMPARISON_REASON, NO_DATA_REASON, OUTSIDE_GSYD_REASON, describeMapScore, mapScores, mapUniverseNote,
+  NO_COMPARISON_REASON, NO_DATA_REASON, OUTSIDE_GSYD_REASON, SA2_MAP_NOTE, SA2_PERCENTILE_BANDS, SMALL_GROUP_REASON,
+  describeMapScore, mapScores, mapUniverseNote, sa2MapEntries,
 } from '@/lib/needs/map-data';
+import { NEED_SCALE } from '@/lib/needs/colors';
+import { rankSa2s } from '@/lib/needs/sa2';
 import { assessRecord, bandFor, universeRecords } from '@/lib/needs/scoring';
-import type { NeedsAssessment, NeedsMode, Universe } from '@/lib/needs/types';
+import type { NeedsAssessment, NeedsMode, Sa2NeedsFile, Universe } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 const { records } = NEEDS_SNAPSHOT;
 const byId = (id: string) => records.find(r => r.areaId === id)!;
@@ -101,7 +107,7 @@ describe('mapScores', () => {
     expect(mapScores(assess('gsyd')).get('lga_central_coast')!.score).not.toBeNull();
   });
 
-  test('a group of 2-4 keeps its scores and carries the group size so the tooltip can warn', () => {
+  test('a group of 2-4 ranks nothing (R58), so it has no score and says why', () => {
     // three LGAs moved into a region of their own
     const ids = ['lga_blacktown', 'lga_penrith', 'lga_sydney'];
     const base = assess('region');
@@ -109,9 +115,9 @@ describe('mapScores', () => {
     const scores = mapScores(small);
     for (const id of ids) {
       const r = small.records.find(x => x.areaId === id)!;
-      const expected = assessRecord(r, 'region', universeRecords(small.records, 'region', r));
+      expect(assessRecord(r, 'region', universeRecords(small.records, 'region', r)).overall).toBeNull();
       expect(scores.get(id)).toEqual({
-        score: expected.overall, band: expected.band, noScoreReason: null, universeSize: 3, smallGroup: true,
+        score: null, band: null, noScoreReason: SMALL_GROUP_REASON, universeSize: 3, smallGroup: true,
       });
     }
     // Illawarra-Shoalhaven has exactly 5 LGAs, which is not small
@@ -150,16 +156,9 @@ describe('describeMapScore', () => {
     expect(describeMapScore(undefined)).toBe('No data');
   });
 
-  test('a score from a group of 2-4 carries the size of the group and a caution', () => {
-    expect(describeMapScore({ universeSize: 3, smallGroup: true, score: 59.9, band: 'Moderate', noScoreReason: null }))
-      .toBe('Moderate need · score 59 / 100 (compared with only 3 LGAs — read with caution)');
-    expect(describeMapScore({ universeSize: 2, smallGroup: true, score: 71, band: 'High', noScoreReason: null }))
-      .toBe('High need · score 71 / 100 (compared with only 2 LGAs — read with caution)');
-  });
-
-  test('no caution for a group of 5 or more', () => {
-    expect(describeMapScore({ universeSize: 5, smallGroup: false, score: 71, band: 'High', noScoreReason: null }))
-      .toBe('High need · score 71 / 100');
+  test('a group of 2-4 is not scored (R58)', () => {
+    expect(describeMapScore({ universeSize: 3, smallGroup: true, score: null, band: null, noScoreReason: SMALL_GROUP_REASON }))
+      .toBe('Not scored: fewer than 5 LGAs in its group');
   });
 });
 
@@ -171,16 +170,70 @@ describe('mapUniverseNote', () => {
     expect(mapUniverseNote('peer')).toMatch(/own peer group/);
   });
 
-  test('region and peer views warn about small groups and say a group of one is not scored', () => {
+  test('region and peer views say a group of fewer than 5 is not scored (R58)', () => {
     for (const universe of ['region', 'peer'] as const) {
-      const note = mapUniverseNote(universe);
-      expect(note).toMatch(/groups of fewer than 5 should be read with caution/);
-      expect(note).toMatch(/a group of one is not scored/);
+      expect(mapUniverseNote(universe)).toMatch(/An LGA in a group of fewer than 5 LGAs is not scored\.$/);
     }
   });
 
-  test('NSW and Greater Sydney views carry no small-group warning', () => {
-    expect(mapUniverseNote('nsw')).not.toMatch(/caution/);
-    expect(mapUniverseNote('gsyd')).not.toMatch(/caution/);
+  test('NSW and Greater Sydney views carry no small-group note', () => {
+    expect(mapUniverseNote('nsw')).not.toMatch(/fewer than 5/);
+    expect(mapUniverseNote('gsyd')).not.toMatch(/fewer than 5/);
+  });
+});
+
+describe('sa2MapEntries', () => {
+  const names = new Map(records.map(r => [r.areaId, r.name]));
+  const entries = (lgaIds: string[], file: Sa2NeedsFile = SA2_POCKETS_FILE) => sa2MapEntries(file, lgaIds, names);
+  const byName = (lgaIds: string[], name: string) => entries(lgaIds).find(e => e.name === name)!;
+
+  test('the SA2s of the selected LGAs, sorted by name, each once', () => {
+    expect(entries(['lga_blacktown']).map(e => e.name)).toEqual([
+      'Bidwill - Hebersham - Emerton', 'Blackett - Dharruk', 'Lethbridge Park - Tregear', 'Mount Druitt - Whalan',
+      'Prospect Reservoir', 'Toongabbie - West',
+    ]);
+    const both = entries(['lga_blacktown', 'lga_cumberland']).map(e => e.name);
+    expect(both.filter(n => n === 'Toongabbie - West')).toHaveLength(1);
+  });
+
+  test('a ranked SA2 is shaded by its overall percentile; the tooltip has the band, floored score, rank and LGA shares', () => {
+    const ranking = rankSa2s(SA2_POCKETS_FILE);
+    const entry = byName(['lga_blacktown'], 'Mount Druitt - Whalan');
+    const { assessment, overallPercentile } = ranking.byCode.get('116031317')!;
+    expect(entry.percentile).toBe(overallPercentile);
+    expect(entry.lines).toEqual([
+      'Mount Druitt - Whalan',
+      `${assessment.band} need · score ${Math.floor(assessment.overall!)} / 100`,
+      'Ranks in the highest-need 2% of NSW SA2s',
+      'Residents in Blacktown (100%)',
+    ]);
+    expect(byName(['lga_blacktown'], 'Toongabbie - West').lines[3]).toBe('Residents in Blacktown (71%), Cumberland (29%)');
+  });
+
+  test('a low-population SA2 is not shaded and says "Low population"', () => {
+    const entry = byName(['lga_blacktown'], 'Prospect Reservoir');
+    expect(entry).toMatchObject({ percentile: null, lowPopulation: true });
+    expect(entry.lines).toEqual(['Prospect Reservoir', 'Low population (12 residents): not ranked', 'Residents in Blacktown (100%)']);
+  });
+
+  test('the shading note says it is the rank among NSW SA2s, and that the tooltip and table show the score band', () => {
+    expect(SA2_MAP_NOTE).toContain('where each SA2 ranks among NSW SA2s');
+    expect(SA2_MAP_NOTE).toContain('no growth indicators');
+    expect(SA2_MAP_NOTE).toContain('The tooltip and the SA2 table show the score and its band.');
+  });
+
+  test('P2-R20: the SA2 legend names percentile bands, one per step of the need scale', () => {
+    expect(SA2_PERCENTILE_BANDS).toEqual(['Lowest 20% of NSW SA2s', '20–40%', '40–60%', '60–80%', 'Highest 20%']);
+    expect(SA2_PERCENTILE_BANDS).toHaveLength(NEED_SCALE.length);
+  });
+
+  test('on real data: Lord Howe Island and the non-spatial SA2s are in no drill-down, even with every LGA selected', () => {
+    const file = JSON.parse(fs.readFileSync(path.join(__dirname, '../../public/data/sa2-needs.json'), 'utf-8')) as Sa2NeedsFile;
+    const all = sa2MapEntries(file, records.map(r => r.areaId), names);
+    const codes = all.map(e => e.code);
+    for (const code of ['108031161', '197979799', '199999499']) expect(codes).not.toContain(code);
+    expect(new Set(codes).size).toBe(codes.length);
+    expect(all.filter(e => e.lowPopulation).every(e => e.percentile === null)).toBe(true);
+    expect(all.filter(e => !e.lowPopulation).every(e => e.percentile !== null)).toBe(true);
   });
 });

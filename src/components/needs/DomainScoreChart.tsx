@@ -9,11 +9,14 @@ import { CHART_TICK_STYLE, CHART_TOOLTIP_STYLE } from '@/lib/utils';
 import type { NeedsAssessment } from '@/lib/needs/types';
 
 const TICK_STYLE = { ...CHART_TICK_STYLE, fontSize: 12 };
+const NO_SCORE = 'No score';
 const LEGEND_STYLE = { fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, paddingTop: 10 };
 
 /** Area names on the axis of the by-area layout: wrapped to two lines, Greater Sydney in bold. */
 const AREA_NAME_CHARS = 24;
 const AREA_AXIS_WIDTH = 176;
+const DOMAIN_AXIS_WIDTH = 200;
+const MARGIN = { top: 28, right: 48, left: 8, bottom: 8 };
 
 // Score bands (Moderate 40, High 60, Very high 80), marked so a bar can be read against them.
 const BAND_LINES = [
@@ -24,21 +27,26 @@ const BAND_LINES = [
 
 interface LabelProps {
   x?: number; y?: number; width?: number; height?: number; value?: number | string | null; fontSize?: number;
+  /** Where the bars start: a missing score's label goes here, as Recharts gives its empty bar no x when no bar has a value. */
+  barsStartX: number;
 }
 
-/** Score at the end of a bar, floored like every shown score; "No data" when the domain has no score. */
-function ScoreLabel({ x = 0, y = 0, width = 0, height = 0, value, fontSize = 11 }: LabelProps) {
+/**
+ * Score at the end of a bar, floored like every shown score; "No score" when the domain has none (too few of its
+ * indicators have a value, or are ranked: R58).
+ */
+function ScoreLabel({ x = 0, y = 0, width = 0, height = 0, value, fontSize = 11, barsStartX }: LabelProps) {
   const missing = typeof value !== 'number';
   return (
     <text
-      x={x + Math.max(width, 0) + 6}
+      x={(missing ? barsStartX : x + Math.max(width, 0)) + 6}
       y={y + height / 2}
       dy={fontSize / 3}
       fontSize={fontSize}
       fill={missing ? '#6b7280' : '#111827'}
       fontStyle={missing ? 'italic' : 'normal'}
     >
-      {missing ? 'No data' : displayScore(value)}
+      {missing ? NO_SCORE : displayScore(value)}
     </text>
   );
 }
@@ -76,7 +84,7 @@ export default function DomainScoreChart({ assessment }: { assessment: NeedsAsse
         barSize={bar.size}
         barGap={bar.gap}
         barCategoryGap={bar.categoryGap}
-        margin={{ top: 28, right: 48, left: 8, bottom: 8 }}
+        margin={MARGIN}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
         <XAxis
@@ -96,7 +104,7 @@ export default function DomainScoreChart({ assessment }: { assessment: NeedsAsse
             tick={<AreaTick benchmarkName={benchmarkName} />}
           />
         ) : (
-          <YAxis type="category" dataKey="name" width={200} tick={TICK_STYLE} />
+          <YAxis type="category" dataKey="name" width={DOMAIN_AXIS_WIDTH} tick={TICK_STYLE} />
         )}
         {BAND_LINES.map(({ score, label }) => (
           <ReferenceLine
@@ -110,12 +118,15 @@ export default function DomainScoreChart({ assessment }: { assessment: NeedsAsse
         <Tooltip
           contentStyle={CHART_TOOLTIP_STYLE}
           cursor={{ fill: '#f1f5f9' }}
-          formatter={(value, name) => [typeof value === 'number' ? `${displayScore(value)} / 100` : 'No data', name]}
+          formatter={(value, name) => [typeof value === 'number' ? `${displayScore(value)} / 100` : NO_SCORE, name]}
         />
         <Legend verticalAlign="bottom" wrapperStyle={LEGEND_STYLE} />
         {series.map(s => (
           <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} isAnimationActive={false}>
-            <LabelList dataKey={s.key} content={<ScoreLabel fontSize={byArea ? 10 : 11} />} />
+            <LabelList
+              dataKey={s.key}
+              content={<ScoreLabel fontSize={byArea ? 10 : 11} barsStartX={MARGIN.left + (byArea ? AREA_AXIS_WIDTH : DOMAIN_AXIS_WIDTH)} />}
+            />
           </Bar>
         ))}
       </BarChart>

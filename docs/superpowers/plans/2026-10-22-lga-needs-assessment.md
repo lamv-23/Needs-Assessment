@@ -900,6 +900,8 @@ Only 29 of 128 LGAs resolve TZP24 job projections through `getEmploymentProjecti
     // amPeakDepartures 0 → null
   });
   test('trend change compares with the universe median change', ...)
+  test('population_growth trend (R39): from = actual annual growth 2021→latest ERP year, to = DPE projected annual growth 2021→2041', ...)
+  // labels e.g. from.label '2021–2025 actual', to.label '2021–2041 projected'; change = to − from (percentage points per year)
   test('trends skip metrics without both endpoints', ...)   // no 2011 → car trend uses 2016 → 2021; one year only → omitted
   test('jobsHousing null without TZP24 data', ...)
   test('buildInsights: mismatch text', () => {
@@ -926,7 +928,8 @@ Only 29 of 128 LGAs resolve TZP24 job projections through `getEmploymentProjecti
   - **Wording:**
     - Non-metro mismatch: "…than expected for an LGA of its population size (model across 94 non-metropolitan LGAs, R² 0.52)."
     - Negative residuals say "lower than expected".
-    - Trend: "{Name}'s {metric label} changed from {from} ({fromLabel}) to {to} ({toLabel}), {faster|slower} than the median change of {median} across {universeLabel}."
+    - Trend (car dependency, crash rate, approvals): "{Name}'s {metric label} changed from {from} ({fromLabel}) to {to} ({toLabel}), {faster|slower} than the median change of {median} across {universeLabel}."
+    - Population trend (R39): "{Name}'s population grew by {a}% a year between 2021 and {latestYear}, {faster than|slower than|in line with} the {p}% a year projected for 2021–2041." "In line with" applies when |a − p| < 0.1.
     - Jobs–housing: "{Name} has {j21} local jobs per resident in 2021, projected to be {j41} in 2041 (TfNSW TZP24)."
   - **Car-trend caveat:** every car-trend insight carries the WFH caveat citation, because the 2021 values are lockdown-affected.
   - **"Today" in growth vs service** is the latest ERP year in `series.populationHistory`, the same denominator as `am_peak_departures_per_1000`:
@@ -957,7 +960,7 @@ Only 29 of 128 LGAs resolve TZP24 job projections through `getEmploymentProjecti
     - The subtitle is `R² {r2} · n = {n}`.
     - If the selection spans metro and non-metro, render one chart per setting.
     - If `usable` is false, render the "too weak to estimate" sentence instead of the chart.
-  - **`TrendSmallMultiples`:** one small `LineChart` per metric that has data (car dependency 2011/16/21, crashes per 10,000 for 2020–24, population index with 2021 = 100 for 2001–2041). Selected LGAs are coloured, with a dashed universe-median line.
+  - **`TrendSmallMultiples`:** one small `LineChart` per metric that has data (car dependency 2011/16/21, crashes per 10,000 for 2020–24, population index with 2021 = 100 from 2021 to 2041, with actual ERP years drawn solid and DPE projection years dashed — R39). Selected LGAs are coloured, with a dashed universe-median line.
   - **`GrowthServiceChart`:** grouped bars per LGA showing departures per 1,000 now and in 2041 at today's service level.
   - **`JobsHousingChart`:** a dumbbell (two `Scatter` points joined by a `Line`) of jobs per resident in 2021 and 2041, for LGAs that have data. The footnote counts the selected LGAs without TZP24 data.
 

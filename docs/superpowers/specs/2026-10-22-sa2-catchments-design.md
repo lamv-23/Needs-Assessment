@@ -37,10 +37,10 @@ LGA averages hide pockets of need. Blacktown's single IRSD score of 987 blends v
 - **Low population:** SA2s with fewer than 100 persons are excluded from peers and percentiles and shown as "Low population".
 - **LGA change:**
   - `frequent_service_catchment` and `any_service_catchment` join the LGA snapshot.
-  - `frequent_service_catchment` replaces `frequent_stop_share` in the LGA score, which stays as an unscored context indicator.
+  - `frequent_service_catchment` replaces `frequent_stop_share` in the LGA score, and `frequent_stop_share` stays as an unscored context indicator. `any_service_catchment` is also scored, as a measure of basic access alongside service quality, so the transport domain has 7 scored indicators (P2-R14).
   - The Part B mismatch model switches its metro predictor to catchment only if the metro R² improves by ≥ 0.05.
 - **Pockets narrative:**
-  - "Within {LGA}, {a}, {b} and {c} are in the highest-need 10% of NSW SA2s." (top 3 by overall SA2 score; only SA2s at percentile ≥ 90)
+  - "Within {LGA}, {a}, {b} and {c} are in the highest-need 10% of NSW SA2s." (top 3 by overall SA2 score. Only SA2s whose overall rank ≤ floor(0.10 × ranked SA2s) qualify, so the claim is literally true; P2-R15)
   - Otherwise: "No SA2 in {LGA} is in the highest-need 10% of NSW SA2s."
 
 ## Out of scope

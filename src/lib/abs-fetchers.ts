@@ -24,7 +24,7 @@
  *   ERP  → ABS_ANNUAL_ERP_LGA2025: LGA_2025 × SEX_ABS × AGE=TOT (2001–2025)
  */
 
-const ABS_BASE = 'https://data.api.abs.gov.au/rest/data';
+export const ABS_BASE = 'https://data.api.abs.gov.au/rest/data';
 const DEFAULT_HEADERS = {
   Accept: 'application/xml',
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -196,7 +196,7 @@ export const LGA_CODE_MAP: Record<string, string> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-async function fetchWithRetry(url: string, retries = 3): Promise<string | null> {
+export async function fetchWithRetry(url: string, retries = 3): Promise<string | null> {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const res = await fetch(url, {
@@ -248,7 +248,7 @@ function sleep(ms: number): Promise<void> {
  * Returns flat map where key = "DIM1=val1,DIM2=val2,..." (excluding TIME_PERIOD which is stored separately as TIME=)
  * Key format: "TIME_PERIOD=2021,SEXP=3,PCHAR=S_1,REGION=17200" (all dims joined)
  */
-function parseSdmxXml(xml: string): Map<string, number> {
+export function parseSdmxXml(xml: string): Map<string, number> {
   const result = new Map<string, number>();
 
   // Match each <generic:Obs>...</generic:Obs> block
@@ -311,7 +311,7 @@ function parseKey(key: string): Record<string, string> {
  * Partial match: all provided dims must match.
  * `time` is matched against the TIME_PERIOD dimension (normalised to year).
  */
-function lookupValue(
+export function lookupValue(
   data: Map<string, number>,
   dims: Record<string, string>,
   time?: string
@@ -764,11 +764,23 @@ export async function fetchSEIFA(lgaCode: string): Promise<SEIFAData | null> {
 
   const data = parseSdmxXml(xml);
 
-  // SEIFA measure codes
-  const irsd  = lookupValue(data, { SEIFAINDEXTYPE: 'IRSD',  SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
-  const irsad = lookupValue(data, { SEIFAINDEXTYPE: 'IRSAD', SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
-  const ier   = lookupValue(data, { SEIFAINDEXTYPE: 'IER',   SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
-  const ieo   = lookupValue(data, { SEIFAINDEXTYPE: 'IEO',   SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021');
+  return decodeSeifa((index) =>
+    lookupValue(data, { SEIFAINDEXTYPE: index, SEIFA_MEASURE: 'SCORE', LGA_2021: lgaCode }, '2021'));
+}
+
+/**
+ * Index scores (SEIFA_MEASURE = SCORE) for IRSD, IRSAD, IER and IEO. `get(index)`
+ * is bound to one region by the caller (the region dimension is LGA_2021 for
+ * LGAs and ASGS_2021 for SA2s). No IRSD score means no data; a missing
+ * secondary index defaults to 1000, the national mean.
+ */
+export function decodeSeifa(
+  get: (index: 'IRSD' | 'IRSAD' | 'IER' | 'IEO') => number | null,
+): SEIFAData | null {
+  const irsd  = get('IRSD');
+  const irsad = get('IRSAD');
+  const ier   = get('IER');
+  const ieo   = get('IEO');
 
   if (irsd === null) return null;
 
@@ -1215,13 +1227,19 @@ export async function fetchG18(lgaCode: string): Promise<DisabilityData | null> 
   if (!xml) return null;
   const data = parseSdmxXml(xml);
 
-  const get = (assnp: string) =>
-    lookupValue(data, { ASSNP: assnp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021') ?? 0;
+  return decodeG18((assnp) =>
+    lookupValue(data, { ASSNP: assnp, SEXP: '3', AGEP: '_T', REGION: lgaCode }, '2021'));
+}
 
-  const needs   = get('1');
-  const doesNot = get('2');
-  const ns      = get('_N');
-  const total   = get('_T');
+/**
+ * ASSNP codes (CL_C21_ASSNP01): 1 has need for assistance, 2 does not, _N not
+ * stated, _T total. Missing cells count as 0; a zero or missing total is no data.
+ */
+export function decodeG18(get: (assnp: string) => number | null): DisabilityData | null {
+  const needs   = get('1') ?? 0;
+  const doesNot = get('2') ?? 0;
+  const ns      = get('_N') ?? 0;
+  const total   = get('_T') ?? 0;
 
   if (total === 0) return null;
 
@@ -1299,7 +1317,7 @@ export interface CodelistEntry { id: string; name: string; parent?: string }
 
 const _codelists = new Map<string, CodelistEntry[]>();
 
-async function fetchCodelist(dataflow: string, codelistPrefix: string): Promise<CodelistEntry[]> {
+export async function fetchCodelist(dataflow: string, codelistPrefix: string): Promise<CodelistEntry[]> {
   const key = `${dataflow}:${codelistPrefix}`;
   const cached = _codelists.get(key);
   if (cached) return cached;

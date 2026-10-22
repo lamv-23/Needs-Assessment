@@ -1,106 +1,37 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Feature, FeatureCollection } from 'geojson';
 import ChoroplethMapDirect from '@/components/maps/ChoroplethMapDirect';
-import { NEED_SCALE, NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
+import { escapeHtml, NEED_STEPS, NeedMapLegend, NSW_CENTRE, NSW_ZOOM, SELECTED_OUTLINE } from '@/components/needs/mapParts';
+import { NO_DATA_COLOR, needColor } from '@/lib/needs/colors';
 import { describeMapScore, mapScores, mapUniverseNote } from '@/lib/needs/map-data';
 import type { NeedsAssessment } from '@/lib/needs/types';
 
-const BOUNDARIES_URL = '/geo/lga-nsw-simple.json';
-const NSW_CENTRE: [number, number] = [-32.8, 147];
-const NSW_ZOOM = 6;
-const SELECTED_OUTLINE = '#111827';
-const SWATCH_STROKE = '#cbd5e1';
 const MAP_HEIGHT = 500;
-
-let boundariesRequest: Promise<FeatureCollection> | null = null;
-
-/** The simplified LGA boundaries, fetched once per page load. A failed request is retried by the next caller. */
-function loadBoundaries(): Promise<FeatureCollection> {
-  if (!boundariesRequest) {
-    boundariesRequest = fetch(BOUNDARIES_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status} for ${BOUNDARIES_URL}`);
-        return res.json() as Promise<FeatureCollection>;
-      })
-      .catch((error) => {
-        boundariesRequest = null;
-        throw error;
-      });
-  }
-  return boundariesRequest;
-}
+const LEGEND_STEPS = [...NEED_STEPS, { fill: NO_DATA_COLOR, label: 'No score' }];
 
 // A stable function, so the map restyles only when the scores or the selection change.
 const colorForNeed = (score: number | undefined) => needColor(score ?? null);
 
-const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => ESCAPES[c]);
-
-function Legend({ universeNote }: { universeNote: string }) {
-  const steps = [
-    ...NEED_SCALE.map((fill, i) => ({ fill, label: `${i * 20}–${(i + 1) * 20}` })),
-    { fill: NO_DATA_COLOR, label: 'No score' },
-  ];
-  return (
-    <div className="mt-2 text-xs text-gray-600">
-      <p>
-        Shading shows each LGA&apos;s overall need score (0–100); darker means more need. {universeNote}
-      </p>
-      <ul className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-900">
-        {steps.map((step) => (
-          <li key={step.label} className="flex items-center gap-1.5">
-            <span
-              className="inline-block h-3.5 w-[18px]"
-              style={{ backgroundColor: step.fill, border: `1px solid ${SWATCH_STROKE}` }}
-            />
-            {step.label}
-          </li>
-        ))}
-        <li className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-3.5 w-[18px] bg-white"
-            style={{ border: `3px solid ${SELECTED_OUTLINE}` }}
-          />
-          Selected LGA
-        </li>
-      </ul>
-    </div>
-  );
-}
-
 /**
  * Every NSW LGA shaded by its overall need score against the assessment's comparison universe;
  * the selected LGAs are outlined and the view is fitted to them (all of NSW when none is selected).
- * Clicking an LGA calls `onToggle` with its area id. Load it with
- * `dynamic(() => import(...), { ssr: false })`: Leaflet needs the DOM.
+ * Clicking an LGA calls `onToggle` with its area id. The page loads the LGA boundaries (`useBoundaries`, P2-R19), so
+ * the Word export can wait for them. Load it with `dynamic(() => import(...), { ssr: false })`: Leaflet needs the DOM.
  */
 export default function NeedsMap({
   assessment,
   onToggle,
+  boundaries,
+  failed,
 }: {
   assessment: NeedsAssessment;
   onToggle: (areaId: string) => void;
+  /** The LGA boundaries; null while they load or when they could not be loaded (`failed`). */
+  boundaries: FeatureCollection | null;
+  failed: boolean;
 }) {
-  const [boundaries, setBoundaries] = useState<FeatureCollection | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let current = true;
-    loadBoundaries()
-      .then((collection) => {
-        if (current) setBoundaries(collection);
-      })
-      .catch((error) => {
-        console.error('Failed to load LGA boundaries:', error);
-        if (current) setFailed(true);
-      });
-    return () => {
-      current = false;
-    };
-  }, []);
-
   // Keyed on the snapshot and universe, not the assessment: toggling the selection must not rebuild the map layer.
   const { records, universe, memberIds } = assessment;
   const scores = useMemo(() => mapScores({ records, universe }), [records, universe]);
@@ -161,7 +92,10 @@ export default function NeedsMap({
         basemap={false}
         showLegend={false}
       />
-      <Legend universeNote={mapUniverseNote(universe)} />
+      <NeedMapLegend
+        note={`Shading shows each LGA's overall need score (0–100); darker means more need. ${mapUniverseNote(universe)}`}
+        steps={LEGEND_STEPS}
+      />
     </div>
   );
 }

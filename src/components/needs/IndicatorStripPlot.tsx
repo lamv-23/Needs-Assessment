@@ -108,7 +108,7 @@ export default function IndicatorStripPlot({ assessment, indicatorId }: { assess
   // Names are fitted to the plot's measured width, so they re-fit when the chart is resized.
   const [width, setWidth] = useState(DEFAULT_STRIP_PLOT_PX + MARGIN.left + MARGIN.right);
   if (assessment.areas.length === 0) return null;
-  const { def, reversed, others, selected, references, axis, noData, unnamedCount } = stripData(
+  const { def, reversed, others, selected, references, axis, noData, unnamedCount, notes } = stripData(
     assessment, indicatorId, Math.max(width - MARGIN.left - MARGIN.right, 100),
   );
 
@@ -159,7 +159,7 @@ export default function IndicatorStripPlot({ assessment, indicatorId }: { assess
           <Scatter name="Selected" data={selected.map(p => ({ ...p, y: 0 }))} shape={<SelectedDot />} isAnimationActive={false} />
         </ScatterChart>
       </ResponsiveContainer>
-      <div className="mt-2 space-y-1 text-xs text-gray-600">
+      <div data-figure-note className="mt-2 space-y-1 text-xs text-gray-600">
         <p>
           Grey dots: the other {others.length} NSW LGAs with data. Dashed line: Greater Sydney; dotted line: NSW.
         </p>
@@ -167,6 +167,7 @@ export default function IndicatorStripPlot({ assessment, indicatorId }: { assess
           <p>{unnamedCount} selected {unnamedCount === 1 ? 'area is' : 'areas are'} shown without a name; hover over a dot to see it.</p>
         )}
         {noData.length > 0 && <p>No data for this indicator: {noData.join(', ')}.</p>}
+        {notes.map(note => <p key={note}>{note}</p>)}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@
  * an optional field (the "source missing" case).
  */
 
-import type { LiveBundle } from '@/lib/needs/types';
+import type { InsightSeries, LiveBundle } from '@/lib/needs/types';
 
 export type DeepPartial<T> =
   T extends readonly unknown[] ? T :
@@ -25,6 +25,19 @@ function merge<T>(base: T, overrides: DeepPartial<T> | undefined): T {
   }
   return out as T;
 }
+
+/** A series with nothing in it, for records the test does not read a series from. */
+export const EMPTY_SERIES: InsightSeries = {
+  carDependencyByYear: [],
+  crashesByYear: [],
+  populationHistory: [],
+  population2041: null,
+  amPeakDepartures: null,
+  approvalsLast12: null,
+  approvalsPrev12: null,
+  jobs2021: null,
+  jobs2041: null,
+};
 
 export function makeBundle(overrides: DeepPartial<LiveBundle> = {}): LiveBundle {
   const base: LiveBundle = {
@@ -79,6 +92,7 @@ export function makeBundle(overrides: DeepPartial<LiveBundle> = {}): LiveBundle 
         departuresPer1000Residents: 12,
       },
       commuteDistance2016: { avgKm: 18.2, medianKm: 12 },
+      catchment: { persons: 400000, frequentPersons: 240000, anyPersons: 380000, frequentShare: 60, anyShare: 95 },
       crashTrend: [
         { year: 2022, totalCrashes: 900, fatalCrashes: 8, injuryCrashes: 500 },
         { year: 2023, totalCrashes: 1000, fatalCrashes: 9, injuryCrashes: 540 },

@@ -21,6 +21,12 @@ function combinedUniverse(universe: Universe, combined: AggregatedRecord): { uni
   return unavailable ? { universe: 'nsw', fallback: true } : { universe, fallback: false };
 }
 
+/**
+ * The universes benchmarks are ranked in. A figure that sets a benchmark's scores beside the areas' draws it only when
+ * the areas are ranked in one of these too; against a region or peer group the scales differ.
+ */
+export const BENCHMARK_UNIVERSES: readonly Universe[] = ['nsw', 'gsyd'];
+
 /** Benchmarks are assessed against NSW or Greater Sydney only: they belong to no region or peer group. */
 function benchmarkUniverse(universe: Universe): Universe {
   return universe === 'gsyd' ? 'gsyd' : 'nsw';

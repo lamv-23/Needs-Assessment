@@ -58,3 +58,7 @@ export const DOMAIN_COLORS: Record<NeedDomain, string> = {
 
 /** Benchmark series and reference lines. Dashes, not hue, tell Greater Sydney from NSW. */
 export const BENCHMARK_COLOR = '#475569';
+
+/** Today (or 2021) and 2041 on the growth-against-service and jobs-housing charts, where rows, not areas, are named. */
+export const TODAY_COLOR = CHART_COLORS[0];
+export const PROJECTED_COLOR = CHART_COLORS[3];

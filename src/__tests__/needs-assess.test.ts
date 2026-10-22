@@ -7,6 +7,7 @@ import { universeRecords } from '@/lib/needs/scoring';
 import type {
   AreaAssessment, IndicatorId, IndicatorValue, LgaIndicatorRecord, NeedsAssessment, NeedsMode, Universe,
 } from '@/lib/needs/types';
+import { EMPTY_SERIES } from './fixtures/needs';
 
 type Values = Partial<Record<IndicatorId, IndicatorValue>>;
 
@@ -19,7 +20,7 @@ function makeValues(values: Values): Record<IndicatorId, IndicatorValue> {
 function makeRecord(areaId: string, values: Values, extra: Partial<LgaIndicatorRecord> = {}): LgaIndicatorRecord {
   return {
     areaId, name: areaId, region: 'Hunter', population: 100000, densityPerKm2: 500,
-    peerGroup: 'regional_city', values: makeValues(values), ...extra,
+    peerGroup: 'regional_city', values: makeValues(values), series: EMPTY_SERIES, ...extra,
   };
 }
 
@@ -143,6 +144,61 @@ describe('aggregateRecords', () => {
     expect(agg.densityPerKm2).toBe(0);
     expect(agg.memberIds).toEqual([]);
     expect(INDICATORS.every(d => agg.values[d.id].value === null)).toBe(true);
+    expect(agg.series).toEqual(EMPTY_SERIES);
+  });
+
+  test('series counts are summed; one member without a value makes the sum null, never a partial sum', () => {
+    const a = makeRecord('a', {}, {
+      series: {
+        ...EMPTY_SERIES, population2041: 150000, amPeakDepartures: 3000, approvalsLast12: 400, approvalsPrev12: 350,
+        jobs2021: 50000, jobs2041: 60000,
+      },
+    });
+    const b = makeRecord('b', {}, {
+      series: {
+        ...EMPTY_SERIES, population2041: 250000, amPeakDepartures: 0, approvalsLast12: 600, approvalsPrev12: 650,
+        jobs2021: null, jobs2041: null,
+      },
+    });
+    expect(aggregateRecords([a, b], 'A + B', 'combined').series).toMatchObject({
+      population2041: 400000, amPeakDepartures: 3000, approvalsLast12: 1000, approvalsPrev12: 1000,
+      jobs2021: null, jobs2041: null,
+    });
+  });
+
+  test('yearly series keep only the years every member has', () => {
+    const a = makeRecord('a', {}, {
+      series: {
+        ...EMPTY_SERIES,
+        crashesByYear: [{ year: 2020, total: 10 }, { year: 2021, total: 12 }],
+        populationHistory: [{ year: 2021, population: 1000 }, { year: 2022, population: 1100 }],
+      },
+    });
+    const b = makeRecord('b', {}, {
+      series: {
+        ...EMPTY_SERIES,
+        crashesByYear: [{ year: 2021, total: 5 }],
+        populationHistory: [{ year: 2001, population: 500 }, { year: 2021, population: 2000 }, { year: 2022, population: 2100 }],
+      },
+    });
+    const { series } = aggregateRecords([a, b], 'A + B', 'combined');
+    expect(series.crashesByYear).toEqual([{ year: 2021, total: 17 }]);
+    expect(series.populationHistory).toEqual([{ year: 2021, population: 3000 }, { year: 2022, population: 3200 }]);
+  });
+
+  test('car dependency by year is population-weighted, only in years every member has, and listed as approximate', () => {
+    const a = makeRecord('a', { car_dependency: { value: 80 } }, {
+      population: 100000,
+      series: { ...EMPTY_SERIES, carDependencyByYear: [{ year: 2011, value: 70 }, { year: 2016, value: 74 }, { year: 2021, value: 80 }] },
+    });
+    const b = makeRecord('b', { car_dependency: { value: 60 } }, {
+      population: 300000,
+      series: { ...EMPTY_SERIES, carDependencyByYear: [{ year: 2016, value: 58 }, { year: 2021, value: 60 }] },
+    });
+    const agg = aggregateRecords([a, b], 'A + B', 'combined');
+    expect(agg.series.carDependencyByYear).toEqual([{ year: 2016, value: 62 }, { year: 2021, value: 65 }]);
+    expect(agg.series.carDependencyByYear[1].value).toBe(agg.values.car_dependency.value);
+    expect(agg.approximate).toContain('car_dependency');
   });
 
   test('a single LGA keeps its published 1 dp value, while an aggregate of it uses Σnum/Σden', () => {

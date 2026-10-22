@@ -7,8 +7,10 @@ import { Download, ChevronDown, Clipboard, Check, ChevronUp } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { wideCaptureSize } from '@/lib/export/capture-size';
 import { flattenLeafletTransforms } from '@/lib/export/leaflet-capture';
-import { serializeSvg } from '@/lib/export/svg-export';
+import { excelSheetName } from '@/lib/export/sheet-name';
+import { figureBodyParts, serializeSvg, svgExportable } from '@/lib/export/svg-export';
 import { useFigureRegistry } from '@/components/needs/FigureRegistry';
+import { figureSkipError } from '@/lib/needs/figure-skip';
 
 interface ChartWrapperProps {
   title: string;
@@ -32,10 +34,31 @@ interface ChartWrapperProps {
   caption?: string;
   /** Registers this chart with the nearest FigureRegistryProvider (numbering and Word export). Must be unique within the provider. */
   figureId?: string;
+  /**
+   * Whether "Download SVG" is offered. By default it is detected when the menu opens: only for a body with exactly one
+   * chart SVG and no HTML legend or note, which an SVG file would leave out (R62). PNG and Word are unaffected.
+   */
+  svgExport?: boolean;
+  /**
+   * Why the figure has nothing to export, e.g. its data or map boundaries could not be loaded. Its Word capture then
+   * fails as unavailable, so the export leaves it out and says it could not be loaded (R22, P2-R19) instead of
+   * picturing the message.
+   */
+  unavailable?: string | null;
 }
 
 /** The caption element carries `data-figure-caption` so the registry's capture() can leave it out (Word adds its own). */
 const isFigureCaption = (element: Element) => element.hasAttribute('data-figure-caption');
+
+/** "Download SVG" is offered when `svgExport` allows it (auto: the whole figure is one SVG) and there is an SVG to save. */
+function offersSvg(root: HTMLElement | null, svgExport: boolean | undefined): boolean {
+  if (!root || svgExport === false) return false;
+  if (svgExport === undefined && !svgExportable(figureBodyParts(root))) return false;
+  return serializeSvg(root) !== null;
+}
+
+/** Download links are revoked after a delay: some browsers cancel a download whose URL is revoked straight away. */
+const REVOKE_AFTER_MS = 10_000;
 
 /**
  * html2canvas clips content to any ancestor whose overflow is not visible, so a figure wider than
@@ -99,6 +122,8 @@ export default function ChartWrapper({
   defaultCollapsed = false,
   caption,
   figureId,
+  svgExport,
+  unavailable,
 }: ChartWrapperProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -141,8 +166,9 @@ export default function ChartWrapper({
 
   // PNG bytes for the Word export: same render as the PNG download, minus the caption element.
   const captureFigure = useCallback(async () => {
+    if (unavailable) throw figureSkipError('unavailable', `Figure "${title}" is unavailable: ${unavailable}`);
     const canvas = await captureCanvas(true);
-    if (!canvas) throw new Error(`Figure "${title}" is not rendered (collapsed or unmounted)`);
+    if (!canvas) throw figureSkipError('collapsed', `Figure "${title}" is not rendered (collapsed or unmounted)`);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error(`Failed to render figure "${title}" as PNG`);
     return {
@@ -150,7 +176,7 @@ export default function ChartWrapper({
       widthPx: canvas.width,
       heightPx: canvas.height,
     };
-  }, [captureCanvas, title]);
+  }, [captureCanvas, title, unavailable]);
 
   // Registering again with the same id updates in place (keeps the figure's number), so changes
   // to title/caption don't reorder; the separate unmount effect is the only thing that unregisters.
@@ -169,7 +195,7 @@ export default function ChartWrapper({
 
   const toggleDropdown = () => {
     // Checked when the menu opens: charts render after data loads, so chartRef is only reliable now.
-    if (!dropdownOpen) setSvgAvailable(!!chartRef.current && serializeSvg(chartRef.current) !== null);
+    if (!dropdownOpen) setSvgAvailable(offersSvg(chartRef.current, svgExport));
     setDropdownOpen(!dropdownOpen);
   };
 
@@ -216,8 +242,10 @@ export default function ChartWrapper({
       const link = document.createElement('a');
       link.download = `${fileBase}.svg`;
       link.href = url;
+      document.body.appendChild(link);
       link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), REVOKE_AFTER_MS);
     } catch (error) {
       console.error('Failed to export SVG:', error);
     }
@@ -234,8 +262,7 @@ export default function ChartWrapper({
       const dataRows = data.map((row) => allKeys.map((k) => row[k] ?? ''));
       const worksheet = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
       const workbook = XLSX.utils.book_new();
-      const sheetName = title.slice(0, 31);
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      XLSX.utils.book_append_sheet(workbook, worksheet, excelSheetName(title));
       XLSX.writeFile(workbook, `${fileBase}.xlsx`);
     } catch (error) {
       console.error('Failed to export Excel:', error);

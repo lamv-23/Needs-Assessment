@@ -6,10 +6,16 @@
  *
  * Stored dataset keys: 'GTFS_COVERAGE' (GTFSCoverageData, see interface below)
  *                      'GTFS_FREQUENCY' (GTFSFrequencyData, see src/lib/gtfs-frequency.ts)
+ * Also writes every stop's AM-peak departures, location and mode to the
+ * gitignored data/build.db (gtfs_stop_frequency), for catchment analysis.
  *
  * Run:  npm run seed:gtfs                       # per-feed API if TFNSW_API_KEY is set,
  *                                                # else the keyless complete bundle (~300 MB)
  *       npm run seed:gtfs -- --zip <path.zip>   # use an already-downloaded complete bundle
+ *       npm run seed:gtfs -- --service-date 20261027   # count departures on this date (YYYYMMDD)
+ *       npm run seed:gtfs -- --stop-frequency-only     # write ONLY gtfs_stop_frequency to data/build.db;
+ *                                                # data/cache.db is only read, to default the service date
+ *                                                # to the cached GTFS_FREQUENCY one and to cross-check totals
  */
 
 import * as fs from 'fs';
@@ -22,10 +28,12 @@ import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
 import { point as turfPoint } from '@turf/helpers';
+import Database from 'better-sqlite3';
 import { upsertTfNSWCache, upsertGtfsStopsBatch, clearGtfsStops, setConfigValue } from '../src/lib/db';
 import type { GtfsStop } from '../src/lib/db';
+import { replaceGtfsStopFrequency } from '../src/lib/build-db';
 import { LGA_CODE_MAP } from '../src/lib/abs-fetchers';
-import { pickServiceDate, activeServiceIds, createPeakDepartureCounter, summariseFrequency, frequencyBenchmarks } from '../src/lib/gtfs-frequency';
+import { pickServiceDate, activeServiceIds, createPeakDepartureCounter, summariseFrequency, frequencyBenchmarks, toStopFrequencyRows } from '../src/lib/gtfs-frequency';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '../src/lib/data/sample-areas';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -318,7 +326,12 @@ function fileFeedReader(zipPath: string): FeedReader {
 // public service, so they are left out of frequency counts (not coverage).
 const SCHOOL_BUS_ROUTE_TYPE = 712;
 
-async function processFeed(feedId: string, defaultMode: string, reader: FeedReader): Promise<FeedResult | null> {
+async function processFeed(
+  feedId: string,
+  defaultMode: string,
+  reader: FeedReader,
+  pinnedServiceDate?: string,
+): Promise<FeedResult | null> {
   // ── stops.txt ───────────────────────────────────────────────────────────────
   const stopsText = await reader.readText('stops.txt');
   if (stopsText === null) {
@@ -370,12 +383,17 @@ async function processFeed(feedId: string, defaultMode: string, reader: FeedRead
   };
   const calendarRows = await readOptional('calendar.txt');
   const calendarDateRows = await readOptional('calendar_dates.txt');
-  const serviceDate = pickServiceDate(calendarRows, calendarDateRows);
+  // A pinned date is used as given, but only if the feed runs any service on it.
+  const serviceDate = pinnedServiceDate
+    ? (activeServiceIds(calendarRows, calendarDateRows, pinnedServiceDate).size > 0 ? pinnedServiceDate : null)
+    : pickServiceDate(calendarRows, calendarDateRows);
   const counter = createPeakDepartureCounter(
     tripService,
     serviceDate ? activeServiceIds(calendarRows, calendarDateRows, serviceDate) : new Set(),
   );
-  if (!serviceDate) console.warn(`  ↳ ${feedId}: no weekday service date found — frequency skipped`);
+  if (!serviceDate) {
+    console.warn(`  ↳ ${feedId}: ${pinnedServiceDate ? `no service on ${pinnedServiceDate}` : 'no weekday service date found'} — frequency skipped`);
+  }
 
   // ── stop_times.txt (streamed) ───────────────────────────────────────────────
   // stop_id → Set<route_id>, plus AM-peak departures per stop, in one pass.
@@ -419,6 +437,65 @@ async function processFeed(feedId: string, defaultMode: string, reader: FeedRead
     feedId, defaultMode, stops: stopsMap, routes: routesMap, stopRoutes,
     peakDepartures: counter.counts, serviceDate: stopTimesLines ? serviceDate : null,
   };
+}
+
+// ─── Per-stop mode, id and AM-peak rows ───────────────────────────────────────
+
+/** Primary mode of a stop: from the routes serving it, else the feed's default. */
+function stopMode(feed: FeedResult, stopId: string): string {
+  const routesForStop = feed.stopRoutes.get(stopId);
+  if (!routesForStop || routesForStop.size === 0) return feed.defaultMode;
+  const modeKeys = new Set<string>();
+  for (const routeId of routesForStop) {
+    const routeType = feed.routes.get(routeId);
+    modeKeys.add(routeType !== undefined
+      ? routeTypeToMode(routeType, feed.defaultMode)
+      : `${feed.defaultMode}Stops`);
+  }
+  return pickPrimaryMode(modeKeys);
+}
+
+/** Id a stop is stored under in gtfs_stops and gtfs_stop_frequency. */
+function storedStopId(feed: FeedResult, stopId: string): string {
+  return `${feed.feedId}_${stopId}`;
+}
+
+/** Every stop in the bundle (also those outside any LGA), in the shape toStopFrequencyRows takes. */
+function bundleStopFrequencyRows(feedResults: FeedResult[], serviceDate: string) {
+  const stops: { stopId: string; lat: number; lng: number; mode: string }[] = [];
+  const departures = new Map<string, number>();
+  for (const feed of feedResults) {
+    for (const [stopId, { lat, lon }] of feed.stops) {
+      stops.push({ stopId: storedStopId(feed, stopId), lat, lng: lon, mode: stopMode(feed, stopId) });
+    }
+    for (const [stopId, n] of feed.peakDepartures) departures.set(storedStopId(feed, stopId), n);
+  }
+  return toStopFrequencyRows(stops, departures, serviceDate);
+}
+
+/** The most frequent value (ties go to the first seen), or null for none. */
+function mostCommon(values: string[]): string | null {
+  const tally = new Map<string, number>();
+  for (const v of values) tally.set(v, (tally.get(v) ?? 0) + 1);
+  return [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
+/** Cached GTFS_FREQUENCY per LGA code, read from data/cache.db without opening it for writing. */
+function readCachedFrequency(): Map<string, { serviceDate: string; amPeakDepartures: number }> {
+  const cached = new Map<string, { serviceDate: string; amPeakDepartures: number }>();
+  const dbPath = process.env.CACHE_DB_PATH?.trim() || path.join(process.cwd(), 'data', 'cache.db');
+  if (!fs.existsSync(dbPath)) return cached;
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  try {
+    const rows = db.prepare("SELECT lga_code, data_json FROM tfnsw_cache WHERE dataset = 'GTFS_FREQUENCY'").all() as { lga_code: string; data_json: string }[];
+    for (const { lga_code, data_json } of rows) {
+      const { serviceDate, amPeakDepartures } = JSON.parse(data_json) as { serviceDate?: string; amPeakDepartures?: number };
+      if (serviceDate && typeof amPeakDepartures === 'number') cached.set(lga_code, { serviceDate, amPeakDepartures });
+    }
+  } finally {
+    db.close();
+  }
+  return cached;
 }
 
 // ─── Aggregate per-LGA metrics ────────────────────────────────────────────────
@@ -518,11 +595,28 @@ async function main() {
   const feedResults: FeedResult[] = [];
   const args = process.argv.slice(2);
   const zipArg = args.includes('--zip') ? args[args.indexOf('--zip') + 1] : null;
+  const stopFrequencyOnly = args.includes('--stop-frequency-only');
+  const serviceDateArg = args.includes('--service-date') ? args[args.indexOf('--service-date') + 1] : undefined;
+  if (args.includes('--service-date') && !/^\d{8}$/.test(serviceDateArg ?? '')) {
+    console.error('\n✗ --service-date needs a YYYYMMDD value, e.g. --service-date 20261027\n');
+    process.exit(1);
+  }
+  // Stop-frequency-only mode defaults to the service date the cached GTFS_FREQUENCY figures used.
+  const cachedFrequency = stopFrequencyOnly ? readCachedFrequency() : null;
+  const pinnedServiceDate = serviceDateArg
+    ?? (cachedFrequency ? mostCommon([...cachedFrequency.values()].map(c => c.serviceDate)) ?? undefined : undefined);
+  if (stopFrequencyOnly) {
+    if (!pinnedServiceDate) {
+      console.error('\n✗ No cached GTFS_FREQUENCY service date to default to — pass --service-date YYYYMMDD\n');
+      process.exit(1);
+    }
+    console.log(`Stop-frequency-only: writing gtfs_stop_frequency to data/build.db for ${pinnedServiceDate}; data/cache.db is not written\n`);
+  }
 
   if (zipArg || !process.env.TFNSW_API_KEY) {
     const zipPath = zipArg ?? await downloadCompleteBundle();
     console.log(`\n[Complete GTFS bundle: ${zipPath}]`);
-    const result = await processFeed('complete', 'bus', fileFeedReader(zipPath));
+    const result = await processFeed('complete', 'bus', fileFeedReader(zipPath), pinnedServiceDate);
     if (result) feedResults.push(result);
   } else {
     for (const feed of GTFS_FEEDS) {
@@ -531,7 +625,7 @@ async function main() {
       if (!buf) continue;
 
       const reader = bufferFeedReader(feed.feedId, buf);
-      const result = reader ? await processFeed(feed.feedId, feed.defaultMode, reader) : null;
+      const result = reader ? await processFeed(feed.feedId, feed.defaultMode, reader, pinnedServiceDate) : null;
       if (result) feedResults.push(result);
     }
   }
@@ -599,6 +693,36 @@ async function main() {
   }
   if (wharvesAssigned > 0) console.log(`  ${wharvesAssigned} ferry wharves outside LGA land polygons assigned to the nearest LGA`);
 
+  // stop key (`${feedIdx}:${stopId}`) → weekday AM-peak departures on the service date
+  const allPeakDepartures = new Map<string, number>();
+  for (let fi = 0; fi < feedResults.length; fi++) {
+    for (const [stopId, n] of feedResults[fi].peakDepartures) allPeakDepartures.set(`${fi}:${stopId}`, n);
+  }
+  const serviceDate = mostCommon(feedResults.map(f => f.serviceDate).filter((d): d is string => !!d));
+
+  // ── Stop-frequency-only: write gtfs_stop_frequency to build.db and stop ────
+  if (stopFrequencyOnly) {
+    if (!serviceDate) {
+      console.error(`\n✗ No service on ${pinnedServiceDate} in this bundle — nothing written.\n`);
+      process.exit(1);
+    }
+    const rows = bundleStopFrequencyRows(feedResults, serviceDate);
+    replaceGtfsStopFrequency(rows);
+    console.log(`\n  ✅ ${rows.length} stops written to gtfs_stop_frequency in data/build.db (service date ${serviceDate})`);
+
+    // Cross-check: per-LGA AM-peak totals (stops assigned as above) against the cached GTFS_FREQUENCY.
+    const lgaTotals = new Map<string, number>();
+    for (const [key, lgaCode] of stopToLGA) lgaTotals.set(lgaCode, (lgaTotals.get(lgaCode) ?? 0) + (allPeakDepartures.get(key) ?? 0));
+    const differing = [...lgaTotals].filter(([code, total]) => cachedFrequency?.get(code)?.amPeakDepartures !== total);
+    console.log(`  ${lgaTotals.size - differing.length} of ${lgaTotals.size} LGAs match the cached amPeakDepartures exactly`);
+    for (const [code, total] of differing.slice(0, 10)) {
+      console.log(`    LGA ${code}: ${total} here, ${cachedFrequency?.get(code)?.amPeakDepartures ?? 'not cached'} cached`);
+    }
+    const blacktown = LGA_CODE_MAP.lga_blacktown;
+    console.log(`  Blacktown (${blacktown}): ${lgaTotals.get(blacktown) ?? 0} AM-peak departures here, ${cachedFrequency?.get(blacktown)?.amPeakDepartures ?? 'not cached'} cached\n`);
+    return;
+  }
+
   // Group stops by LGA and feed
   // lgaCode → feedIdx → stopId[]
   const lgaFeedStops = new Map<string, Map<number, string[]>>();
@@ -619,10 +743,6 @@ async function main() {
   const gtfsStopRows: GtfsStop[] = [];
   // lgaCode → stops (feed-qualified id + primary mode) for frequency summaries
   const lgaFrequencyStops = new Map<string, { stopId: string; mode: string }[]>();
-  const allPeakDepartures = new Map<string, number>();
-  for (let fi = 0; fi < feedResults.length; fi++) {
-    for (const [stopId, n] of feedResults[fi].peakDepartures) allPeakDepartures.set(`${fi}:${stopId}`, n);
-  }
 
   for (const [key, lgaCode] of stopToLGA) {
     const [feedIdxStr, ...rest] = key.split(':');
@@ -633,26 +753,12 @@ async function main() {
     const coords = feed.stops.get(stopId);
     if (!coords) continue;
 
-    // Determine mode from routes serving this stop
-    const routesForStop = feed.stopRoutes.get(stopId);
-    let mode: string;
-    if (routesForStop && routesForStop.size > 0) {
-      const modeKeys = new Set<string>();
-      for (const routeId of routesForStop) {
-        const routeType = feed.routes.get(routeId);
-        modeKeys.add(routeType !== undefined
-          ? routeTypeToMode(routeType, feed.defaultMode)
-          : `${feed.defaultMode}Stops`);
-      }
-      mode = pickPrimaryMode(modeKeys);
-    } else {
-      mode = feed.defaultMode;
-    }
+    const mode = stopMode(feed, stopId);
 
     // Resolve stop_name from the stops.txt rows (stored in stopsMap as coords only)
     // We don't have stop_name in stopsMap — get it from stopsRows via the feed's stops array
     // The stops CSV text was parsed earlier; we'll use the feedId as a lookup key prefix
-    const prefixedId = `${feed.feedId}_${stopId}`;
+    const prefixedId = storedStopId(feed, stopId);
     const lgaStopList = lgaFrequencyStops.get(lgaCode) ?? [];
     lgaStopList.push({ stopId: key, mode });
     lgaFrequencyStops.set(lgaCode, lgaStopList);
@@ -742,11 +848,7 @@ async function main() {
   }
 
   // ── AM-peak service frequency per LGA ─────────────────────────────────────
-  const serviceDates = feedResults.map(f => f.serviceDate).filter((d): d is string => !!d);
-  if (serviceDates.length > 0) {
-    const tally = new Map<string, number>();
-    for (const d of serviceDates) tally.set(d, (tally.get(d) ?? 0) + 1);
-    const serviceDate = [...tally.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  if (serviceDate) {
     const greaterSydneyCodes = new Set(GREATER_SYDNEY_GCCSA_AREA_IDS.map(id => LGA_CODE_MAP[id]).filter(Boolean));
     const { greaterSydney, nsw } = frequencyBenchmarks(lgaFrequencyStops, allPeakDepartures, serviceDate, code => greaterSydneyCodes.has(code));
     const benchmarks = {
@@ -764,6 +866,11 @@ async function main() {
     if (LGA_CODE_MAP.benchmark_nsw) upsertTfNSWCache(LGA_CODE_MAP.benchmark_nsw, 'GTFS_FREQUENCY', { ...nsw, benchmarks }, year);
     console.log(`  ✅ ${frequencyUpserted} LGAs with AM-peak frequency data stored in tfnsw_cache (service date ${serviceDate})`);
     console.log(`     Frequent-stop share: Greater Sydney ${greaterSydney.frequentStopShare}%, NSW ${nsw.frequentStopShare}%`);
+
+    // Per-stop counts for catchment analysis go to the build database, not cache.db.
+    const stopFrequencyRows = bundleStopFrequencyRows(feedResults, serviceDate);
+    replaceGtfsStopFrequency(stopFrequencyRows);
+    console.log(`  ✅ ${stopFrequencyRows.length} stops written to gtfs_stop_frequency in data/build.db`);
   }
 
   setConfigValue('tfnsw_last_refresh', new Date().toISOString());
