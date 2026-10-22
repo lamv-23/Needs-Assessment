@@ -294,6 +294,19 @@ describe('runAssessment', () => {
       expect(a.areas[0].universeSize).toBe(NEEDS_SNAPSHOT.records.length);
     });
 
+    test('requestedUniverse keeps the universe asked for, whether or not it fell back', () => {
+      const region = run(['lga_blacktown', 'lga_newcastle'], 'combined', 'region');
+      expect([region.requestedUniverse, region.universe, region.universeFallback]).toEqual(['region', 'nsw', true]);
+      const peer = run(['lga_sydney', 'lga_blacktown'], 'combined', 'peer');
+      expect([peer.requestedUniverse, peer.universe, peer.universeFallback]).toEqual(['peer', 'nsw', true]);
+      const kept = run(['lga_blacktown', 'lga_penrith'], 'combined', 'peer');
+      expect([kept.requestedUniverse, kept.universe, kept.universeFallback]).toEqual(['peer', 'peer', false]);
+      for (const universe of ['nsw', 'gsyd', 'region', 'peer'] as const) {
+        expect(run([], 'combined', universe).requestedUniverse).toBe(universe);
+        expect(run(['lga_blacktown'], 'separate', universe).requestedUniverse).toBe(universe);
+      }
+    });
+
     test('nsw and gsyd never fall back', () => {
       const nsw = run(['lga_sydney', 'lga_newcastle'], 'combined', 'nsw');
       expect([nsw.universe, nsw.universeFallback]).toEqual(['nsw', false]);

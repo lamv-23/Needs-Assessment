@@ -1,13 +1,12 @@
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
-import { INDICATORS } from './indicators';
+import { INDICATORS, NEED_DOMAINS } from './indicators';
 import { PEER_GROUP_PLURALS } from './peer-groups';
 import type {
   AreaAssessment, AssessableRecord, DomainScore, IndicatorId, IndicatorScore, LgaIndicatorRecord, NeedBand,
-  NeedDomain, PeerGroup, Universe,
+  PeerGroup, Universe,
 } from './types';
 
-const DOMAINS: NeedDomain[] = ['transport', 'socio', 'growth'];
-const KEY_NEED_PERCENTILE = 80;
+export const KEY_NEED_PERCENTILE = 80;
 const SMALL_GROUP_SIZE = 5;
 
 type UniverseTarget = { region: string; peerGroup: PeerGroup | null };
@@ -111,7 +110,7 @@ export function assessRecord(
     };
   });
 
-  const domains: DomainScore[] = DOMAINS.map(domain => {
+  const domains: DomainScore[] = NEED_DOMAINS.map(domain => {
     const scoredIds = INDICATORS.filter(def => def.domain === domain && def.scored).map(def => def.id);
     const percentiles = indicators
       .filter(score => scoredIds.includes(score.id))

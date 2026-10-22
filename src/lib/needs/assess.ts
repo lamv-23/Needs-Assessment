@@ -78,6 +78,7 @@ export function runAssessment(input: {
 
   return {
     mode,
+    requestedUniverse: universe,
     universe: effectiveUniverse,
     universeFallback,
     areas,

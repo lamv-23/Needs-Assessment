@@ -106,7 +106,9 @@ export type NeedsMode = 'separate' | 'combined';
 
 export interface NeedsAssessment {
   mode: NeedsMode;
-  /** The universe actually used. Differs from the one requested only when `universeFallback` is true. */
+  /** The universe that was asked for. */
+  requestedUniverse: Universe;
+  /** The universe actually used. Differs from `requestedUniverse` only when `universeFallback` is true. */
   universe: Universe;
   /** A combined selection asked for a region or peer universe but spans several, so NSW was used instead. */
   universeFallback: boolean;

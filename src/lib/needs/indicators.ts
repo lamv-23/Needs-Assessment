@@ -146,6 +146,9 @@ export const INDICATOR_BY_ID = Object.fromEntries(
   INDICATORS.map(def => [def.id, def]),
 ) as Record<IndicatorId, IndicatorDef>;
 
+/** The need domains, in display order. */
+export const NEED_DOMAINS: NeedDomain[] = ['transport', 'socio', 'growth'];
+
 export const DOMAIN_LABELS: Record<NeedDomain, string> = {
   transport: 'Transport disadvantage',
   socio: 'Socio-economic disadvantage',
