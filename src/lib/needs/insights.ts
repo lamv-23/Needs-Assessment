@@ -1,5 +1,6 @@
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { aggregateRecords } from './aggregate';
+import { populationNearest } from './extract';
 import { formatDiff, formatSignedDiff, formatValue, inSentence, possessive } from './format';
 import { INDICATOR_BY_ID, SOURCES } from './indicators';
 import { universeRecords } from './scoring';
@@ -202,8 +203,9 @@ const annualGrowth = (from: number, to: number, years: number): number => (Math.
 
 /**
  * Per metric: given the subject, how to measure any record over the subject's endpoints (so the universe is
- * compared over the same years), or null when the subject has no trend. Crash and approval rates use the
- * Census population, the denominator of their indicators, so the latest value matches the indicator.
+ * compared over the same years), or null when the subject has no trend. Crash and approval rates use their
+ * indicators' denominators (ERP of each crash year; the Census population for approvals), so the latest value
+ * matches the indicator.
  */
 const MEASURES: Record<TrendMetric, (subject: SeriesRecord) => Measure | null> = {
   car_dependency: subject => {
@@ -223,11 +225,16 @@ const MEASURES: Record<TrendMetric, (subject: SeriesRecord) => Measure | null> =
     if (years.length < 2) return null;
     const [from, to] = [Math.min(...years), Math.max(...years)];
     return record => {
-      const at = (year: number) => record.series.crashesByYear.find(c => c.year === year)?.total;
-      const [start, end] = [at(from), at(to)];
-      if (start === undefined || end === undefined || !(record.population > 0)) return null;
-      const per10000 = (crashes: number) => (crashes * 10000) / record.population;
-      return { from: { label: String(from), value: per10000(start) }, to: { label: String(to), value: per10000(end) } };
+      // Per 10,000 residents of each year (ERP, nearest year), as the crash_rate indicator
+      const rate = (year: number) => {
+        const crashes = record.series.crashesByYear.find(c => c.year === year)?.total;
+        const population = populationNearest(record.series.populationHistory, year);
+        return crashes === undefined || population === null ? null : (crashes * 10000) / population;
+      };
+      const [start, end] = [rate(from), rate(to)];
+      return start === null || end === null
+        ? null
+        : { from: { label: String(from), value: start }, to: { label: String(to), value: end } };
     };
   },
   // R39: actual annual growth from 2021 to the latest ERP year, against the DPE projection for 2021-2041
@@ -376,25 +383,43 @@ function mismatchText(subject: Subject, m: MismatchResult): string {
     + `(model across ${m.fit.n} ${group}, R² ${m.fit.r2.toFixed(2)}).`;
 }
 
-interface RateWording { label: string; def: IndicatorDef; citations: SourceRef[] }
+interface RateWording {
+  label: string;
+  def: IndicatorDef;
+  citations: SourceRef[];
+  /** An endpoint label as it reads after "between" or "and": years as they are, "the last 12 months". */
+  period: (label: string) => string;
+}
+
+const asIs = (label: string) => label;
 
 const TREND_WORDING: Record<Exclude<TrendMetric, 'population_growth'>, RateWording> = {
-  car_dependency: { label: 'car dependency', def: CAR, citations: [SOURCES.g62, WFH_CAVEAT_CITATION] },
-  crash_rate: { label: 'road crashes per 10,000 residents', def: INDICATOR_BY_ID.crash_rate, citations: [SOURCES.crashes] },
+  car_dependency: { label: 'car dependency', def: CAR, citations: [SOURCES.g62, WFH_CAVEAT_CITATION], period: asIs },
+  crash_rate: {
+    label: 'road crashes per 10,000 residents',
+    def: INDICATOR_BY_ID.crash_rate,
+    citations: [SOURCES.crashes],
+    period: asIs,
+  },
   approvals: {
     label: 'dwelling approvals per 1,000 residents',
     def: INDICATOR_BY_ID.approvals_per_1000,
     citations: [SOURCES.buildingApprovals],
+    period: label => `the ${label}`,
   },
 };
 
 const POPULATION_CITATIONS = [SOURCES.erp, SOURCES.populationProjections];
 
-/** R43: the median change is stated with its sign, or as "no median change" when it shows as zero. */
+/**
+ * "{Owner} {label} changed from {from} ({fromLabel}) to {to} ({toLabel}), {comparison}.", or, when the two values
+ * show the same, "{Owner} {label} was unchanged at {to} between {fromLabel} and {toLabel}, {comparison}." (R47).
+ * The comparison states the median change with its sign, or "no median change" when it shows as zero (R43).
+ */
 function trendText(
   subject: Subject,
   trend: TrendResult,
-  { label, def }: RateWording,
+  { label, def, period }: RateWording,
   median: number,
   universeLabel: string,
 ): string {
@@ -402,8 +427,11 @@ function trendText(
   const comparison = signedMedian === null
     ? `compared with no median change across ${universeLabel}`
     : `compared with a median change of ${signedMedian} across ${universeLabel}`;
-  return `${subject.owner} ${label} changed from ${formatValue(def, trend.from.value)} (${trend.from.label}) `
-    + `to ${formatValue(def, trend.to.value)} (${trend.to.label}), ${comparison}.`;
+  const [from, to] = [formatValue(def, trend.from.value), formatValue(def, trend.to.value)];
+  return from === to
+    ? `${subject.owner} ${label} was unchanged at ${to} between ${period(trend.from.label)} and ${period(trend.to.label)}, `
+      + `${comparison}.`
+    : `${subject.owner} ${label} changed from ${from} (${trend.from.label}) to ${to} (${trend.to.label}), ${comparison}.`;
 }
 
 /**

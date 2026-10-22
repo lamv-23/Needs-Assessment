@@ -25,6 +25,20 @@ function populationIn(series: { year: number; population: number }[], year: numb
   return entry ? entry.population : null;
 }
 
+/**
+ * The population of `year`, else of the nearest year (equally near: the earlier), ignoring entries that are
+ * not a positive number; null when there are none.
+ */
+export function populationNearest(series: { year: number; population: number }[], year: number): number | null {
+  const nearer = (a: { year: number }, b: { year: number }) =>
+    Math.abs(a.year - year) < Math.abs(b.year - year)
+    || (Math.abs(a.year - year) === Math.abs(b.year - year) && a.year < b.year);
+  const best = series
+    .filter(p => isNum(p.year) && isNum(p.population) && p.population > 0)
+    .reduce<{ year: number; population: number } | null>((found, p) => (!found || nearer(p, found) ? p : found), null);
+  return best ? best.population : null;
+}
+
 /** A year's job count, ignoring entries that are not a positive number. */
 function jobsIn(series: { year: number; jobs: number }[], year: number): number | null {
   const entry = series.find(j => j.year === year && isNum(j.jobs) && j.jobs > 0);
@@ -95,7 +109,10 @@ export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, Indic
     commute_distance_km: isNum(transport.commuteDistance2016?.avgKm)
       ? { value: transport.commuteDistance2016.avgKm }
       : missing(),
-    crash_rate: ratio(latestCrashYear?.totalCrashes, population, 10000),
+    // Per 10,000 residents of the crash year (ERP), so rates in growing LGAs are not overstated
+    crash_rate: latestCrashYear
+      ? ratio(latestCrashYear.totalCrashes, populationNearest(growthData.populationHistory, latestCrashYear.year), 10000)
+      : missing(),
 
     // SEIFA scores are never 0, so a 0 is an absent value
     seifa_irsd: isNum(demographics.seifaScore) && demographics.seifaScore > 0

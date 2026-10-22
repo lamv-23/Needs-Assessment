@@ -232,14 +232,43 @@ describe('trends', () => {
     const blacktown = snapshotRecord('lga_blacktown');
     const all = trends(blacktown, NEEDS_SNAPSHOT.records);
     const crash = all.find(t => t.metric === 'crash_rate')!;
+    const erp = (year: number) => blacktown.series.populationHistory.find(p => p.year === year)!.population;
     expect([crash.from.label, crash.to.label]).toEqual(['2020', '2024']);
-    expect(crash.from.value).toBeCloseTo(blacktown.series.crashesByYear[0].total / blacktown.population * 10000, 10);
+    // 2020 has no ERP in the cache, so the nearest year's (2021) is used
+    expect(blacktown.series.populationHistory.some(p => p.year === 2020)).toBe(false);
+    expect(crash.from.value).toBeCloseTo(blacktown.series.crashesByYear[0].total / erp(2021) * 10000, 10);
+    expect(crash.to.value).toBeCloseTo(blacktown.series.crashesByYear[4].total / erp(2024) * 10000, 10);
     expect(crash.to.value).toBeCloseTo(blacktown.values.crash_rate.value!, 3);
     const approvals = all.find(t => t.metric === 'approvals')!;
     expect([approvals.from.label, approvals.to.label]).toEqual(['previous 12 months', 'last 12 months']);
     expect(approvals.from.value).toBeCloseTo(blacktown.series.approvalsPrev12! / blacktown.population * 1000, 10);
     expect(approvals.to.value).toBeCloseTo(blacktown.values.approvals_per_1000.value!, 3);
     expect(all.map(t => t.metric)).toEqual(['car_dependency', 'crash_rate', 'population_growth', 'approvals']);
+  });
+
+  test('crash rates use each year\'s population: rising crashes in a faster-growing LGA are a falling rate', () => {
+    const growing = makeRecord('s', {
+      population: 9000,   // the Census count, which must not be the denominator
+      series: {
+        crashesByYear: [{ year: 2020, total: 100 }, { year: 2022, total: 105 }, { year: 2024, total: 110 }],
+        populationHistory: [{ year: 2021, population: 10000 }, { year: 2024, population: 12500 }],
+      },
+    });
+    const [crash] = trends(growing, [growing]).filter(t => t.metric === 'crash_rate');
+    expect(crash.from).toEqual({ label: '2020', value: 100 });     // 100 ÷ 10,000 (2021 ERP, the nearest year)
+    expect(crash.to).toEqual({ label: '2024', value: 88 });        // 110 ÷ 12,500
+    expect(crash.change).toBeCloseTo(-12, 10);
+
+    const with2020 = makeRecord('s', {
+      series: {
+        crashesByYear: [{ year: 2020, total: 100 }, { year: 2024, total: 110 }],
+        populationHistory: [{ year: 2020, population: 8000 }, { year: 2021, population: 10000 }, { year: 2024, population: 12500 }],
+      },
+    });
+    expect(trends(with2020, [with2020]).find(t => t.metric === 'crash_rate')!.from.value).toBe(125);   // 100 ÷ 8,000
+
+    const noErp = makeRecord('s', { series: { crashesByYear: [{ year: 2020, total: 100 }, { year: 2024, total: 110 }] } });
+    expect(trends(noErp, [noErp])).toEqual([]);
   });
 
   test('trends skip metrics without both endpoints', () => {
@@ -451,6 +480,42 @@ describe('buildInsights', () => {
       .toBe(`${opening}compared with no median change across NSW LGAs.`);
     expect(approvalsText({ population: 100000, prev: 100, last: 102 }))   // +0.02 shows as 0.0
       .toBe(`${opening}compared with no median change across NSW LGAs.`);
+  });
+
+  test('a trend whose two values show the same reads "was unchanged at" (R47)', () => {
+    const trendText = (subject: Partial<InsightSeries> & { population?: number }, others: Partial<InsightSeries>[] = []) => {
+      const { population = 1000, ...series } = subject;
+      const records = [
+        makeRecord('lga_test_s', { name: 'Testville', population, series }),
+        ...others.map((s, i) => makeRecord(`lga_test_${i}`, { population: 1000, series: s })),
+      ];
+      return of(buildInsights(assess(['lga_test_s'], 'separate', 'nsw', records)), 'trend').map(i => i.text);
+    };
+
+    expect(trendText(
+      { approvalsPrev12: 5, approvalsLast12: 5 },
+      [{ approvalsPrev12: 4, approvalsLast12: 6 }, { approvalsPrev12: 4, approvalsLast12: 6 }],
+    )).toEqual([
+      "Testville's dwelling approvals per 1,000 residents was unchanged at 5.0 per 1,000 between the previous 12 months "
+      + 'and the last 12 months, compared with a median change of +2.0 per 1,000 across NSW LGAs.',
+    ]);
+    expect(trendText(   // 5.00 → 5.02 per 1,000 both show as 5.0
+      { population: 100000, approvalsPrev12: 500, approvalsLast12: 502 },
+      [{ approvalsPrev12: 3, approvalsLast12: 3 }, { approvalsPrev12: 3, approvalsLast12: 3 }],
+    )).toEqual([
+      "Testville's dwelling approvals per 1,000 residents was unchanged at 5.0 per 1,000 between the previous 12 months "
+      + 'and the last 12 months, compared with no median change across NSW LGAs.',
+    ]);
+    expect(trendText({ carDependencyByYear: [{ year: 2016, value: 80.01 }, { year: 2021, value: 80.04 }] })).toEqual([
+      "Testville's car dependency was unchanged at 80.0% between 2016 and 2021, compared with no median change across NSW LGAs.",
+    ]);
+    expect(trendText({
+      crashesByYear: [{ year: 2020, total: 100 }, { year: 2024, total: 100 }],
+      populationHistory: [{ year: 2021, population: 10000 }, { year: 2024, population: 10000 }],
+    })).toEqual([
+      "Testville's road crashes per 10,000 residents was unchanged at 100.0 per 10,000 between 2020 and 2024, "
+      + 'compared with no median change across NSW LGAs.',
+    ]);
   });
 
   describe('population trend text (R39)', () => {

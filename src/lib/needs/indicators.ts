@@ -89,6 +89,7 @@ export const INDICATORS: IndicatorDef[] = [
     source: SOURCES.commuteDistance,
   },
   {
+    // Latest-year totalCrashes ÷ ERP of that year (nearest ERP year if missing) × 10,000
     id: 'crash_rate', domain: 'transport', label: 'Road crashes per 10,000 residents',
     unit: 'per 10,000', direction: 'higher', aggregation: 'ratio', scored: true, scale: 10000, decimals: 1,
     source: SOURCES.crashes,

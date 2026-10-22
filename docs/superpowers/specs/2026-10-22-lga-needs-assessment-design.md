@@ -30,7 +30,7 @@ Need direction: **↑** means a higher value is more need; **↓** means a lower
 | `frequent_stop_share` | transport | Stops with frequent AM-peak service | `ptFrequency.frequentStopShare` | ↓ | TfNSW GTFS |
 | `am_peak_departures_per_1000` | transport | AM-peak departures per 1,000 residents | `ptFrequency.departuresPer1000Residents` | ↓ | TfNSW GTFS |
 | `commute_distance_km` | transport | Average commuting distance | `commuteDistance2016.avgKm` | ↑ | ABS Data by Region (Census 2016) |
-| `crash_rate` | transport | Road crashes per 10,000 residents | latest-year totalCrashes ÷ population × 10,000 | ↑ | TfNSW Centre for Road Safety |
+| `crash_rate` | transport | Road crashes per 10,000 residents | latest-year totalCrashes ÷ ERP of that year × 10,000 | ↑ | TfNSW Centre for Road Safety |
 | `seifa_irsd` | socio | SEIFA disadvantage (IRSD) | `seifaScore` | ↓ | ABS SEIFA 2021 |
 | `unemployment_rate` | socio | Unemployment rate | `unemploymentRate` | ↑ | ABS Census 2021 G46 |
 | `low_income_households` | socio | Low-income households | lowIncomeHouseholds ÷ Σ householdIncomeDistribution × 100 | ↑ | ABS Census 2021 G33 |
@@ -101,7 +101,7 @@ Analysis beyond rankings, built from data already in the cache. The figures in t
    - **The model is always displayed** with its R² and n.
 2. **Trends.**
    - Car dependency (excluding WFH) for 2011 → 2016 → 2021. Coverage is 107 / 123 / 128 LGAs, because 2011 lacks the LGAs amalgamated in 2016.
-   - Crashes per 10,000 residents, 2020 → 2024 (all 128).
+   - Crashes per 10,000 residents, 2020 → 2024 (all 128), each year on its own ERP (the nearest ERP year, 2021, for 2020).
    - Population growth rate per year: actual from 2021 to the latest ERP year, against the DPE projection for 2021–2041. This answers "growing faster or slower than projected". The cached ERP covers only 2021–2025 for 123 LGAs, so a 2001–2021 window isn't available (R39).
    - Dwelling approvals in the last 12 months against the previous 12.
    - Each change is compared with the universe median change.

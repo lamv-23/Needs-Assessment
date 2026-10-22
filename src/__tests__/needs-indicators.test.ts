@@ -78,11 +78,27 @@ describe('extractIndicators', () => {
     expect(v.am_peak_departures_per_1000).toMatchObject({ value: 12, numerator: 4800, denominator: 400000 });
     expect(v.pop_growth_2041).toMatchObject({ value: 50, numerator: 200000, denominator: 400000 });
     expect(v.job_growth_2041.value).toBe(50);
-    expect(v.crash_rate.value).toBe(25);           // latest year 2023: 1000 / 400000 × 10,000
+    expect(v.crash_rate.value).toBe(25);           // latest year 2023: 1000 / 400000 (2021 ERP, the nearest) × 10,000
     expect(v.approvals_per_1000.value).toBe(10);
     expect(v.low_income_households.value).toBeCloseTo(9.14, 2);
     expect(v.needs_assistance).toMatchObject({ numerator: 21032, denominator: 400000 });
     expect(v.limited_english).toMatchObject({ numerator: 20903, denominator: 400000 });
+  });
+
+  test('crash rate is the latest year\'s crashes per 10,000 residents of that year (ERP), not the Census count', () => {
+    const withErp = (populationHistory: { year: number; population: number }[]) =>
+      extractIndicators(makeBundle({ growth: { populationHistory } })).crash_rate;
+    // Latest crash year 2023: 1,000 crashes
+    expect(withErp([{ year: 2021, population: 400000 }, { year: 2023, population: 500000 }]))
+      .toEqual({ value: 20, numerator: 1000, denominator: 500000 });
+    // No 2023 ERP: the nearest year's
+    expect(withErp([{ year: 2021, population: 380000 }, { year: 2024, population: 440000 }]))
+      .toEqual({ value: (1000 * 10000) / 440000, numerator: 1000, denominator: 440000 });
+    expect(withErp([{ year: 2021, population: 380000 }]))
+      .toEqual({ value: (1000 * 10000) / 380000, numerator: 1000, denominator: 380000 });
+    // Equally near: the earlier year
+    expect(withErp([{ year: 2022, population: 390000 }, { year: 2024, population: 410000 }]).denominator).toBe(390000);
+    expect(withErp([]).value).toBeNull();
   });
 
   test('weighted indicators carry the value only', () => {
@@ -133,6 +149,7 @@ describe('extractIndicators', () => {
         ptFrequency: { totalStops: 0, frequentStops: 0 },
       },
       economy: { householdIncomeDistribution: [] },
+      growth: { populationHistory: [{ year: 2021, population: 0 }] },   // crash_rate's denominator is the ERP
     }));
     for (const id of ['older_residents', 'indigenous_share', 'needs_assistance', 'limited_english', 'crash_rate',
       'approvals_per_1000', 'zero_car_households', 'frequent_stop_share', 'low_income_households'] as const) {

@@ -71,7 +71,7 @@ const INDICATOR_SOURCE_FIELDS: Record<IndicatorId, Partial<Record<Bundle, string
   frequent_stop_share: { transport: ['ptFrequency'] },
   am_peak_departures_per_1000: { transport: ['ptFrequency'], growth: ['populationHistory'] },
   commute_distance_km: { transport: ['commuteDistance2016'] },
-  crash_rate: { transport: ['crashTrend'], demographics: ['totalPopulation'] },
+  crash_rate: { transport: ['crashTrend'], growth: ['populationHistory'] },
   seifa_irsd: { demographics: ['seifaScore'] },
   unemployment_rate: { economy: ['unemploymentRate'] },
   low_income_households: { economy: ['householdIncomeDistribution', 'lowIncomeHouseholds'] },
