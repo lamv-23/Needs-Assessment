@@ -601,12 +601,9 @@ export async function getLiveTransportData(areaId: string, year: number): Promis
   } else {
     sampleFields.push('ptFrequency');
   }
-  if (catchment) {
-    liveFields.push('catchment');
-    sources.push('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
-  } else {
-    sampleFields.push('catchment');
-  }
+  // P2-R22: the catchments are for the needs engine, which cites them through NEEDS_SOURCES. /transport does not show
+  // them, so they stay out of its badge's sources and reference-value fields.
+  if (catchment) liveFields.push('catchment');
   if (travelSurvey) {
     liveFields.push('travelSurvey');
     if (!sources.includes('TfNSW Household Travel Survey')) sources.push('TfNSW Household Travel Survey');
