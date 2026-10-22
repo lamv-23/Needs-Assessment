@@ -2,9 +2,10 @@ import { niceAxis, wrapLabel, type NiceAxis } from './chart-data';
 import { AREA_PALETTE_SIZE, areaColor, labelledIds } from './colors';
 import { formatSignedDiff, formatValue } from './format';
 import { INDICATOR_BY_ID } from './indicators';
+import { settingOf } from './peer-groups';
 import {
   BASE_YEAR, MISMATCH_FLAG_Z, PROJECTION_YEAR, areaRecords, carDependencyMismatch, crashRate, growthVsService, jobsHousing, latestPopulation,
-  populationIn, predictorOf, settingOf, type LinearFit, type SeriesRecord,
+  populationIn, predictorOf, type LinearFit, type SeriesRecord,
 } from './insights';
 import { universeRecords } from './scoring';
 import type { NeedsAssessment } from './types';

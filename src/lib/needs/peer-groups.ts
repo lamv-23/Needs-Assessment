@@ -20,6 +20,11 @@ export const PEER_GROUP_PLURALS: Record<PeerGroup, string> = {
   rural: 'rural and remote LGAs',
 };
 
+/** Metropolitan means the ABS Greater Sydney GCCSA, as for the peer groups; every other LGA is non-metropolitan. */
+export type Setting = 'metro' | 'non_metro';
+
+export const settingOf = (areaId: string): Setting => (GREATER_SYDNEY_GCCSA_AREA_IDS.includes(areaId) ? 'metro' : 'non_metro');
+
 // People per km² of boundary area (metropolitan LGAs) and residents (all other LGAs).
 // The metro thresholds were set against real boundary-area density (about 7 / 13 / 14 LGAs).
 const METRO_INNER_DENSITY = 4000;

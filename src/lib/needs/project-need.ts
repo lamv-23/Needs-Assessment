@@ -1,5 +1,6 @@
 import { INDICATOR_BY_ID } from './indicators';
 import { formatValue } from './format';
+import { settingOf, type Setting } from './peer-groups';
 import { universeRecords } from './scoring';
 import type {
   AreaAssessment, IndicatorDef, IndicatorId, Insight, LgaIndicatorRecord, NeedsAssessment, Universe,
@@ -116,13 +117,71 @@ export const QUADRANT_SCATTERS: readonly QuadrantSpec[] = [
   },
 ];
 
+/** A comparison group of the quadrant scatters: the LGAs the medians are taken over, and how the group is named. */
+export interface QuadrantGroup {
+  /** Unique among the groups of one assessment. */
+  key: string;
+  /** Plural noun phrase, used verbatim in sentences and legends: "metropolitan LGAs". */
+  label: string;
+  /** The group's LGAs. */
+  records: LgaIndicatorRecord[];
+  /** The Greater Sydney marker is drawn on the panels of Greater Sydney's own setting only. */
+  showsGreaterSydney: boolean;
+}
+
+const METRO_LABEL = 'metropolitan LGAs';
+const NON_METRO_LABEL = 'non-metropolitan LGAs';
+
+/** The metro and non-metro halves of NSW, split as for the mismatch model. */
+function settingGroup(a: NeedsAssessment, setting: Setting): QuadrantGroup {
+  return {
+    key: setting,
+    label: setting === 'metro' ? METRO_LABEL : NON_METRO_LABEL,
+    records: a.records.filter(r => settingOf(r.areaId) === setting),
+    showsGreaterSydney: setting === 'metro',
+  };
+}
+
+/** A combined selection across both settings is compared with NSW as a whole. */
+function nswGroup(a: NeedsAssessment, area: AreaAssessment): QuadrantGroup {
+  return { key: 'nsw', label: area.universeLabel, records: a.records, showsGreaterSydney: false };
+}
+
+/** The settings of the LGAs behind an area: its own, or those of a combined area's members. */
+function settingsOf(a: NeedsAssessment, area: AreaAssessment): Set<Setting> {
+  return new Set((a.mode === 'combined' ? a.memberIds : [area.areaId]).map(settingOf));
+}
+
+/**
+ * The group an area is compared with on the quadrant scatters, which is not always the group its percentiles
+ * are ranked in. NSW-wide medians are set by rural LGAs with almost no service, which would leave no Sydney LGA
+ * in "low service", so against NSW an area is compared with the metropolitan or the non-metropolitan LGAs
+ * (the setting all its LGAs share, else NSW as a whole). Greater Sydney, a region or a peer group is its own group.
+ */
+export function quadrantGroupOf(a: NeedsAssessment, area: AreaAssessment): QuadrantGroup {
+  if (area.universe === 'nsw') {
+    const settings = settingsOf(a, area);
+    return settings.size === 1 ? settingGroup(a, Array.from(settings)[0]) : nswGroup(a, area);
+  }
+  return {
+    key: `${area.universe}:${area.universeLabel}`,
+    label: area.universeLabel,
+    records: universeRecords(a.records, area.universe, area),
+    showsGreaterSydney: area.universe === 'gsyd',
+  };
+}
+
+/** The most comparison groups drawn for one figure. */
+export const MAX_QUADRANT_PANELS = 3;
+
 export interface QuadrantData {
-  /** The comparison group's LGAs with both values, less the selected areas. */
+  /** The comparison group's LGAs with both values, less the selected LGAs. */
   points: { areaId: string; name: string; x: number; y: number }[];
-  /** One per selected area (one for a combined area), in selection order; a missing value is null. */
+  /** The selected areas compared with this group (one for a combined area), in selection order; a missing value is null. */
   selected: { areaId: string; name: string; x: number | null; y: number | null; inNeedQuadrant: boolean }[];
   /** Medians of the group's LGAs with both values; NaN when the group has none. */
   medians: { x: number; y: number };
+  /** Greater Sydney's values, on the panels that show its marker and when it has both. */
   greaterSydney: { x: number; y: number } | null;
   /** The x indicator's direction is 'lower' (SEIFA), so the axis runs high to low and more need is to the right. */
   xReversed: boolean;
@@ -155,8 +214,8 @@ function median(values: number[]): number {
 }
 
 /** The group's LGAs with both values of the chart, and their medians (NaN when there are none). */
-function groupOf(group: LgaIndicatorRecord[], spec: QuadrantSpec) {
-  const complete = group.flatMap(record => {
+function statsOf(group: QuadrantGroup, spec: QuadrantSpec) {
+  const complete = group.records.flatMap(record => {
     const [x, y] = [valueOf(record, spec.x), valueOf(record, spec.y)];
     return x !== null && y !== null ? [{ record, x, y }] : [];
   });
@@ -167,25 +226,17 @@ function groupOf(group: LgaIndicatorRecord[], spec: QuadrantSpec) {
 }
 
 /**
- * The LGAs the selected areas are compared with: each area's own comparison group, which is one group for
- * everything but a separate selection ranked by region or peer group across several of them (then the groups
- * together). Every LGA once, in snapshot order within a group.
+ * One comparison group's scatter: its LGAs with both values (grey points, less the selected LGAs), the selected
+ * areas that are compared with it (a combined selection is one point), its medians and, on the panels that have
+ * it, the Greater Sydney value. The medians count the selected LGAs, which belong to the group. `group` defaults
+ * to the first selected area's.
  */
-function comparisonGroup(a: NeedsAssessment): LgaIndicatorRecord[] {
-  const byId = new Map<string, LgaIndicatorRecord>();
-  for (const area of a.areas) {
-    for (const record of universeRecords(a.records, area.universe, area)) byId.set(record.areaId, record);
-  }
-  return Array.from(byId.values());
-}
-
-/**
- * Every LGA of the comparison group with both values (grey points, less the selected LGAs), the selected areas
- * (a combined selection is one point), the group's medians and the Greater Sydney value. The medians count the
- * selected LGAs, which belong to the group.
- */
-export function quadrantData(a: NeedsAssessment, spec: QuadrantSpec): QuadrantData {
-  const { complete, medians } = groupOf(comparisonGroup(a), spec);
+export function quadrantData(
+  a: NeedsAssessment,
+  spec: QuadrantSpec,
+  group: QuadrantGroup | undefined = a.areas.length > 0 ? quadrantGroupOf(a, a.areas[0]) : undefined,
+): QuadrantData {
+  const { complete, medians } = group ? statsOf(group, spec) : { complete: [], medians: { x: NaN, y: NaN } };
   // A combined area stands for its member LGAs, which are not plotted again among the others
   const selectedIds = new Set([...a.areas.map(area => area.areaId), ...a.memberIds]);
   const gsyd = { x: scoreValue(a.benchmarks.gsyd, spec.x), y: scoreValue(a.benchmarks.gsyd, spec.y) };
@@ -193,7 +244,7 @@ export function quadrantData(a: NeedsAssessment, spec: QuadrantSpec): QuadrantDa
     points: complete
       .filter(c => !selectedIds.has(c.record.areaId))
       .map(c => ({ areaId: c.record.areaId, name: c.record.name, x: c.x, y: c.y })),
-    selected: a.areas.map(area => {
+    selected: a.areas.filter(area => group && quadrantGroupOf(a, area).key === group.key).map(area => {
       const [x, y] = [scoreValue(area, spec.x), scoreValue(area, spec.y)];
       return {
         areaId: area.areaId,
@@ -204,9 +255,52 @@ export function quadrantData(a: NeedsAssessment, spec: QuadrantSpec): QuadrantDa
       };
     }),
     medians,
-    greaterSydney: gsyd.x !== null && gsyd.y !== null ? { x: gsyd.x, y: gsyd.y } : null,
+    greaterSydney: group?.showsGreaterSydney && gsyd.x !== null && gsyd.y !== null ? { x: gsyd.x, y: gsyd.y } : null,
     xReversed: INDICATOR_BY_ID[spec.x].direction === 'lower',
     yReversed: false,
+  };
+}
+
+export interface QuadrantPanel {
+  group: QuadrantGroup;
+  /** LGAs of the group with both values: what the medians are over. */
+  n: number;
+  data: QuadrantData;
+}
+
+export interface QuadrantPanels {
+  /** One per comparison group of the selected areas, at most `MAX_QUADRANT_PANELS`, in selection order (metro before non-metro). */
+  panels: QuadrantPanel[];
+  /** Under the panels: groups that are not drawn, and why a group is NSW as a whole. */
+  notes: string[];
+}
+
+const SPANS_SETTINGS_NOTE = 'Selected LGAs span metropolitan and non-metropolitan settings; medians are NSW-wide.';
+
+const hiddenGroupsNote = (n: number) => `${n} further comparison ${n === 1 ? 'group' : 'groups'} not shown.`;
+
+/**
+ * The scatter drawn once for each comparison group present among the selected areas (R51): against NSW the
+ * metropolitan and non-metropolitan LGAs, otherwise the one group, or each region or peer group (at most
+ * `MAX_QUADRANT_PANELS`; the rest are counted in a note). Each panel has its own grey points and medians, and holds
+ * only the areas compared with it.
+ */
+export function quadrantPanels(a: NeedsAssessment, spec: QuadrantSpec): QuadrantPanels {
+  const groups = new Map<string, QuadrantGroup>();
+  for (const area of a.areas) {
+    const group = quadrantGroupOf(a, area);
+    if (!groups.has(group.key)) groups.set(group.key, group);
+  }
+  // Metropolitan LGAs first, as the mismatch charts do (the sort is stable)
+  const ordered = Array.from(groups.values()).sort((p, q) => Number(q.key === 'metro') - Number(p.key === 'metro'));
+  const shown = ordered.slice(0, MAX_QUADRANT_PANELS);
+  const notes = [
+    ...(shown.some(g => g.key === 'nsw') ? [SPANS_SETTINGS_NOTE] : []),
+    ...(ordered.length > shown.length ? [hiddenGroupsNote(ordered.length - shown.length)] : []),
+  ];
+  return {
+    panels: shown.map(group => ({ group, n: statsOf(group, spec).complete.length, data: quadrantData(a, spec, group) })),
+    notes,
   };
 }
 
@@ -225,15 +319,17 @@ const QUADRANT_WORDING: Record<QuadrantSpec['id'], { group: string; measure: (x:
 };
 
 /**
- * A cited insight for each chart whose need quadrant the area is in, comparing it with `group`, the LGAs it
- * is ranked among. `subject` starts the sentence ("Blacktown", "The combined area"). Severity is the mean of the
- * two need percentiles over 100. Nothing for an area missing either value.
+ * A cited insight for each chart whose need quadrant the area is in, against the same group, medians and label as
+ * the chart's panel for the area, so the shading and the sentence always agree. `subject` starts the sentence
+ * ("Blacktown", "The combined area"). Severity is the mean of the area's two need percentiles over 100. Nothing
+ * for an area missing either value.
  */
-export function areaQuadrantInsights(area: AreaAssessment, group: LgaIndicatorRecord[], subject: string): Insight[] {
+export function areaQuadrantInsights(a: NeedsAssessment, area: AreaAssessment, subject: string): Insight[] {
+  const group = quadrantGroupOf(a, area);
   return QUADRANT_SCATTERS.flatMap((spec): Insight[] => {
     const [x, y] = [scoreValue(area, spec.x), scoreValue(area, spec.y)];
     const percentiles = [spec.x, spec.y].map(id => area.indicators.find(s => s.id === id)?.percentile ?? null);
-    const { medians } = groupOf(group, spec);
+    const { medians } = statsOf(group, spec);
     if (x === null || y === null || percentiles.some(p => p === null) || !inNeedQuadrant(spec, x, y, medians)) return [];
 
     const [xDef, yDef] = [INDICATOR_BY_ID[spec.x], INDICATOR_BY_ID[spec.y]];
@@ -245,18 +341,14 @@ export function areaQuadrantInsights(area: AreaAssessment, group: LgaIndicatorRe
       severity: (percentiles[0]! + percentiles[1]!) / 2 / 100,
       text: `${subject} is in the ${wording.group} group: ${wording.measure(formatValue(xDef, x), formatValue(xDef, medians.x))} `
         + `and ${y.toFixed(yDef.decimals)} AM-peak departures per 1,000 residents `
-        + `(median ${medians.y.toFixed(yDef.decimals)}) among ${area.universeLabel}.`,
+        + `(median ${medians.y.toFixed(yDef.decimals)}) among ${group.label}.`,
       citations: [xDef.source, yDef.source],
     }];
   });
 }
 
-/** Quadrant insights for every assessed area, each compared with its own comparison group. */
+/** Quadrant insights for every assessed area, each compared with its own group. */
 export function quadrantInsights(a: NeedsAssessment): Insight[] {
   const combined = a.mode === 'combined' && a.memberIds.length >= 2;
-  return a.areas.flatMap(area => areaQuadrantInsights(
-    area,
-    universeRecords(a.records, area.universe, area),
-    combined ? 'The combined area' : area.name,
-  ));
+  return a.areas.flatMap(area => areaQuadrantInsights(a, area, combined ? 'The combined area' : area.name));
 }

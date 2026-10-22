@@ -13,7 +13,7 @@ import {
 } from '@/lib/needs/insight-chart-data';
 import type { QuadrantSpec } from '@/lib/needs/project-need';
 import {
-  GREATER_SYDNEY_RADIUS, quadrantChartData, type QuadrantMarker, type QuadrantSelectedDot,
+  GREATER_SYDNEY_RADIUS, quadrantChartData, type QuadrantChart, type QuadrantMarker, type QuadrantSelectedDot,
 } from '@/lib/needs/project-need-chart';
 import { CHART_TICK_STYLE } from '@/lib/utils';
 import type { NeedsAssessment } from '@/lib/needs/types';
@@ -104,103 +104,123 @@ function QuadrantLabel({ viewBox, text }: AreaLabelProps) {
   );
 }
 
+/** One comparison group's scatter, with its own medians, shaded need quadrant and key. */
+function Panel({ chart, onWidth }: { chart: QuadrantChart; onWidth: (width: number) => void }) {
+  const { spec, xAxis, yAxis, medians, quadrant, greaterSydney } = chart;
+  const xDef = INDICATOR_BY_ID[spec.x];
+  const yDef = INDICATOR_BY_ID[spec.y];
+
+  return (
+    <section aria-label={chart.heading}>
+      <h4 className="mb-1 text-sm font-semibold text-gray-900">{chart.heading}</h4>
+      {chart.message ? <ChartEmpty>{chart.message}</ChartEmpty> : (
+        <>
+          <ResponsiveContainer width="100%" height={SCATTER_HEIGHT} onResize={onWidth}>
+            <ScatterChart margin={SCATTER_MARGIN}>
+              <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" />
+              <XAxis
+                type="number"
+                dataKey="x"
+                reversed={chart.xReversed}
+                domain={[xAxis.lo, xAxis.hi]}
+                ticks={xAxis.ticks}
+                tick={TICK_STYLE}
+                tickFormatter={v => (xDef.unit === '%' ? `${v}%` : String(v))}
+                height={SCATTER_X_AXIS_HEIGHT}
+                label={{ value: chart.xTitle, position: 'insideBottom', offset: 0, style: AXIS_TITLE_STYLE }}
+              />
+              <YAxis
+                type="number"
+                dataKey="y"
+                domain={[yAxis.lo, yAxis.hi]}
+                ticks={yAxis.ticks}
+                tick={TICK_STYLE}
+                width={SCATTER_Y_AXIS_WIDTH}
+                label={{ value: chart.yTitle, angle: -90, position: 'insideLeft', offset: 4, style: { ...AXIS_TITLE_STYLE, textAnchor: 'middle' } }}
+              />
+              <Tooltip content={<DotTooltip />} cursor={false} />
+              {quadrant && (
+                <ReferenceArea
+                  x1={quadrant.x1}
+                  x2={quadrant.x2}
+                  y1={quadrant.y1}
+                  y2={quadrant.y2}
+                  fill={QUADRANT_FILL}
+                  fillOpacity={QUADRANT_FILL_OPACITY}
+                  stroke="none"
+                  label={<QuadrantLabel text={spec.quadrantLabel} />}
+                />
+              )}
+              {medians && <ReferenceLine x={medians.x} {...MEDIAN_STYLE} />}
+              {medians && <ReferenceLine y={medians.y} {...MEDIAN_STYLE} />}
+              <Scatter name={`Other ${chart.groupLabel}`} data={chart.others} shape={<OtherDot />} isAnimationActive={false} />
+              {greaterSydney && (
+                <Scatter name={greaterSydney.name} data={[greaterSydney]} shape={<GreaterSydneyShape />} isAnimationActive={false} />
+              )}
+              <Scatter name="Selected" data={chart.selected} shape={<SelectedShape />} isAnimationActive={false} />
+            </ScatterChart>
+          </ResponsiveContainer>
+          <Legend label={`Key to the ${chart.heading} panel`}>
+            <LegendItem swatch={<DotSwatch color={chart.selected[0]?.color ?? DARK_TEXT} />}>Selected area</LegendItem>
+            <LegendItem swatch={<DotSwatch color={OTHER_DOT_COLOR} opacity={OTHER_DOT_OPACITY} />}>
+              Other {chart.groupLabel} ({chart.others.length})
+            </LegendItem>
+            {greaterSydney && <LegendItem swatch={<DiamondSwatch color={BENCHMARK_COLOR} />}>{greaterSydney.name}</LegendItem>}
+            {medians && (
+              <>
+                <LegendItem swatch={<LineSwatch color={MEDIAN_STYLE.stroke} width={MEDIAN_STYLE.strokeWidth} dash={MEDIAN_STYLE.strokeDasharray} />}>
+                  Median {inSentence(xDef.label)}: {medians.xText}
+                </LegendItem>
+                <LegendItem swatch={<LineSwatch color={MEDIAN_STYLE.stroke} width={MEDIAN_STYLE.strokeWidth} dash={MEDIAN_STYLE.strokeDasharray} />}>
+                  Median {inSentence(yDef.label)}: {medians.yText}
+                </LegendItem>
+              </>
+            )}
+            {quadrant && (
+              <LegendItem swatch={<BarSwatch color={QUADRANT_FILL} opacity={QUADRANT_FILL_OPACITY * 3} />}>{spec.quadrantLabel}</LegendItem>
+            )}
+          </Legend>
+          <ChartNotes>
+            <p>{chart.inQuadrantText}</p>
+            {chart.unnamedCount > 0 && (
+              <p>
+                {chart.unnamedCount} selected {chart.unnamedCount === 1 ? 'area is' : 'areas are'} shown without a name;
+                hover over a dot to see it.
+              </p>
+            )}
+            {chart.noDataText && <p>{chart.noDataText}</p>}
+          </ChartNotes>
+        </>
+      )}
+    </section>
+  );
+}
+
 /**
- * Where the selected areas stand on two measures of need for transport projects, against the rest of the
- * comparison group: every other LGA in grey, the selected areas coloured (the first few named), dashed median lines,
- * and the quadrant that is past both medians on the "more need" side shaded and labelled. Service (AM-peak departures
- * per 1,000 residents) is always up the page, and the x axis is drawn so that more need is to the right.
+ * Where the selected areas stand on two measures of need for transport projects, against the rest of their comparison
+ * group. Each comparison group present among the selected areas has a panel, because the medians of NSW as a whole are
+ * set by rural LGAs with almost no service. A panel shows every other LGA of its group in grey, the selected areas
+ * compared with it coloured (the first few named), dashed median lines, and the quadrant that is past both medians on
+ * the "more need" side shaded and labelled. Service (AM-peak departures per 1,000 residents) is always up the page,
+ * and the x axis is drawn so that more need is to the right.
  */
 export default function QuadrantScatter({ assessment, spec }: { assessment: NeedsAssessment; spec: QuadrantSpec }) {
   // Names are fitted to the plot's measured width, so they re-fit when the chart is resized.
   const [width, setWidth] = useState(DEFAULT_SCATTER_WIDTH);
-  const chart = useMemo(() => quadrantChartData(assessment, spec, width), [assessment, spec, width]);
+  const { panels, notes } = useMemo(() => quadrantChartData(assessment, spec, width), [assessment, spec, width]);
   if (assessment.areas.length === 0) return null;
-  if (chart.message) return <ChartEmpty>{chart.message}</ChartEmpty>;
-
-  const xDef = INDICATOR_BY_ID[spec.x];
-  const yDef = INDICATOR_BY_ID[spec.y];
-  const { xAxis, yAxis, medians, quadrant, greaterSydney } = chart;
 
   return (
     <div>
-      <ResponsiveContainer width="100%" height={SCATTER_HEIGHT} onResize={setWidth}>
-        <ScatterChart margin={SCATTER_MARGIN}>
-          <CartesianGrid stroke={GRID_STROKE} strokeDasharray="3 3" />
-          <XAxis
-            type="number"
-            dataKey="x"
-            reversed={chart.xReversed}
-            domain={[xAxis.lo, xAxis.hi]}
-            ticks={xAxis.ticks}
-            tick={TICK_STYLE}
-            tickFormatter={v => (xDef.unit === '%' ? `${v}%` : String(v))}
-            height={SCATTER_X_AXIS_HEIGHT}
-            label={{ value: chart.xTitle, position: 'insideBottom', offset: 0, style: AXIS_TITLE_STYLE }}
-          />
-          <YAxis
-            type="number"
-            dataKey="y"
-            domain={[yAxis.lo, yAxis.hi]}
-            ticks={yAxis.ticks}
-            tick={TICK_STYLE}
-            width={SCATTER_Y_AXIS_WIDTH}
-            label={{ value: chart.yTitle, angle: -90, position: 'insideLeft', offset: 4, style: { ...AXIS_TITLE_STYLE, textAnchor: 'middle' } }}
-          />
-          <Tooltip content={<DotTooltip />} cursor={false} />
-          {quadrant && (
-            <ReferenceArea
-              x1={quadrant.x1}
-              x2={quadrant.x2}
-              y1={quadrant.y1}
-              y2={quadrant.y2}
-              fill={QUADRANT_FILL}
-              fillOpacity={QUADRANT_FILL_OPACITY}
-              stroke="none"
-              label={<QuadrantLabel text={spec.quadrantLabel} />}
-            />
-          )}
-          {medians && <ReferenceLine x={medians.x} {...MEDIAN_STYLE} />}
-          {medians && <ReferenceLine y={medians.y} {...MEDIAN_STYLE} />}
-          <Scatter name={`Other ${chart.groupLabel}`} data={chart.others} shape={<OtherDot />} isAnimationActive={false} />
-          {greaterSydney && (
-            <Scatter name={greaterSydney.name} data={[greaterSydney]} shape={<GreaterSydneyShape />} isAnimationActive={false} />
-          )}
-          <Scatter name="Selected" data={chart.selected} shape={<SelectedShape />} isAnimationActive={false} />
-        </ScatterChart>
-      </ResponsiveContainer>
-      <Legend label={`Key to the ${spec.title.toLowerCase()} chart`}>
-        <LegendItem swatch={<DotSwatch color={chart.selected[0]?.color ?? DARK_TEXT} />}>Selected area</LegendItem>
-        <LegendItem swatch={<DotSwatch color={OTHER_DOT_COLOR} opacity={OTHER_DOT_OPACITY} />}>
-          Other {chart.groupLabel} ({chart.others.length})
-        </LegendItem>
-        {greaterSydney && <LegendItem swatch={<DiamondSwatch color={BENCHMARK_COLOR} />}>{greaterSydney.name}</LegendItem>}
-        {medians && (
-          <>
-            <LegendItem swatch={<LineSwatch color={MEDIAN_STYLE.stroke} width={MEDIAN_STYLE.strokeWidth} dash={MEDIAN_STYLE.strokeDasharray} />}>
-              Median {inSentence(xDef.label)} of {chart.groupLabel}: {medians.xText}
-            </LegendItem>
-            <LegendItem swatch={<LineSwatch color={MEDIAN_STYLE.stroke} width={MEDIAN_STYLE.strokeWidth} dash={MEDIAN_STYLE.strokeDasharray} />}>
-              Median {inSentence(yDef.label)}: {medians.yText}
-            </LegendItem>
-          </>
-        )}
-        {quadrant && (
-          <LegendItem swatch={<BarSwatch color={QUADRANT_FILL} opacity={QUADRANT_FILL_OPACITY * 3} />}>{spec.quadrantLabel}</LegendItem>
-        )}
-      </Legend>
+      <div className="space-y-8">
+        {panels.map(panel => <Panel key={panel.key} chart={panel} onWidth={setWidth} />)}
+      </div>
       <ChartNotes>
-        <p>{chart.inQuadrantText}</p>
         <p>
           AM-peak departures are the weekday 7-9am departures from all stops in the area, per 1,000 residents.
-          {chart.xReversed && ' The horizontal axis runs from high to low SEIFA scores, so more disadvantage is to the right.'}
+          {panels[0]?.xReversed && ' The horizontal axis runs from high to low SEIFA scores, so more disadvantage is to the right.'}
         </p>
-        {chart.unnamedCount > 0 && (
-          <p>
-            {chart.unnamedCount} selected {chart.unnamedCount === 1 ? 'area is' : 'areas are'} shown without a name;
-            hover over a dot to see it.
-          </p>
-        )}
-        {chart.noDataText && <p>{chart.noDataText}</p>}
+        {notes.map(note => <p key={note}>{note}</p>)}
       </ChartNotes>
     </div>
   );

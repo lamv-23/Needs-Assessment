@@ -6,7 +6,7 @@ import {
   DEFAULT_SCATTER_WIDTH, NAME_PX_PER_CHAR, SCATTER_NAME_CHARS, SELECTED_RADIUS, nameList, noDataNote, placePointLabels,
   scatterPlotSize, type LabelAnchor, type LabelPlacement,
 } from './insight-chart-data';
-import { groupLabel, quadrantData, type QuadrantSpec } from './project-need';
+import { quadrantPanels, type QuadrantPanel, type QuadrantSpec } from './project-need';
 import type { IndicatorDef, NeedsAssessment } from './types';
 
 /**
@@ -40,8 +40,13 @@ export interface QuadrantMarker extends QuadrantDot {
   placement: LabelPlacement | null;
 }
 
+/** One panel: the scatter of one comparison group. */
 export interface QuadrantChart {
   spec: QuadrantSpec;
+  /** The group's key, unique among a figure's panels. */
+  key: string;
+  /** The panel's title: "Metropolitan LGAs (n = 34)", n being the group's LGAs with both values. */
+  heading: string;
   xTitle: string;
   yTitle: string;
   xReversed: boolean;
@@ -51,7 +56,7 @@ export interface QuadrantChart {
   medians: { x: number; y: number; xText: string; yText: string } | null;
   /** The shaded need quadrant, in data units (the median to the end of the axis on the "more need" side); null without medians. */
   quadrant: { x1: number; x2: number; y1: number; y2: number } | null;
-  /** The comparison group(s), as in a sentence: "NSW LGAs". */
+  /** The comparison group, as in a sentence: "metropolitan LGAs". */
   groupLabel: string;
   /** The group's LGAs with both values, less the selected areas. */
   others: QuadrantDot[];
@@ -92,14 +97,15 @@ function moreNeedBounds(def: IndicatorDef, median: number, axis: NiceAxis): [num
 /** A value as the tooltip shows it: indicator units for x, a bare number of departures for y. */
 const bareValue = (def: IndicatorDef, value: number) => value.toFixed(def.decimals);
 
+const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 /**
- * One quadrant scatter for `chartWidth` pixels: the comparison group in grey, the selected areas coloured (selection
- * order) with the first `MAX_LABELLED` named where a name fits (areas in the need quadrant first), the group's medians
- * and the need quadrant, and Greater Sydney as a marker. The x axis is reversed for SEIFA, so more need is always to
- * the right and low service is always at the bottom.
+ * One panel for `chartWidth` pixels: the comparison group in grey, the selected areas compared with it coloured
+ * (selection order, as on every chart) with the first `MAX_LABELLED` named where a name fits (areas in the need
+ * quadrant first), the group's medians and the need quadrant, and Greater Sydney as a marker where the panel has
+ * one. The x axis is reversed for SEIFA, so more need is always to the right and low service is always at the bottom.
  */
-export function quadrantChartData(a: NeedsAssessment, spec: QuadrantSpec, chartWidth = DEFAULT_SCATTER_WIDTH): QuadrantChart {
-  const data = quadrantData(a, spec);
+function panelChart(a: NeedsAssessment, spec: QuadrantSpec, { group, n, data }: QuadrantPanel, chartWidth: number): QuadrantChart {
   const [xDef, yDef] = [INDICATOR_BY_ID[spec.x], INDICATOR_BY_ID[spec.y]];
   const tooltip = (name: string, x: number, y: number, approximate = false) => [
     name,
@@ -108,8 +114,9 @@ export function quadrantChartData(a: NeedsAssessment, spec: QuadrantSpec, chartW
   ];
 
   const others: QuadrantDot[] = data.points.map(p => ({ id: p.areaId, name: p.name, x: p.x, y: p.y, tooltip: tooltip(p.name, p.x, p.y) }));
-  const plotted = data.selected.flatMap((s, index) => {
+  const plotted = data.selected.flatMap(s => {
     if (s.x === null || s.y === null) return [];
+    const index = a.areas.findIndex(area => area.areaId === s.areaId);
     const approximate = a.areas[index].indicators.find(score => score.id === spec.x)?.approximate ?? false;
     return [{
       id: s.areaId,
@@ -128,13 +135,15 @@ export function quadrantChartData(a: NeedsAssessment, spec: QuadrantSpec, chartW
 
   const base = {
     spec,
+    key: group.key,
+    heading: `${capitalised(group.label)} (n = ${n})`,
     xTitle: X_TITLES[spec.id],
     yTitle: yDef.label,
     xReversed: data.xReversed,
-    groupLabel: groupLabel(a.areas),
+    groupLabel: group.label,
     noDataText: noDataNote(
       data.selected.filter(s => s.x === null || s.y === null).map(s => s.name),
-      a.areas.length,
+      data.selected.length,
       MISSING[spec.id],
     ),
   };
@@ -153,7 +162,7 @@ export function quadrantChartData(a: NeedsAssessment, spec: QuadrantSpec, chartW
       greaterSydney: null,
       inQuadrantText: inQuadrantText([]),
       unnamedCount: 0,
-      message: `There is no ${MISSING[spec.id]} to plot for the selected areas.`,
+      message: `There is no ${MISSING[spec.id]} to plot for ${group.label}.`,
     };
   }
 
@@ -213,4 +222,17 @@ export function quadrantChartData(a: NeedsAssessment, spec: QuadrantSpec, chartW
     unnamedCount: plotted.filter(d => d.placement === null).length,
     message: null,
   };
+}
+
+export interface QuadrantCharts {
+  /** One per comparison group of the selected areas; empty when no area is selected. */
+  panels: QuadrantChart[];
+  /** Under the panels (see `quadrantPanels`). */
+  notes: string[];
+}
+
+/** The quadrant scatter as drawn: a panel for each comparison group present among the selected areas (R51). */
+export function quadrantChartData(a: NeedsAssessment, spec: QuadrantSpec, chartWidth = DEFAULT_SCATTER_WIDTH): QuadrantCharts {
+  const { panels, notes } = quadrantPanels(a, spec);
+  return { panels: panels.map(panel => panelChart(a, spec, panel, chartWidth)), notes };
 }

@@ -57,11 +57,11 @@ const UNIVERSES: { value: Universe; label: string }[] = [
 /** Under each quadrant scatter's title; the figure ids are the specs' (`growth-service`, `disadvantage-service`). */
 const QUADRANT_SUBTITLES: Record<QuadrantSpec['id'], string> = {
   'growth-service':
-    'Projected population growth 2021–41 against weekday AM-peak departures per 1,000 residents, for the comparison group. '
-    + 'Shaded: above-median growth with below-median service.',
+    'Projected population growth 2021–41 against weekday AM-peak departures per 1,000 residents, one panel for each '
+    + 'comparison group of the selected areas. Shaded: above-median growth with below-median service.',
   'disadvantage-service':
-    'SEIFA disadvantage against weekday AM-peak departures per 1,000 residents, for the comparison group. '
-    + 'Shaded: more disadvantage than the median with below-median service.',
+    'SEIFA disadvantage against weekday AM-peak departures per 1,000 residents, one panel for each comparison group '
+    + 'of the selected areas. Shaded: more disadvantage than the median with below-median service.',
 };
 
 const EMPTY_STATE = 'Select one or more LGAs, a region, or click the map to start an assessment.';

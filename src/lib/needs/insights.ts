@@ -1,8 +1,8 @@
-import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { aggregateRecords } from './aggregate';
 import { populationNearest } from './extract';
 import { formatDiff, formatSignedDiff, formatValue, inSentence, possessive } from './format';
 import { INDICATOR_BY_ID, SOURCES } from './indicators';
+import { settingOf } from './peer-groups';
 import { areaQuadrantInsights } from './project-need';
 import { universeRecords } from './scoring';
 import type {
@@ -112,8 +112,6 @@ export function fitLinear(points: { x: number; y: number }[]): Omit<LinearFit, '
   };
 }
 
-/** Metropolitan means the ABS Greater Sydney GCCSA, as for the peer groups. */
-export const settingOf = (areaId: string): Setting => (GREATER_SYDNEY_GCCSA_AREA_IDS.includes(areaId) ? 'metro' : 'non_metro');
 
 const carDependencyOf = (record: AssessableRecord): number | null => record.values.car_dependency?.value ?? null;
 
@@ -503,6 +501,7 @@ interface AreaContext {
   /** The Greater Sydney benchmark's value of an indicator. */
   greaterSydney: (id: IndicatorId) => number | null;
   records: LgaIndicatorRecord[];
+  assessment: NeedsAssessment;
 }
 
 type KeyNeed = IndicatorScore & { value: number; percentile: number };
@@ -572,7 +571,7 @@ const INSIGHTS_BY_KIND: Record<Insight['kind'], (c: AreaContext) => Insight[]> =
     }];
   },
 
-  quadrant: ({ area, subject, universe }) => areaQuadrantInsights(area, universe, subject.start),
+  quadrant: ({ assessment, area, subject }) => areaQuadrantInsights(assessment, area, subject.start),
 
   jobs_housing: ({ area, record, subject }) => {
     const j = jobsHousing(record);
@@ -620,6 +619,7 @@ export function buildInsights(a: NeedsAssessment): Insight[] {
     universe: universeRecords(a.records, area.universe, area),
     greaterSydney,
     records: a.records,
+    assessment: a,
   }));
 
   const insights = KIND_ORDER.flatMap(kind => contexts.flatMap(INSIGHTS_BY_KIND[kind]));

@@ -1,14 +1,14 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { runAssessment } from '@/lib/needs/assess';
+import { formatValue } from '@/lib/needs/format';
 import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
 import { buildInsights } from '@/lib/needs/insights';
 import { sourceNumber } from '@/lib/needs/page-data';
 import {
-  MAX_RADAR_AREAS, QUADRANT_SCATTERS, RADAR_AXES, inNeedQuadrant, quadrantData, quadrantInsights, radarData, radarGaps,
-  typicalLabel, type QuadrantSpec,
+  MAX_RADAR_AREAS, QUADRANT_SCATTERS, RADAR_AXES, inNeedQuadrant, quadrantData, quadrantGroupOf, quadrantInsights,
+  quadrantPanels, radarData, radarGaps, typicalLabel, type QuadrantSpec,
 } from '@/lib/needs/project-need';
-import { universeRecords } from '@/lib/needs/scoring';
 import type {
   IndicatorId, IndicatorValue, InsightSeries, LgaIndicatorRecord, NeedsAssessment, NeedsMode, Universe,
 } from '@/lib/needs/types';
@@ -52,12 +52,16 @@ function median(values: number[]): number {
   return (sorted[Math.floor(mid)] + sorted[Math.ceil(mid)]) / 2;
 }
 
+/** Five LGAs in Greater Sydney, and five outside it, which have different comparison groups against NSW. */
+const METRO_FIVE = ['lga_blacktown', 'lga_penrith', 'lga_camden', 'lga_campbelltown', 'lga_liverpool'];
+const NON_METRO_FIVE = ['lga_x_blacktown', 'lga_x_penrith', 'lga_x_camden', 'lga_x_campbelltown', 'lga_x_liverpool'];
+
 /**
- * Five LGAs of one group. Growth sorts 10, 20, 24.8, 30, 40.9 (median 24.8) and departures 10, 32.5, 35.0, 40, 50
- * (median 35.0); SEIFA sorts 900, 980, 1000, 1050, 1100 (median 1000). 'blacktown' is high growth, high
- * disadvantage and low service; 'high' has the most growth and the best service.
+ * Five LGAs of one comparison group. Growth sorts 10, 20, 24.8, 30, 40.9 (median 24.8) and departures 10, 32.5,
+ * 35.0, 40, 50 (median 35.0); SEIFA sorts 900, 980, 1000, 1050, 1100 (median 1000). 'Blacktown' is high growth, high
+ * disadvantage and low service; 'Eee' has the best service.
  */
-function fiveRecords(): LgaIndicatorRecord[] {
+function fiveRecords(ids: string[] = METRO_FIVE): LgaIndicatorRecord[] {
   const row = (areaId: string, name: string, growth: number | null, departures: number | null, seifa: number | null) =>
     makeRecord(areaId, {
       name,
@@ -68,11 +72,11 @@ function fiveRecords(): LgaIndicatorRecord[] {
       },
     });
   return [
-    row('lga_blacktown', 'Blacktown', 40.9, 32.5, 900),
-    row('lga_b', 'Bee', 24.8, 40, 1000),
-    row('lga_c', 'Sea', 10, 35.0, 1100),
-    row('lga_d', 'Dee', 20, 10, 980),
-    row('lga_e', 'Eee', 30, 50, 1050),
+    row(ids[0], 'Blacktown', 40.9, 32.5, 900),
+    row(ids[1], 'Bee', 24.8, 40, 1000),
+    row(ids[2], 'Sea', 10, 35.0, 1100),
+    row(ids[3], 'Dee', 20, 10, 980),
+    row(ids[4], 'Eee', 30, 50, 1050),
   ];
 }
 
@@ -212,85 +216,187 @@ describe('QUADRANT_SCATTERS', () => {
   });
 });
 
-describe('quadrantData: the comparison group', () => {
-  const both = (spec: QuadrantSpec) => (r: LgaIndicatorRecord) => valueOf(r, spec.x) !== null && valueOf(r, spec.y) !== null;
+const both = (spec: QuadrantSpec) => (r: LgaIndicatorRecord) => valueOf(r, spec.x) !== null && valueOf(r, spec.y) !== null;
+const medianOf = (records: LgaIndicatorRecord[], spec: QuadrantSpec) => {
+  const group = records.filter(both(spec));
+  return {
+    x: median(group.map(r => valueOf(r, spec.x)!)),
+    y: median(group.map(r => valueOf(r, spec.y)!)),
+    n: group.length,
+  };
+};
+const metroRecords = () => NEEDS_SNAPSHOT.records.filter(r => GREATER_SYDNEY_GCCSA_AREA_IDS.includes(r.areaId));
+const nonMetroRecords = () => NEEDS_SNAPSHOT.records.filter(r => !GREATER_SYDNEY_GCCSA_AREA_IDS.includes(r.areaId));
+
+/** The first LGA of each of the first `count` regions (or peer groups), in snapshot order. */
+function onePerGroup(by: 'region' | 'peerGroup', count: number): string[] {
+  const seen = new Map<string, string>();
+  for (const r of NEEDS_SNAPSHOT.records) if (!seen.has(r[by])) seen.set(r[by], r.areaId);
+  return Array.from(seen.values()).slice(0, count);
+}
+
+describe('quadrantGroupOf', () => {
+  test('against NSW, an area is compared with the metropolitan or the non-metropolitan LGAs', () => {
+    const a = assess(['lga_blacktown', 'lga_newcastle']);
+    const [blacktown, newcastle] = a.areas.map(area => quadrantGroupOf(a, area));
+    expect(blacktown).toMatchObject({ key: 'metro', label: 'metropolitan LGAs', showsGreaterSydney: true });
+    expect(blacktown.records.map(r => r.areaId)).toEqual(metroRecords().map(r => r.areaId));
+    expect(blacktown.records).toHaveLength(34);
+    expect(newcastle).toMatchObject({ key: 'non_metro', label: 'non-metropolitan LGAs', showsGreaterSydney: false });
+    expect(newcastle.records).toHaveLength(94);
+  });
+
+  test('Greater Sydney, a region and a peer group are each their own group, named as the assessment names them', () => {
+    const gsyd = assess(['lga_newcastle'], 'separate', 'gsyd');
+    expect(quadrantGroupOf(gsyd, gsyd.areas[0])).toMatchObject({ label: 'Greater Sydney LGAs', showsGreaterSydney: true });
+    const region = assess(['lga_newcastle'], 'separate', 'region');
+    expect(quadrantGroupOf(region, region.areas[0])).toMatchObject({ label: 'LGAs in the Hunter region', showsGreaterSydney: false });
+    const peer = assess(['lga_blacktown'], 'separate', 'peer');
+    expect(quadrantGroupOf(peer, peer.areas[0])).toMatchObject({ label: 'outer metropolitan LGAs', showsGreaterSydney: false });
+  });
+
+  test('a combined area is compared with the setting all its LGAs share, else with NSW as a whole', () => {
+    const metro = assess(['lga_blacktown', 'lga_penrith'], 'combined');
+    expect(quadrantGroupOf(metro, metro.areas[0]).key).toBe('metro');
+    const mixed = assess(['lga_blacktown', 'lga_newcastle'], 'combined');
+    expect(quadrantGroupOf(mixed, mixed.areas[0])).toMatchObject({ key: 'nsw', label: 'NSW LGAs', showsGreaterSydney: false });
+    expect(quadrantGroupOf(mixed, mixed.areas[0]).records).toHaveLength(128);
+    // a region or peer selection that fell back to NSW is split by setting just the same
+    const fallback = assess(['lga_blacktown', 'lga_penrith'], 'combined', 'region');
+    expect(fallback.universeFallback).toBe(false);
+    expect(quadrantGroupOf(fallback, fallback.areas[0]).label).toBe('LGAs in the Greater Sydney region');
+    const spanning = assess(['lga_blacktown', 'lga_newcastle'], 'combined', 'region');
+    expect(spanning.universeFallback).toBe(true);
+    expect(quadrantGroupOf(spanning, spanning.areas[0]).key).toBe('nsw');
+  });
+});
+
+describe('quadrantPanels: one panel per comparison group', () => {
+  test('nsw, Blacktown and Penrith: one metropolitan panel with its own medians (R51)', () => {
+    const { panels, notes } = quadrantPanels(assess(['lga_blacktown', 'lga_penrith']), GROWTH_SERVICE);
+    expect(notes).toEqual([]);
+    expect(panels).toHaveLength(1);
+    const [panel] = panels;
+    expect(panel.group.label).toBe('metropolitan LGAs');
+    const expected = medianOf(metroRecords(), GROWTH_SERVICE);
+    expect(panel.n).toBe(expected.n);
+    expect(panel.data.medians.x).toBeCloseTo(expected.x, 10);
+    expect(panel.data.medians.y).toBeCloseTo(expected.y, 10);
+    // the NSW-wide median of 5.6 would leave no Sydney LGA in "low service"
+    expect(panel.data.medians.y).toBeGreaterThan(30);
+    expect(panel.data.points).toHaveLength(34 - 2);
+    expect(panel.data.selected.map(s => [s.name, s.inNeedQuadrant])).toEqual([['Blacktown', true], ['Penrith', true]]);
+    expect(panel.data.greaterSydney).not.toBeNull();
+  });
+
+  test('nsw, a metropolitan and a regional area: a panel each, metropolitan first, holding only its own areas', () => {
+    for (const ids of [['lga_blacktown', 'lga_newcastle'], ['lga_newcastle', 'lga_blacktown']]) {
+      const { panels } = quadrantPanels(assess(ids), GROWTH_SERVICE);
+      expect(panels.map(p => p.group.label)).toEqual(['metropolitan LGAs', 'non-metropolitan LGAs']);
+      expect(panels.map(p => p.data.selected.map(s => s.areaId))).toEqual([['lga_blacktown'], ['lga_newcastle']]);
+      // each panel's grey points are its own group's, less the selected areas
+      expect(panels[0].data.points).toHaveLength(34 - 1);
+      const nonMetro = medianOf(nonMetroRecords(), GROWTH_SERVICE);
+      expect(panels[1].n).toBe(nonMetro.n);
+      expect(panels[1].data.points).toHaveLength(nonMetro.n - 1);
+      expect(panels[1].data.medians.y).toBeCloseTo(nonMetro.y, 10);
+      // Greater Sydney is marked on the metropolitan panel only
+      expect(panels.map(p => p.data.greaterSydney !== null)).toEqual([true, false]);
+    }
+  });
+
+  test('nsw, regional areas only: one non-metropolitan panel', () => {
+    const { panels } = quadrantPanels(assess(['lga_newcastle', 'lga_wollongong']), DISADVANTAGE_SERVICE);
+    expect(panels.map(p => p.group.key)).toEqual(['non_metro']);
+    expect(panels[0].data.selected).toHaveLength(2);
+  });
+
+  test('gsyd: one panel of the Greater Sydney LGAs, even for a regional area', () => {
+    const { panels } = quadrantPanels(assess(['lga_blacktown', 'lga_newcastle'], 'separate', 'gsyd'), GROWTH_SERVICE);
+    expect(panels).toHaveLength(1);
+    expect(panels[0].group.label).toBe('Greater Sydney LGAs');
+    expect(panels[0].data.selected).toHaveLength(2);
+    expect(panels[0].data.greaterSydney).not.toBeNull();
+  });
+
+  test('region and peer: a panel for each distinct group in selection order, at most 3, the rest counted', () => {
+    for (const [universe, by] of [['region', 'region'], ['peer', 'peerGroup']] as const) {
+      const ids = onePerGroup(by, 5);
+      expect(ids).toHaveLength(5);
+      const a = assess(ids, 'separate', universe);
+      const { panels, notes } = quadrantPanels(a, GROWTH_SERVICE);
+      expect(panels.map(p => p.group.label)).toEqual(a.areas.slice(0, 3).map(area => area.universeLabel));
+      expect(panels.map(p => p.data.selected.map(s => s.areaId))).toEqual(ids.slice(0, 3).map(id => [id]));
+      expect(panels.every(p => p.data.greaterSydney === null)).toBe(true);
+      expect(notes).toEqual(['2 further comparison groups not shown.']);
+      expect(quadrantPanels(assess(ids.slice(0, 4), 'separate', universe), GROWTH_SERVICE).notes)
+        .toEqual(['1 further comparison group not shown.']);
+      expect(quadrantPanels(assess(ids.slice(0, 3), 'separate', universe), GROWTH_SERVICE).notes).toEqual([]);
+    }
+  });
+
+  test('areas of one group share a panel', () => {
+    const { panels } = quadrantPanels(assess(['lga_blacktown', 'lga_penrith', 'lga_camden'], 'separate', 'peer'), GROWTH_SERVICE);
+    expect(panels).toHaveLength(1);
+    expect(panels[0].data.selected).toHaveLength(3);
+  });
+
+  test('a combined area is one point on its group\'s panel', () => {
+    const { panels } = quadrantPanels(assess(['lga_blacktown', 'lga_penrith'], 'combined'), GROWTH_SERVICE);
+    expect(panels.map(p => p.group.key)).toEqual(['metro']);
+    expect(panels[0].data.selected).toHaveLength(1);
+    expect(panels[0].data.selected[0]).toMatchObject({ areaId: 'combined', name: 'Blacktown + Penrith' });
+    // its members are the combined point, not also grey points, but they still count towards the medians
+    expect(panels[0].data.points).toHaveLength(34 - 2);
+    expect(panels[0].data.medians.x).toBeCloseTo(medianOf(metroRecords(), GROWTH_SERVICE).x, 10);
+  });
+
+  test('a combined area spanning both settings is NSW-wide, with a note that says so', () => {
+    const { panels, notes } = quadrantPanels(assess(['lga_blacktown', 'lga_newcastle'], 'combined'), GROWTH_SERVICE);
+    expect(panels.map(p => p.group.label)).toEqual(['NSW LGAs']);
+    expect(panels[0].data.medians.y).toBeCloseTo(medianOf(NEEDS_SNAPSHOT.records, GROWTH_SERVICE).y, 10);
+    expect(panels[0].data.greaterSydney).toBeNull();
+    expect(notes).toEqual(['Selected LGAs span metropolitan and non-metropolitan settings; medians are NSW-wide.']);
+  });
+
+  test('no areas: no panels', () => {
+    expect(quadrantPanels(assess([]), GROWTH_SERVICE)).toEqual({ panels: [], notes: [] });
+  });
+});
+
+describe('quadrantData', () => {
   const selectedIds = ['lga_blacktown', 'lga_penrith'];
 
-  test('nsw: every NSW LGA with both values, less the selected areas', () => {
-    const d = quadrantData(assess(selectedIds), GROWTH_SERVICE);
-    const expected = NEEDS_SNAPSHOT.records.filter(both(GROWTH_SERVICE)).map(r => r.areaId)
-      .filter(id => !selectedIds.includes(id));
-    expect(d.points.map(p => p.areaId)).toEqual(expected);
-    // 128 LGAs, five of them without a 2041 projection
-    expect(NEEDS_SNAPSHOT.records).toHaveLength(128);
-    expect(d.points).toHaveLength(128 - 5 - 2);
-    expect(d.selected.map(s => s.areaId)).toEqual(selectedIds);
-  });
-
-  test('gsyd: the 34 Greater Sydney LGAs', () => {
-    const d = quadrantData(assess(selectedIds, 'separate', 'gsyd'), GROWTH_SERVICE);
-    expect(d.points).toHaveLength(34 - 2);
-    for (const p of d.points) expect(GREATER_SYDNEY_GCCSA_AREA_IDS).toContain(p.areaId);
-  });
-
-  test('peer: the selected areas\' peer group', () => {
-    const a = assess(selectedIds, 'separate', 'peer');
-    const group = universeRecords(a.records, 'peer', a.areas[0]);
-    const d = quadrantData(a, DISADVANTAGE_SERVICE);
-    expect(d.points.map(p => p.areaId)).toEqual(group.map(r => r.areaId).filter(id => !selectedIds.includes(id)));
-    expect(group.length).toBeLessThan(34);
-  });
-
-  test('areas in different peer groups are compared with both groups', () => {
-    const a = assess(['lga_blacktown', 'lga_newcastle'], 'separate', 'peer');
-    const [first, second] = a.areas.map(area => universeRecords(a.records, 'peer', area));
-    expect(first[0].peerGroup).not.toBe(second[0].peerGroup);
-    const d = quadrantData(a, DISADVANTAGE_SERVICE);
-    expect(d.points).toHaveLength(first.length + second.length - 2);
-  });
-
   test('an LGA missing either value is not a point', () => {
-    const d = quadrantData(assess(['lga_blacktown']), GROWTH_SERVICE);
-    const noGrowth = NEEDS_SNAPSHOT.records.filter(r => valueOf(r, 'pop_growth_2041') === null);
+    const a = assess(['lga_newcastle']);
+    const d = quadrantData(a, GROWTH_SERVICE);
+    const noGrowth = nonMetroRecords().filter(r => valueOf(r, 'pop_growth_2041') === null);
     expect(noGrowth.length).toBeGreaterThan(0);
     for (const r of noGrowth) expect(d.points.map(p => p.areaId)).not.toContain(r.areaId);
+  });
+
+  test('the group of the first selected area is the default', () => {
+    const a = assess(['lga_blacktown', 'lga_newcastle']);
+    expect(quadrantData(a, GROWTH_SERVICE)).toEqual(quadrantPanels(a, GROWTH_SERVICE).panels[0].data);
   });
 
   test('combined mode plots one combined point in place of its member LGAs', () => {
     const a = assess(selectedIds, 'combined');
     const d = quadrantData(a, GROWTH_SERVICE);
     expect(d.selected).toHaveLength(1);
-    expect(d.selected[0]).toMatchObject({ areaId: 'combined', name: 'Blacktown + Penrith' });
     expect(d.selected[0].x).toBe(a.areas[0].indicators.find(s => s.id === 'pop_growth_2041')!.value);
     expect(d.selected[0].y).toBe(a.areas[0].indicators.find(s => s.id === 'am_peak_departures_per_1000')!.value);
-    // the members are the combined point, not also grey points; both have values, so 123 - 2
-    expect(d.points).toHaveLength(128 - 5 - 2);
     expect(d.points.map(p => p.areaId)).not.toContain('lga_blacktown');
-    // ... but they are in the group, so they count towards its medians
-    const group = NEEDS_SNAPSHOT.records.filter(r => valueOf(r, 'pop_growth_2041') !== null);
-    expect(d.medians.x).toBeCloseTo(median(group.map(r => valueOf(r, 'pop_growth_2041')!)), 10);
   });
 
   test('no areas: nothing to plot', () => {
     const d = quadrantData(assess([]), GROWTH_SERVICE);
     expect(d.points).toEqual([]);
     expect(d.selected).toEqual([]);
-  });
-});
-
-describe('quadrantData: medians, axes and Greater Sydney', () => {
-  test('medians are the comparison group medians', () => {
-    for (const universe of ['nsw', 'gsyd', 'peer'] as const) {
-      const a = assess(['lga_blacktown', 'lga_penrith'], 'separate', universe);
-      const group = universeRecords(a.records, universe, a.areas[0])
-        .filter(r => valueOf(r, 'pop_growth_2041') !== null && valueOf(r, 'am_peak_departures_per_1000') !== null);
-      const d = quadrantData(a, GROWTH_SERVICE);
-      expect(d.medians.x).toBeCloseTo(median(group.map(r => valueOf(r, 'pop_growth_2041')!)), 10);
-      expect(d.medians.y).toBeCloseTo(median(group.map(r => valueOf(r, 'am_peak_departures_per_1000')!)), 10);
-    }
+    expect(Number.isNaN(d.medians.x)).toBe(true);
   });
 
-  test('the median counts the selected areas, which belong to the group', () => {
+  test('medians are over the group and count the selected LGAs, which belong to it', () => {
     const a = assess(['lga_blacktown'], 'separate', 'nsw', fiveRecords());
     const d = quadrantData(a, GROWTH_SERVICE);
     expect(d.medians).toEqual({ x: 24.8, y: 35 });
@@ -304,14 +410,15 @@ describe('quadrantData: medians, axes and Greater Sydney', () => {
     expect(quadrantData(a, DISADVANTAGE_SERVICE).yReversed).toBe(false);
   });
 
-  test('Greater Sydney is the benchmark value when it has both, else null', () => {
+  test('Greater Sydney is the benchmark value on a metropolitan panel when it has both, else null', () => {
     const a = assess(['lga_blacktown']);
     const gs = a.benchmarks.gsyd.indicators;
     expect(quadrantData(a, GROWTH_SERVICE).greaterSydney).toEqual({
       x: gs.find(s => s.id === 'pop_growth_2041')!.value,
       y: gs.find(s => s.id === 'am_peak_departures_per_1000')!.value,
     });
-    const none = assess(['lga_blacktown'], 'separate', 'nsw', fiveRecords());
+    // no Greater Sydney LGA has a value in this fixture, so the benchmark has none
+    const none = assess(['lga_x_blacktown'], 'separate', 'nsw', fiveRecords(NON_METRO_FIVE));
     expect(quadrantData(none, GROWTH_SERVICE).greaterSydney).toBeNull();
   });
 });
@@ -348,24 +455,24 @@ describe('quadrantData: selected areas', () => {
   test('flags the selected areas in the need quadrant', () => {
     const d = quadrantData(assess(['lga_blacktown'], 'separate', 'nsw', fiveRecords()), GROWTH_SERVICE);
     expect(d.selected).toEqual([{ areaId: 'lga_blacktown', name: 'Blacktown', x: 40.9, y: 32.5, inNeedQuadrant: true }]);
-    const outside = quadrantData(assess(['lga_c'], 'separate', 'nsw', fiveRecords()), GROWTH_SERVICE);
-    expect(outside.selected).toEqual([{ areaId: 'lga_c', name: 'Sea', x: 10, y: 35, inNeedQuadrant: false }]);
+    const outside = quadrantData(assess(['lga_camden'], 'separate', 'nsw', fiveRecords()), GROWTH_SERVICE);
+    expect(outside.selected).toEqual([{ areaId: 'lga_camden', name: 'Sea', x: 10, y: 35, inNeedQuadrant: false }]);
   });
 
   test('a selected area with a null x or y is listed with its nulls and is never in the quadrant', () => {
     const records = [
       ...fiveRecords(),
-      makeRecord('lga_nogrowth', { name: 'No Growth', values: { am_peak_departures_per_1000: { value: 1 } } }),
-      makeRecord('lga_nodep', { name: 'No Departures', values: { pop_growth_2041: { value: 90 } } }),
+      makeRecord('lga_hawkesbury', { name: 'No Growth', values: { am_peak_departures_per_1000: { value: 1 } } }),
+      makeRecord('lga_hills', { name: 'No Departures', values: { pop_growth_2041: { value: 90 } } }),
     ];
-    const d = quadrantData(assess(['lga_nogrowth', 'lga_nodep', 'lga_blacktown'], 'separate', 'nsw', records), GROWTH_SERVICE);
+    const d = quadrantData(assess(['lga_hawkesbury', 'lga_hills', 'lga_blacktown'], 'separate', 'nsw', records), GROWTH_SERVICE);
     expect(d.selected).toEqual([
-      { areaId: 'lga_nogrowth', name: 'No Growth', x: null, y: 1, inNeedQuadrant: false },
-      { areaId: 'lga_nodep', name: 'No Departures', x: 90, y: null, inNeedQuadrant: false },
+      { areaId: 'lga_hawkesbury', name: 'No Growth', x: null, y: 1, inNeedQuadrant: false },
+      { areaId: 'lga_hills', name: 'No Departures', x: 90, y: null, inNeedQuadrant: false },
       { areaId: 'lga_blacktown', name: 'Blacktown', x: 40.9, y: 32.5, inNeedQuadrant: true },
     ]);
     // neither is a grey point either
-    expect(d.points.map(p => p.areaId)).toEqual(['lga_b', 'lga_c', 'lga_d', 'lga_e']);
+    expect(d.points.map(p => p.areaId)).toEqual(['lga_penrith', 'lga_camden', 'lga_campbelltown', 'lga_liverpool']);
   });
 
   test('every selected area is in the order of the selection', () => {
@@ -376,25 +483,41 @@ describe('quadrantData: selected areas', () => {
 
 describe('quadrantInsights', () => {
   const a = assess(['lga_blacktown'], 'separate', 'nsw', fiveRecords());
+  const find = (id: string, assessment = a) => quadrantInsights(assessment).find(i => i.id === id)!;
 
   test('growth-service text, exact', () => {
-    const insight = quadrantInsights(a).find(i => i.id === 'quadrant:lga_blacktown:growth-service')!;
-    expect(insight.text).toBe(
+    expect(find('quadrant:lga_blacktown:growth-service').text).toBe(
       'Blacktown is in the high-growth, low-service group: population growth to 2041 of 40.9% (median 24.8%) and '
-      + '32.5 AM-peak departures per 1,000 residents (median 35.0) among NSW LGAs.',
+      + '32.5 AM-peak departures per 1,000 residents (median 35.0) among metropolitan LGAs.',
     );
   });
 
   test('disadvantage-service text, exact', () => {
-    const insight = quadrantInsights(a).find(i => i.id === 'quadrant:lga_blacktown:disadvantage-service')!;
-    expect(insight.text).toBe(
+    expect(find('quadrant:lga_blacktown:disadvantage-service').text).toBe(
       'Blacktown is in the high-disadvantage, low-service group: a SEIFA IRSD score of 900 (median 1000) and '
-      + '32.5 AM-peak departures per 1,000 residents (median 35.0) among NSW LGAs.',
+      + '32.5 AM-peak departures per 1,000 residents (median 35.0) among metropolitan LGAs.',
+    );
+  });
+
+  test('names the group the area is compared with: non-metropolitan LGAs outside Greater Sydney', () => {
+    const outside = assess(['lga_x_blacktown'], 'separate', 'nsw', fiveRecords(NON_METRO_FIVE));
+    expect(find('quadrant:lga_x_blacktown:growth-service', outside).text.endsWith(' among non-metropolitan LGAs.')).toBe(true);
+  });
+
+  test('on real data Blacktown and Penrith are high growth, low service among metropolitan LGAs', () => {
+    const real = assess(['lga_blacktown', 'lga_penrith']);
+    expect(find('quadrant:lga_blacktown:growth-service', real).text).toBe(
+      'Blacktown is in the high-growth, low-service group: population growth to 2041 of 40.9% (median 22.5%) and '
+      + '32.5 AM-peak departures per 1,000 residents (median 36.9) among metropolitan LGAs.',
+    );
+    expect(find('quadrant:lga_penrith:growth-service', real).text).toBe(
+      'Penrith is in the high-growth, low-service group: population growth to 2041 of 23.8% (median 22.5%) and '
+      + '31.9 AM-peak departures per 1,000 residents (median 36.9) among metropolitan LGAs.',
     );
   });
 
   test('carries both indicators\' citations and a severity of the mean need percentile over 100', () => {
-    const growth = quadrantInsights(a).find(i => i.id === 'quadrant:lga_blacktown:growth-service')!;
+    const growth = find('quadrant:lga_blacktown:growth-service');
     expect(growth.kind).toBe('quadrant');
     expect(growth.areaId).toBe('lga_blacktown');
     expect(growth.citations).toEqual([INDICATOR_BY_ID.pop_growth_2041.source, INDICATOR_BY_ID.am_peak_departures_per_1000.source]);
@@ -404,20 +527,23 @@ describe('quadrantInsights', () => {
     // growth 40.9 is the highest of five (percentile 90); 32.5 departures has three better-served LGAs (70)
     expect(growth.severity).toBeCloseTo(0.8, 12);
 
-    const disadvantage = quadrantInsights(a).find(i => i.id === 'quadrant:lga_blacktown:disadvantage-service')!;
+    const disadvantage = find('quadrant:lga_blacktown:disadvantage-service');
     expect(disadvantage.citations).toEqual([INDICATOR_BY_ID.seifa_irsd.source, INDICATOR_BY_ID.am_peak_departures_per_1000.source]);
     // IRSD 900 is the lowest of five (percentile 90)
     expect(disadvantage.severity).toBeCloseTo(0.8, 12);
   });
 
   test('an area outside the need quadrant has no insight', () => {
-    const outside = assess(['lga_e'], 'separate', 'nsw', fiveRecords());
+    const outside = assess(['lga_liverpool'], 'separate', 'nsw', fiveRecords());
     expect(quadrantInsights(outside)).toEqual([]);
   });
 
   test('an area with a missing value has no insight', () => {
-    const records = [...fiveRecords(), makeRecord('lga_nogrowth', { name: 'No Growth', values: { am_peak_departures_per_1000: { value: 1 } } })];
-    expect(quadrantInsights(assess(['lga_nogrowth'], 'separate', 'nsw', records))).toEqual([]);
+    const records = [
+      ...fiveRecords(),
+      makeRecord('lga_hawkesbury', { name: 'No Growth', values: { am_peak_departures_per_1000: { value: 1 } } }),
+    ];
+    expect(quadrantInsights(assess(['lga_hawkesbury'], 'separate', 'nsw', records))).toEqual([]);
   });
 
   test('a combined area is "The combined area"', () => {
@@ -437,18 +563,21 @@ describe('quadrantInsights', () => {
     }));
     const records = [member('lga_m1', 50, 30, 1000), member('lga_m2', 40, 36, 1000), ...filler];
     const combined = assess(['lga_m1', 'lga_m2'], 'combined', 'nsw', records);
-    const growth = quadrantInsights(combined).find(i => i.kind === 'quadrant' && i.id.endsWith('growth-service'))!;
+    const growth = find('quadrant:combined:growth-service', combined);
     expect(growth.areaId).toBe('combined');
     expect(growth.text).toBe(
       'The combined area is in the high-growth, low-service group: population growth to 2041 of 45.0% (median 20.0%) '
-      + 'and 33.0 AM-peak departures per 1,000 residents (median 70.0) among NSW LGAs.',
+      + 'and 33.0 AM-peak departures per 1,000 residents (median 70.0) among non-metropolitan LGAs.',
     );
   });
 
   test('uses each area\'s own comparison group', () => {
-    const outer = assess(['lga_blacktown', 'lga_penrith'], 'separate', 'peer');
-    for (const insight of quadrantInsights(outer)) {
-      expect(insight.text.endsWith('among outer metropolitan LGAs.')).toBe(true);
+    const peers = assess(['lga_camden', 'lga_campbelltown', 'lga_singleton'], 'separate', 'peer');
+    const insights = quadrantInsights(peers);
+    expect(new Set(insights.map(i => i.areaId)).size).toBeGreaterThan(1);
+    for (const insight of insights) {
+      const area = peers.areas.find(x => x.areaId === insight.areaId)!;
+      expect(insight.text.endsWith(` among ${area.universeLabel}.`)).toBe(true);
     }
   });
 
@@ -463,23 +592,58 @@ describe('quadrantInsights', () => {
       }
     }
     // the sample must reach the code it is meant to check
-    const blacktown = quadrantInsights(assess(['lga_blacktown', 'lga_penrith'], 'separate', 'gsyd'));
-    expect(blacktown.length).toBeGreaterThan(0);
+    expect(quadrantInsights(assess(['lga_blacktown', 'lga_penrith'], 'separate', 'gsyd')).length).toBeGreaterThan(0);
   });
+});
 
-  test('on real data: an insight exactly when the chart puts the area in the quadrant', () => {
-    for (const universe of ['nsw', 'gsyd', 'peer'] as const) {
-      const all = assess(NEEDS_SNAPSHOT.records.map(r => r.areaId).slice(0, 60), 'separate', universe);
-      for (const spec of QUADRANT_SCATTERS) {
-        // each area is compared with its own group, which is the chart's group when all the areas share one
-        for (const area of all.areas) {
-          const alone = assess([area.areaId], 'separate', universe);
-          const flagged = quadrantData(alone, spec).selected[0].inNeedQuadrant;
-          const has = quadrantInsights(alone).some(i => i.id === `quadrant:${area.areaId}:${spec.id}`);
-          expect(has).toBe(flagged);
+describe('quadrant shading and findings always agree (R51)', () => {
+  const metroIds = metroRecords().map(r => r.areaId);
+  const allIds = NEEDS_SNAPSHOT.records.map(r => r.areaId);
+  const selections: Array<[string, string[], NeedsMode, Universe, boolean]> = [
+    ['Blacktown + Penrith, NSW', ['lga_blacktown', 'lga_penrith'], 'separate', 'nsw', true],
+    ['metropolitan + regional, NSW', ['lga_blacktown', 'lga_newcastle', 'lga_penrith', 'lga_wollongong'], 'separate', 'nsw', true],
+    ['every NSW LGA, NSW', allIds, 'separate', 'nsw', true],
+    ['Greater Sydney LGAs, gsyd', metroIds, 'separate', 'gsyd', true],
+    ['metropolitan + regional, gsyd', ['lga_blacktown', 'lga_newcastle', 'lga_camden'], 'separate', 'gsyd', true],
+    ['one LGA per region, region', onePerGroup('region', 3), 'separate', 'region', false],
+    ['Camden, Singleton, Muswellbrook and Snowy Monaro, region', ['lga_camden', 'lga_singleton', 'lga_muswellbrook', 'lga_snowy_monaro'], 'separate', 'region', true],
+    ['Camden, Strathfield, Singleton and Snowy Monaro, peer', ['lga_camden', 'lga_strathfield', 'lga_singleton', 'lga_snowy_monaro'], 'separate', 'peer', true],
+    ['LGAs of mixed regions, region', allIds.filter((_, i) => i % 5 === 0), 'separate', 'region', true],
+    ['one LGA per peer group, peer', onePerGroup('peerGroup', 3), 'separate', 'peer', false],
+    ['LGAs of mixed peer groups, peer', allIds.filter((_, i) => i % 7 === 0), 'separate', 'peer', true],
+    ['combined metropolitan, NSW', ['lga_blacktown', 'lga_penrith'], 'combined', 'nsw', true],
+    ['combined metropolitan + regional, NSW', ['lga_blacktown', 'lga_newcastle'], 'combined', 'nsw', false],
+    ['combined regional, NSW', ['lga_newcastle', 'lga_wollongong'], 'combined', 'nsw', false],
+    ['combined, peer', ['lga_blacktown', 'lga_penrith'], 'combined', 'peer', false],
+    ['combined spanning peer groups, peer (falls back to NSW)', ['lga_blacktown', 'lga_newcastle'], 'combined', 'peer', false],
+    ['combined, region', ['lga_blacktown', 'lga_penrith'], 'combined', 'region', true],
+  ];
+
+  test.each(selections)('%s', (_name, ids, mode, universe, hasFindings) => {
+    const a = assess(ids, mode, universe);
+    const insights = quadrantInsights(a);
+    let shaded = 0;
+    for (const spec of QUADRANT_SCATTERS) {
+      const [xDef, yDef] = [INDICATOR_BY_ID[spec.x], INDICATOR_BY_ID[spec.y]];
+      for (const { group, data } of quadrantPanels(a, spec).panels) {
+        for (const s of data.selected) {
+          const insight = insights.find(i => i.id === `quadrant:${s.areaId}:${spec.id}`);
+          // the chart puts the area in the quadrant exactly when there is a finding about it
+          expect(insight !== undefined).toBe(s.inNeedQuadrant);
+          if (!insight) continue;
+          shaded++;
+          // ... which names the panel's group and quotes its medians
+          expect(insight.text.endsWith(` among ${group.label}.`)).toBe(true);
+          expect(insight.text).toContain(`(median ${formatValue(xDef, data.medians.x)})`);
+          expect(insight.text).toContain(`(median ${data.medians.y.toFixed(yDef.decimals)})`);
+          // ... and the values it states are the point the chart draws
+          expect(insight.text).toContain(`of ${formatValue(xDef, s.x!)} (median`);
+          expect(insight.text).toContain(`and ${s.y!.toFixed(yDef.decimals)} AM-peak departures`);
         }
       }
     }
+    // a selection with nothing in a quadrant would prove nothing
+    if (hasFindings) expect(shaded).toBeGreaterThan(0);
   });
 });
 
