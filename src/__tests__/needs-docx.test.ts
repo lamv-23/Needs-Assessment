@@ -9,7 +9,8 @@ import { DOMAIN_LABELS, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators'
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
   CATCHMENT_CAPTION, CATCHMENT_TITLE, citationSegments, comparisonLabel, exportFileName, exportTitle, indicatorTable,
-  NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, sourceNumber,
+  NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, SA2_TABLE_CAPTION, SA2_TABLE_COLUMNS, SA2_TABLE_EMPTY,
+  SA2_TABLE_HEADING, sa2Table, sourceNumber,
 } from '@/lib/needs/page-data';
 import type { NeedsAssessment, NeedsMode, NeedsSnapshot, Universe } from '@/lib/needs/types';
 import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
@@ -449,6 +450,74 @@ describe('buildNeedsDocument: SA2 drill-down', () => {
       for (const short of caption.split('; ')) expect(NEEDS_SOURCES.map(s => s.short)).toContain(short);
     }
     expect(CATCHMENT_CAPTION).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
+  });
+});
+
+describe('buildNeedsDocument: SA2 table (P2-R18)', () => {
+  const assessment = assess(['lga_blacktown']);
+  const sa2 = sa2Table(SA2_POCKETS_FILE, assessment);
+
+  test('a native table after the indicator table: the page columns and cells, its notes and a source line', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, [figure('Need map')]), sa2Table: sa2 });
+
+    const order = headings(xml, 'Heading2');
+    expect(order.indexOf(SA2_TABLE_HEADING)).toBe(order.indexOf('Indicators') + 1);
+    expect(order.indexOf('Figures')).toBe(order.indexOf(SA2_TABLE_HEADING) + 1);
+    expect(SA2_TABLE_HEADING).toBe('SA2s within the selection');
+
+    const all = tables(xml);
+    expect(all).toHaveLength(2);
+    const table = all[1];
+    expect(table[0]).toEqual(SA2_TABLE_COLUMNS.map(c => c.header));
+    expect(table).toHaveLength(sa2.rows.length + 1);
+    const expected = sa2.rows.find(r => r.name === 'Mount Druitt - Whalan')!;
+    expect(expected.rank).not.toBe('');
+    // The overall need cell holds the band and score, then the rank on a line of its own, as on the page
+    expect(table.find(r => r[0] === 'Mount Druitt - Whalan')).toEqual([
+      expected.name, expected.lgas, expected.overall + expected.rank, expected.transport, expected.socio, expected.frequent,
+    ]);
+    expect(table.slice(1).map(r => r[0])).toEqual(sa2.rows.map(r => r.name));
+
+    const texts = paragraphs(xml).map(p => p.text);
+    const sourceAt = texts.indexOf(`Source: ${SA2_TABLE_CAPTION}`);
+    expect(sourceAt).toBeGreaterThan(-1);
+    // The notes (the straight-line catchment note among them) come before the source line, as on the page
+    expect(texts.slice(sourceAt - sa2.notes.length, sourceAt)).toEqual(sa2.notes);
+    expect(texts.indexOf(SA2_TABLE_HEADING)).toBeLessThan(sourceAt);
+    expect(sourceAt).toBeLessThan(texts.indexOf('Figures'));
+  });
+
+  test('six fixed columns fit the portrait text width, so the table stays in portrait (R32)', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, []), sa2Table: sa2 });
+    const withTables = sections(xml).filter(s => s.xml.includes('<w:tbl>'));
+    expect(withTables.map(s => s.orientation)).toEqual(['portrait']);
+  });
+
+  test('after a landscape indicator table, the SA2 table starts a portrait section', async () => {
+    const many = assess(GSYD_IDS.slice(0, 6));
+    const { xml } = await documentParts({ ...inputFor(many, []), sa2Table: sa2Table(SA2_POCKETS_FILE, many) });
+    const orientationOfTable = sections(xml).flatMap(s => Array.from(s.xml.matchAll(/<w:tbl>/g)).map(() => s.orientation));
+    expect(orientationOfTable).toEqual(['landscape', 'portrait']);
+  });
+
+  test('without the SA2 file there is no SA2 table', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, []), sa2Table: null });
+    expect(headings(xml, 'Heading2')).not.toContain(SA2_TABLE_HEADING);
+    expect(tables(xml)).toHaveLength(1);
+  });
+
+  test('a selection with no ranked SA2 says so, with the notes and source line, and draws no empty table', async () => {
+    const empty = { ...sa2, rows: [] };
+    const { xml } = await documentParts({ ...inputFor(assessment, []), sa2Table: empty });
+    const texts = paragraphs(xml).map(p => p.text);
+    expect(tables(xml)).toHaveLength(1);
+    expect(texts).toContain(SA2_TABLE_EMPTY);
+    expect(texts).toContain(`Source: ${SA2_TABLE_CAPTION}`);
+  });
+
+  test('the source line cites numbered sources only (R31, R45)', () => {
+    for (const short of SA2_TABLE_CAPTION.split('; ')) expect(NEEDS_SOURCES.map(s => s.short)).toContain(short);
+    expect(SA2_TABLE_CAPTION).toBe(SA2_MAP_CAPTION);
   });
 });
 

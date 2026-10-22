@@ -9,9 +9,9 @@ import { buildNarrative } from '@/lib/needs/narrative';
 import {
   CATCHMENT_TITLE, citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
   GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
-  SA2_TABLE_SIZE, sa2Table, sourceNumber, stripIndicatorIds, trendsCaption,
+  SA2_TABLE_CAPTION, SA2_TABLE_COLUMNS, SA2_TABLE_SIZE, sa2Table, sourceNumber, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
-import { rankSa2s } from '@/lib/needs/sa2';
+import { rankSa2s, SA2_INDICATOR_IDS } from '@/lib/needs/sa2';
 import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Sa2NeedsFile, Universe } from '@/lib/needs/types';
 import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
@@ -366,6 +366,19 @@ describe('sa2Table', () => {
     expect(notes[2]).toBe(CATCHMENT_NOTE);
     expect(notes[2]).toMatch(/straight-line distance/i);
     expect(rows.map(r => r.name)).not.toContain('Prospect Reservoir');
+  });
+});
+
+describe('SA2 table columns and source (P2-R18)', () => {
+  test('the page and Word share the columns; the catchment column says AM-peak and straight-line distance', () => {
+    expect(SA2_TABLE_COLUMNS.map(c => c.header)).toEqual([
+      'SA2', 'LGA (share of residents)', 'Overall need', 'Transport score', 'Socio-economic score',
+      'Near frequent AM-peak public transport (straight-line distance)',
+    ]);
+  });
+
+  test('the source caption names the sources of the SA2 indicators behind the scores (R31)', () => {
+    expect(SA2_TABLE_CAPTION).toBe(figureCaption(SA2_INDICATOR_IDS));
   });
 });
 

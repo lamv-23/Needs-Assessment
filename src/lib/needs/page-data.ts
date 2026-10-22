@@ -87,6 +87,15 @@ export const SA2_MAP_TITLE = 'SA2 need map';
 /** The SA2 map shades each SA2 by its overall score, made from all the SA2 indicators. */
 export const SA2_MAP_CAPTION = figureCaption(SA2_INDICATOR_IDS);
 
+/** The SA2 table's source line (page and Word): its scores, like the map's shading, use all the SA2 indicators. */
+export const SA2_TABLE_CAPTION = figureCaption(SA2_INDICATOR_IDS);
+
+/** The SA2 table's heading in the Word export (P2-R18). */
+export const SA2_TABLE_HEADING = 'SA2s within the selection';
+
+/** In place of the SA2 table when the selection has no ranked SA2. */
+export const SA2_TABLE_EMPTY = 'No ranked SA2 in the selected LGAs.';
+
 export const CATCHMENT_TITLE = 'Residents near AM-peak public transport (straight-line distance)';
 
 /** The walking catchments: mesh-block residents and the stops with AM-peak service. */
@@ -113,6 +122,21 @@ export interface Sa2TableRow {
 }
 
 export interface Sa2TableData { rows: Sa2TableRow[]; notes: string[] }
+
+type Sa2TableColumnKey = Exclude<keyof Sa2TableRow, 'code' | 'rank'>;
+
+/**
+ * The SA2 table's columns, in order, for the page and the Word export: the Overall need cell is `overall` with `rank`
+ * on a line of its own, every other cell is its row field. `numeric` columns are right-aligned.
+ */
+export const SA2_TABLE_COLUMNS: { key: Sa2TableColumnKey; header: string; numeric: boolean }[] = [
+  { key: 'name', header: 'SA2', numeric: false },
+  { key: 'lgas', header: 'LGA (share of residents)', numeric: false },
+  { key: 'overall', header: 'Overall need', numeric: false },
+  { key: 'transport', header: 'Transport score', numeric: true },
+  { key: 'socio', header: 'Socio-economic score', numeric: true },
+  { key: 'frequent', header: 'Near frequent AM-peak public transport (straight-line distance)', numeric: true },
+];
 
 /** "Blacktown" by area id, for every LGA. */
 const lgaNames = (assessment: Pick<NeedsAssessment, 'records'>) => new Map(assessment.records.map(r => [r.areaId, r.name]));

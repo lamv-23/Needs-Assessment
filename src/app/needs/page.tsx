@@ -34,8 +34,8 @@ import {
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
   CATCHMENT_CAPTION, CATCHMENT_TITLE, comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION,
-  indicatorTable, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, sa2Table,
-  stripIndicatorIds, trendsCaption,
+  indicatorTable, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, SA2_TABLE_CAPTION,
+  sa2Table, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
 import { SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD } from '@/lib/needs/sa2';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
@@ -243,6 +243,7 @@ function NeedsContent() {
             <ExportDocxButton
               assessment={assessment}
               sections={sections}
+              sa2Table={sa2Rows}
               // The document waits for the SA2 file; if it failed, its figure is left out and named (P2-R5, R22)
               waitingFor={sa2.isLoading ? 'SA2 data' : null}
             />
@@ -417,6 +418,7 @@ function NeedsContent() {
             <ChartWrapper
               title="Highest-need SA2s"
               subtitle="The SA2s in the selected LGAs with the highest overall SA2 need score."
+              caption={SA2_TABLE_CAPTION}
               {...excel.sa2Table}
             >
               {sa2Rows ? <Sa2RankingTable table={sa2Rows} /> : <Sa2Pending failed={sa2Failed} height={240} />}

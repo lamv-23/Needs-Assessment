@@ -5,19 +5,21 @@ import { FileDown, Loader2 } from 'lucide-react';
 import { useFigureRegistry } from '@/components/needs/FigureRegistry';
 import type { NarrativeSection } from '@/lib/needs/narrative';
 import {
-  exportFileName, exportTitle, formatNeedsDate, sameSelection, SELECTION_CHANGED_MESSAGE,
+  exportFileName, exportTitle, formatNeedsDate, sameSelection, SELECTION_CHANGED_MESSAGE, type Sa2TableData,
 } from '@/lib/needs/page-data';
 import type { NeedsAssessment } from '@/lib/needs/types';
 
 interface ExportDocxButtonProps {
   assessment: NeedsAssessment;
   sections: NarrativeSection[];
+  /** The page's SA2 table for the selection, exported as a native table; null while the SA2 file is not loaded. */
+  sa2Table?: Sa2TableData | null;
   /** Data the document needs that is still loading ("SA2 data"): until it arrives the button waits, disabled. */
   waitingFor?: string | null;
 }
 
 /**
- * Downloads the assessment as an editable Word document: the findings, a native table, every figure that can be
+ * Downloads the assessment as an editable Word document: the findings, native tables, every figure that can be
  * rendered, data notes and sources. A figure that cannot be rendered (collapsed) is left out and named, so the user can
  * expand it and export again. The Word library is loaded only when the button is clicked.
  *
@@ -25,7 +27,7 @@ interface ExportDocxButtonProps {
  * selection in a document whose text and table describe the old one. The export is therefore dropped, with a message,
  * if the selection changed at all since the click, checked when the figures are done and again before the download.
  */
-export default function ExportDocxButton({ assessment, sections, waitingFor = null }: ExportDocxButtonProps) {
+export default function ExportDocxButton({ assessment, sections, sa2Table = null, waitingFor = null }: ExportDocxButtonProps) {
   const registry = useFigureRegistry();
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function ExportDocxButton({ assessment, sections, waitingFor = nu
 
   const handleExport = async () => {
     const started = assessment;
+    const startedSa2Table = sa2Table;
     const version = selectionVersion.current;
     const figures = registry?.figures() ?? [];
     const selectionChanged = () => selectionVersion.current !== version;
@@ -65,6 +68,7 @@ export default function ExportDocxButton({ assessment, sections, waitingFor = nu
         assessment: started,
         narrative: sections,
         figures: captured,
+        sa2Table: startedSa2Table,
       }));
       if (selectionChanged()) {
         setMessage(SELECTION_CHANGED_MESSAGE);

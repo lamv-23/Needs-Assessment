@@ -6,8 +6,8 @@ import {
 import { DOMAIN_LABELS } from './indicators';
 import type { NarrativeParagraph, NarrativeSection } from './narrative';
 import {
-  citationSegments, comparisonLabel, formatNeedsDate, indicatorTable, indicatorTableNote, NEEDS_SOURCES, sourceNumber,
-  type IndicatorTableData,
+  citationSegments, comparisonLabel, formatNeedsDate, indicatorTable, indicatorTableNote, NEEDS_SOURCES, SA2_TABLE_CAPTION,
+  SA2_TABLE_COLUMNS, SA2_TABLE_EMPTY, SA2_TABLE_HEADING, sourceNumber, type IndicatorTableData, type Sa2TableData,
 } from './page-data';
 import type { NeedsAssessment } from './types';
 
@@ -24,6 +24,8 @@ export interface NeedsDocxInput {
   assessment: NeedsAssessment;
   narrative: NarrativeSection[];
   figures: DocxFigure[];
+  /** The page's SA2 table (`sa2Table`) for the selection; null or absent when the SA2 file is not loaded. */
+  sa2Table?: Sa2TableData | null;
 }
 
 /** What the figure registry offers: a title, a source line and a way to render the figure as a PNG. */
@@ -192,16 +194,36 @@ interface CellStyle {
   span?: number;
 }
 
-function tableCell(text: string, width: number, { size, align = AlignmentType.LEFT, bold = false, fill, span }: CellStyle): TableCell {
+/** One line of text in a table cell, with no space around it. */
+function cellParagraph(text: string, { size, align = AlignmentType.LEFT, bold = false }: CellStyle): Paragraph {
+  return new Paragraph({
+    alignment: align,
+    spacing: { before: 0, after: 0, line: 240, lineRule: LineRuleType.AUTO },
+    children: [new TextRun({ text, bold, size })],
+  });
+}
+
+function tableCell(text: string, width: number, style: CellStyle): TableCell {
   return new TableCell({
     width: { size: width, type: WidthType.DXA },
-    columnSpan: span,
-    shading: fill ? { type: ShadingType.CLEAR, fill, color: 'auto' } : undefined,
-    children: [new Paragraph({
-      alignment: align,
-      spacing: { before: 0, after: 0, line: 240, lineRule: LineRuleType.AUTO },
-      children: [new TextRun({ text, bold, size })],
-    })],
+    columnSpan: style.span,
+    shading: style.fill ? { type: ShadingType.CLEAR, fill: style.fill, color: 'auto' } : undefined,
+    children: [cellParagraph(text, style)],
+  });
+}
+
+/** A native table at its column widths (twips), fixed layout, with thin grey borders. */
+function nativeTable(widths: number[], rows: TableRow[]): Table {
+  return new Table({
+    width: { size: widths.reduce((sum, w) => sum + w, 0), type: WidthType.DXA },
+    columnWidths: widths,
+    layout: TableLayoutType.FIXED,
+    margins: { top: 30, bottom: 30, left: 50, right: 50 },
+    borders: {
+      top: TABLE_BORDER, bottom: TABLE_BORDER, left: TABLE_BORDER, right: TABLE_BORDER,
+      insideHorizontal: TABLE_BORDER, insideVertical: TABLE_BORDER,
+    },
+    rows,
   });
 }
 
@@ -254,20 +276,7 @@ function indicatorWordTable(table: IndicatorTableData, columns: number[], withSo
     }),
   ]);
 
-  return {
-    landscape,
-    table: new Table({
-      width: { size: total, type: WidthType.DXA },
-      columnWidths: widths,
-      layout: TableLayoutType.FIXED,
-      margins: { top: 30, bottom: 30, left: 50, right: 50 },
-      borders: {
-        top: TABLE_BORDER, bottom: TABLE_BORDER, left: TABLE_BORDER, right: TABLE_BORDER,
-        insideHorizontal: TABLE_BORDER, insideVertical: TABLE_BORDER,
-      },
-      rows: [header, ...body],
-    }),
-  };
+  return { landscape, table: nativeTable(widths, [header, ...body]) };
 }
 
 /** "areas 9–16 of 33", or "area 33 of 33" for a table of one; `start` is 0-based, `end` exclusive. */
@@ -303,14 +312,66 @@ function indicatorBlocks(assessment: NeedsAssessment): Array<{ orientation: Figu
           : []),
         wordTable,
         ...(last
-          ? [indicatorTableNote(comparisonLabel(assessment.areas)), ...table.notes].map((note, n) => new Paragraph({
-            spacing: { before: n === 0 ? 120 : 0 },
-            children: [new TextRun({ text: note, size: TABLE_SIZE })],
-          }))
+          ? [indicatorTableNote(comparisonLabel(assessment.areas)), ...table.notes]
+            .map((note, n) => tableNote(note, n === 0 ? 120 : 0))
           : []),
       ],
     };
   });
+}
+
+// -- SA2 table ----------------------------------------------------------------------------------
+
+/** Shares of the text width of the SA2 table's columns, in SA2_TABLE_COLUMNS order. */
+const SA2_COLUMN_SHARES = [0.2, 0.19, 0.25, 0.1, 0.11, 0.15];
+const SA2_RANK_SIZE = 16;
+
+/** A note or source line under a table, in the table's text size. */
+const tableNote = (text: string, before = 0) => new Paragraph({
+  spacing: { before },
+  children: [new TextRun({ text, size: TABLE_SIZE })],
+});
+
+/**
+ * The page's SA2 table as a native table (P2-R18): the same columns and cell text, the Overall need cell with its rank
+ * on a second line, then the table's notes and its source line (R31). Its six fixed columns fit the portrait text
+ * width at the table text size (the portrait indicator table takes up to nine), so R32's landscape rule, for more
+ * than five area columns, never applies and the table is portrait.
+ */
+function sa2TableBlock(data: Sa2TableData): FileChild[] {
+  const total = PORTRAIT_TEXT_TWIPS;
+  const widths = SA2_COLUMN_SHARES.map(share => Math.round(total * share));
+  widths[widths.length - 1] = total - widths.slice(0, -1).reduce((sum, w) => sum + w, 0);
+  const align = (numeric: boolean) => (numeric ? AlignmentType.RIGHT : AlignmentType.LEFT);
+
+  const header = new TableRow({
+    tableHeader: true,
+    cantSplit: true,
+    children: SA2_TABLE_COLUMNS.map((column, i) => tableCell(column.header, widths[i], {
+      size: TABLE_SIZE, bold: true, fill: HEADER_FILL, align: align(column.numeric),
+    })),
+  });
+  const body = data.rows.map(row => new TableRow({
+    cantSplit: true,
+    children: SA2_TABLE_COLUMNS.map((column, i) => (column.key === 'overall' && row.rank
+      ? new TableCell({
+        width: { size: widths[i], type: WidthType.DXA },
+        children: [
+          cellParagraph(row.overall, { size: TABLE_SIZE, align: align(column.numeric) }),
+          cellParagraph(row.rank, { size: SA2_RANK_SIZE, align: align(column.numeric) }),
+        ],
+      })
+      : tableCell(row[column.key], widths[i], { size: TABLE_SIZE, align: align(column.numeric) }))),
+  }));
+
+  return [
+    heading(SA2_TABLE_HEADING),
+    data.rows.length === 0
+      ? new Paragraph({ children: [new TextRun(SA2_TABLE_EMPTY)] })
+      : nativeTable(widths, [header, ...body]),
+    ...data.notes.map((note, n) => tableNote(note, n === 0 ? 120 : 0)),
+    tableNote(`Source: ${SA2_TABLE_CAPTION}`),
+  ];
 }
 
 // -- Figures and sources ------------------------------------------------------------------------
@@ -358,12 +419,13 @@ function sourcesBlock(assessment: NeedsAssessment): FileChild[] {
 /**
  * The needs assessment as a Word document: title and selection, written findings (key findings first, then the summary,
  * the domains, the pockets of need when the SA2 file was loaded, and further findings, in the narrative's order), the
- * indicator table(s), figures (the SA2 map and catchment chart among them, in page order), data notes and sources.
+ * indicator table(s), the SA2 table when the SA2 file was loaded, figures (the SA2 map and catchment chart among them,
+ * in page order), data notes and sources.
  * The data notes are the narrative's own notes section, which already ends with the method sentence, so it is not
  * added again.
  */
 export function buildNeedsDocument(input: NeedsDocxInput): Document {
-  const { title, generatedOn, assessment, narrative, figures } = input;
+  const { title, generatedOn, assessment, narrative, figures, sa2Table } = input;
   const flow = createFlow();
 
   const findings = narrative.filter(s => s.id !== 'notes');
@@ -376,6 +438,7 @@ export function buildNeedsDocument(input: NeedsDocxInput): Document {
   ]);
 
   for (const block of indicatorBlocks(assessment)) flow.add(block.orientation, block.children);
+  if (sa2Table) flow.add('portrait', sa2TableBlock(sa2Table));
 
   figures.forEach((figure, i) => {
     const layout = figureLayout(figure.widthPx, figure.heightPx);
