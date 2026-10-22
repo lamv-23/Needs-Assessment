@@ -5,10 +5,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LabelList, ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import {
-  axisFraction, CATCHMENT_CHART_NOTE, catchmentChartData, type CatchmentBar, type CatchmentPanel, type NiceAxis,
+  axisFraction, catchmentChartData, type CatchmentBar, type CatchmentPanel, type NiceAxis,
   type StripReference,
 } from '@/lib/needs/chart-data';
 import { BENCHMARK_COLOR, TODAY_COLOR } from '@/lib/needs/colors';
+import { CATCHMENT_NOTE } from '@/lib/needs/indicators';
 import { nameList } from '@/lib/needs/insight-chart-data';
 import { CHART_TICK_STYLE, CHART_TOOLTIP_STYLE } from '@/lib/utils';
 import type { NeedsAssessment } from '@/lib/needs/types';
@@ -122,8 +123,8 @@ function Panel({ panel, axis, height }: { panel: CatchmentPanel; axis: NiceAxis;
 }
 
 /**
- * The share of residents within a straight-line walk of frequent, and of any, public transport for each assessed area,
- * one panel per measure, against Greater Sydney and NSW as reference lines.
+ * The share of residents within a straight-line walk of frequent, and of any, AM-peak public transport for each assessed
+ * area, one panel per measure, against Greater Sydney and NSW as reference lines.
  */
 export default function CatchmentChart({ assessment }: { assessment: NeedsAssessment }) {
   const data = useMemo(() => catchmentChartData(assessment), [assessment]);
@@ -140,7 +141,7 @@ export default function CatchmentChart({ assessment }: { assessment: NeedsAssess
         <LegendItem swatch={<LineSwatch color={BENCHMARK_COLOR} dash={NSW_DASH} />}>NSW</LegendItem>
       </Legend>
       <ChartNotes>
-        <p>{CATCHMENT_CHART_NOTE}</p>
+        <p>{CATCHMENT_NOTE}</p>
         {data.noData.length > 0 && <p>No catchment data for {nameList(data.noData)}.</p>}
         {data.notes.map(note => <p key={note}>{note}</p>)}
       </ChartNotes>

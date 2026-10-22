@@ -220,7 +220,8 @@ describe('mismatchExcel', () => {
     const excel = mismatchExcel(a);
     const charts = mismatchChartData(a).charts.filter(c => c.weakMessage === null);
     expect(sheet(excel).header).toEqual([
-      'Setting', 'LGA', 'Selected (Y/N)', 'Residents near frequent public transport (%, straight-line distance)', 'Population',
+      'Setting', 'LGA', 'Selected (Y/N)', 'Residents near frequent AM-peak public transport (%, straight-line distance)',
+      'Population',
       'Car dependency (%)', 'Expected car dependency (%)', 'Residual (pp)', 'z',
     ]);
     expect(excel.data).toHaveLength(charts.reduce((n, c) => n + c.others.length + c.selected.length, 0));
@@ -296,7 +297,8 @@ describe('SA2 drill-down sheets', () => {
   test('the SA2 table: its rows, with domain scores floored and the frequent catchment to 1 dp', () => {
     const excel = sa2TableExcel(SA2_POCKETS_FILE, a);
     expect(sheet(excel).header.slice(-3)).toEqual([
-      'Transport disadvantage', 'Socio-economic disadvantage', 'Residents near frequent public transport (straight-line distance) (%)',
+      'Transport disadvantage', 'Socio-economic disadvantage',
+      'Residents near frequent AM-peak public transport (straight-line distance) (%)',
     ]);
     expect(column(excel, 'SA2')).toEqual(sa2Table(SA2_POCKETS_FILE, a).rows.map(r => r.name));
     expect(excel.data[0]).toMatchObject({ sa2: 'Mount Druitt - Whalan', rank: 1, frequent: 50 });

@@ -98,9 +98,9 @@ function MismatchPlot({ chart, onWidth }: { chart: MismatchChart; onWidth: (widt
 
 /**
  * Car dependency against what the model expects for the LGA's setting: metropolitan LGAs by their share of
- * residents near frequent public transport (straight-line distance), the others by population. The other LGAs are
- * grey, the fitted line and the band of one residual SD either side are drawn, and the selected areas are coloured
- * (the first few named) and ringed when their residual is at least one residual SD.
+ * residents near frequent AM-peak public transport (straight-line distance), the others by population. The other
+ * LGAs are grey, the fitted line and the band of one residual SD either side are drawn, and the selected areas are
+ * coloured (the first few named) and ringed when their residual is at least one residual SD.
  */
 export default function MismatchScatter({ assessment }: { assessment: NeedsAssessment }) {
   // Names are fitted to the plot's measured width, so they re-fit when the chart is resized.

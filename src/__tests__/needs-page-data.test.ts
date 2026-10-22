@@ -3,11 +3,11 @@ import * as path from 'path';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { partialBenchmarkNotes, partialBenchmarks } from '@/lib/needs/coverage';
-import { INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, INDICATOR_BY_ID, INDICATORS, SOURCES } from '@/lib/needs/indicators';
 import { buildInsights, WFH_CAVEAT_CITATION } from '@/lib/needs/insights';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
+  CATCHMENT_TITLE, citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
   GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
   SA2_TABLE_SIZE, sa2Table, sourceNumber, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
@@ -287,6 +287,10 @@ describe('sources', () => {
     expect(SOURCES.catchments.short).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
   });
 
+  test('P2-R17: the catchment figure title says AM-peak and straight-line distance', () => {
+    expect(CATCHMENT_TITLE).toBe('Residents near AM-peak public transport (straight-line distance)');
+  });
+
   test('P2-R3: the straight-line catchment source has a citation number, after TfNSW GTFS', () => {
     expect(sourceNumber(SOURCES.catchments)).toBe(sourceNumber(SOURCES.gtfs) + 1);
     expect(NEEDS_SOURCES).toContain(SOURCES.catchments);
@@ -359,7 +363,8 @@ describe('sa2Table', () => {
     expect(rows).toHaveLength(10);
     expect(notes[0]).toMatch(/^The 10 highest-need of the 23 ranked SA2s in the selection/);
     expect(notes[1]).toBe('Not ranked (fewer than 100 residents, or no score): Prospect Reservoir.');
-    expect(notes[2]).toContain('straight-line distance');
+    expect(notes[2]).toBe(CATCHMENT_NOTE);
+    expect(notes[2]).toMatch(/straight-line distance/i);
     expect(rows.map(r => r.name)).not.toContain('Prospect Reservoir');
   });
 });

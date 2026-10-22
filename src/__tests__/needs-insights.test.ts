@@ -446,7 +446,8 @@ describe('buildInsights', () => {
     const [mismatch] = of(insights, 'mismatch');
     expect(mismatch.text).toBe(
       `The Hills Shire's car dependency (${formatValue(CAR, m.actual)}) is ${formatDiff(CAR, Math.abs(m.residual))} higher `
-      + 'than expected for its share of residents near frequent public transport, measured by straight-line distance '
+      + 'than expected for its share of residents near frequent AM-peak public transport, measured by straight-line '
+      + 'distance '
       + `(model across 34 metropolitan LGAs, R² ${m.fit.r2.toFixed(2)}).`,
     );
     expect(mismatch.text).toContain('R² 0.63');

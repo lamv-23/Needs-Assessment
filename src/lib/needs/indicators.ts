@@ -100,16 +100,17 @@ export const INDICATORS: IndicatorDef[] = [
     source: SOURCES.gtfs,
   },
   {
-    // frequentPersons ÷ persons × 100: residents within a straight-line walk of a stop with 8+ AM-peak departures
+    // frequentPersons ÷ persons × 100: residents within a straight-line walk of a stop with 8+ AM-peak departures.
+    // P2-R17: the labels say AM-peak, since a stop with no weekday 7-9am departure counts as no service.
     id: 'frequent_service_catchment', domain: 'transport',
-    label: 'Residents near frequent public transport (straight-line distance)',
+    label: 'Residents near frequent AM-peak public transport (straight-line distance)',
     unit: '%', direction: 'lower', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.catchments,
   },
   {
     // anyPersons ÷ persons × 100: residents within a straight-line walk of a stop with 1+ AM-peak departures
     id: 'any_service_catchment', domain: 'transport',
-    label: 'Residents near any public transport (straight-line distance)',
+    label: 'Residents near any AM-peak public transport (straight-line distance)',
     unit: '%', direction: 'lower', aggregation: 'ratio', scored: true, levels: LGA_AND_SA2, scale: 100, decimals: 1,
     source: SOURCES.catchments,
   },
@@ -184,11 +185,14 @@ export const INDICATORS: IndicatorDef[] = [
   },
 ];
 
-/** What the catchment indicators measure, for the notes of the figures that draw them (always "straight-line distance"). */
+/**
+ * What the two catchment indicators measure (P2-R17), for the notes of the figures and tables that show them: always
+ * straight-line distance, and only stops with weekday 7-9am departures.
+ */
 export const CATCHMENT_NOTE =
-  'Residents near frequent public transport live within a straight-line distance of 800 m of a train, metro or ferry '
-  + 'stop, or 400 m of a bus or light rail stop, with 8 or more weekday 7-9am departures (2021 mesh blocks). Walking '
-  + 'routes are longer than straight lines, so the share is an upper bound.';
+  'Share of residents living within a straight-line 400 m (bus, light rail) or 800 m (train, metro, ferry) of a stop '
+  + 'with weekday 7–9am departures — frequent: 8 or more departures; any: at least 1. School-only services are '
+  + 'excluded. Straight-line distance overstates real walking access.';
 
 export const INDICATOR_BY_ID = Object.fromEntries(
   INDICATORS.map(def => [def.id, def]),

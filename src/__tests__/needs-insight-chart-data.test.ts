@@ -199,7 +199,7 @@ describe('mismatchChartData', () => {
     expect(nonMetro.subtitle).toBe('R² 0.52 · n = 94');
     expect(metro.heading).toBe('Metropolitan LGAs');
     expect(nonMetro.heading).toBe('Non-metropolitan LGAs');
-    expect(metro.xTitle).toBe('Residents near frequent public transport (%, straight-line distance)');
+    expect(metro.xTitle).toBe('Residents near frequent AM-peak public transport (%, straight-line distance)');
     expect(nonMetro.xTitle).toBe('Population (log scale)');
     expect(metro.weakMessage).toBeNull();
   });

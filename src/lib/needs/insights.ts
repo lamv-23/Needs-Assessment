@@ -131,8 +131,8 @@ export function fitLinear(points: { x: number; y: number }[]): Omit<LinearFit, '
 const carDependencyOf = (record: AssessableRecord): number | null => record.values.car_dependency?.value ?? null;
 
 /**
- * In Sydney, the share of residents near frequent public transport (straight-line catchment): R² 0.63 across the 34
- * metropolitan LGAs, against 0.51 for the share of stops with frequent service, so it replaced that (P2-R4, gain
+ * In Sydney, the share of residents near frequent AM-peak public transport (straight-line catchment): R² 0.63 across
+ * the 34 metropolitan LGAs, against 0.51 for the share of stops with frequent service, so it replaced that (P2-R4, gain
  * >= 0.05). Outside Sydney service explains almost nothing (R² 0.03), so ln(population).
  */
 export function predictorOf(record: AssessableRecord, setting: Setting): number | null {
@@ -422,7 +422,7 @@ export function keyNeedText(
 
 const MODEL_WORDING: Record<Setting, { basis: string; group: string; source: SourceRef }> = {
   metro: {
-    basis: 'for its share of residents near frequent public transport, measured by straight-line distance',
+    basis: 'for its share of residents near frequent AM-peak public transport, measured by straight-line distance',
     group: 'metropolitan LGAs',
     source: SOURCES.catchments,
   },

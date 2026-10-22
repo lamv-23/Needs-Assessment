@@ -120,7 +120,7 @@ export default function NeedsRadar({ assessment }: { assessment: NeedsAssessment
         <p>
           Each axis is the need percentile within {groupLabel(assessment.areas)}: 100 is the most need, and the dashed ring at{' '}
           {TYPICAL_PERCENTILE} is a typical LGA. A public transport service gap is a low share of residents near frequent
-          public transport. {CATCHMENT_NOTE}
+          AM-peak public transport. {CATCHMENT_NOTE}
         </p>
         {hiddenAreas > 0 && (
           <p>

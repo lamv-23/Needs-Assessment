@@ -16,7 +16,7 @@ import type {
 
 /**
  * The radar's axes, in order: the case for transport projects in five numbers. The service gap is the share of
- * residents near frequent public transport (straight-line distance; a lower share is more need, P2-R12).
+ * residents near frequent AM-peak public transport (straight-line distance; a lower share is more need, P2-R12).
  */
 export const RADAR_AXES: readonly { id: IndicatorId; label: string }[] = [
   { id: 'car_dependency', label: 'Car dependency' },

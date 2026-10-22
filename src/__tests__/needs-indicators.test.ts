@@ -1,4 +1,4 @@
-import { INDICATORS, INDICATOR_BY_ID, DOMAIN_LABELS, SOURCES } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, INDICATORS, INDICATOR_BY_ID, DOMAIN_LABELS, SOURCES } from '@/lib/needs/indicators';
 import { extractIndicators, extractSeries } from '@/lib/needs/extract';
 import type { IndicatorId } from '@/lib/needs/types';
 import { makeBundle } from './fixtures/needs';
@@ -50,6 +50,21 @@ describe('indicator registry', () => {
     }
     expect(SOURCES.catchments.short).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
     expect(SOURCES.catchments.full).toContain('straight-line distance');
+  });
+
+  test('P2-R17: the catchment labels say AM-peak, since only stops with weekday 7-9am departures count', () => {
+    expect(INDICATOR_BY_ID.frequent_service_catchment.label)
+      .toBe('Residents near frequent AM-peak public transport (straight-line distance)');
+    expect(INDICATOR_BY_ID.any_service_catchment.label)
+      .toBe('Residents near any AM-peak public transport (straight-line distance)');
+  });
+
+  test('P2-R17: the catchment note defines both measures', () => {
+    expect(CATCHMENT_NOTE).toBe(
+      'Share of residents living within a straight-line 400 m (bus, light rail) or 800 m (train, metro, ferry) of a '
+      + 'stop with weekday 7–9am departures — frequent: 8 or more departures; any: at least 1. School-only services '
+      + 'are excluded. Straight-line distance overstates real walking access.',
+    );
   });
 
   test('every indicator is assessed for LGAs; SA2s get the spec subset (no growth domain)', () => {

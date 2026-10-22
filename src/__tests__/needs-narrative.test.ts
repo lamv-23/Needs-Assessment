@@ -185,7 +185,7 @@ describe('buildNarrative: summary', () => {
     const text = section(buildNarrative(makeAssessment([area])), 'summary').paragraphs[1].text;
     expect(text).toBe(
       'Its most pronounced needs are SEIFA disadvantage (IRSD), road crashes per 10,000 residents '
-      + 'and residents near frequent public transport (straight-line distance).',
+      + 'and residents near frequent AM-peak public transport (straight-line distance).',
     );
   });
 
@@ -319,7 +319,7 @@ describe('buildNarrative: domain sections', () => {
       frequent_service_catchment: { value: 40, percentile: 50 },
     });
     expect(texts(section(buildNarrative(assessment), 'transport'))[1]).toBe(
-      'On residents near frequent public transport (straight-line distance), Blacktown (10.0%) ranks in the '
+      'On residents near frequent AM-peak public transport (straight-line distance), Blacktown (10.0%) ranks in the '
       + 'highest-need 5% of NSW LGAs, 30.0 pp below the Greater Sydney figure of 40.0%.',
     );
   });
@@ -436,7 +436,7 @@ describe('buildNarrative: data notes', () => {
 
   test('missing scored indicators are listed with the area name', () => {
     expect(notesOf(makeAssessment([blacktown()]))).toContain(
-      'No data is available for residents near frequent public transport (straight-line distance) in Blacktown; '
+      'No data is available for residents near frequent AM-peak public transport (straight-line distance) in Blacktown; '
       + 'this is excluded from the scores.',
     );
   });
@@ -444,8 +444,8 @@ describe('buildNarrative: data notes', () => {
   test('plural wording for several missing indicators', () => {
     const area = makeArea({}, withValues(['frequent_service_catchment', 'am_peak_departures_per_1000', 'job_growth_2041']));
     expect(notesOf(makeAssessment([area]))).toContain(
-      'No data is available for residents near frequent public transport (straight-line distance), AM-peak departures '
-      + 'per 1,000 residents and job growth 2021–41 in Blacktown; these are excluded from the scores.',
+      'No data is available for residents near frequent AM-peak public transport (straight-line distance), AM-peak '
+      + 'departures per 1,000 residents and job growth 2021–41 in Blacktown; these are excluded from the scores.',
     );
   });
 
@@ -1071,8 +1071,9 @@ describe('buildNarrative: pockets of need (SA2s)', () => {
     const notes = texts(section(buildNarrative(run(['lga_blacktown']), sa2), 'notes'));
     expect(notes[notes.length - 1]).toBe(METHOD_SENTENCE);
     expect(notes[notes.length - 2]).toBe(
-      'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near public '
-      + 'transport by straight-line distance, so they cover the transport and socio-economic domains and not growth. '
+      'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near AM-peak '
+      + 'public transport by straight-line distance, so they cover the transport and socio-economic domains and not '
+      + 'growth. '
       + 'SA2s are ranked against the 50 NSW SA2s with 100 or more residents, and an SA2 is listed for an LGA when at '
       + 'least 10% of its residents live there.',
     );

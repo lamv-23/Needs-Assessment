@@ -195,7 +195,7 @@ const SETTING_NAMES = { metro: 'Metropolitan', non_metro: 'Non-metropolitan' } a
 
 /**
  * Every LGA on each chart whose model is strong enough to draw: its car dependency, the expected value, the residual
- * and z, with the predictor (in Sydney the share of residents near frequent public transport, a straight-line
+ * and z, with the predictor (in Sydney the share of residents near frequent AM-peak public transport, a straight-line
  * catchment; elsewhere the population, the model being on its log).
  */
 export function mismatchExcel(a: NeedsAssessment): FigureExcel {

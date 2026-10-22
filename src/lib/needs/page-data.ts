@@ -49,8 +49,8 @@ export function figureCaption(ids: IndicatorId[] = ALL_INDICATOR_IDS): string {
 // sources the findings cite (insights.ts), without the 2021 Census lockdown caveat, which is a note and not data.
 
 /**
- * Car dependency, and the predictor of each setting drawn: residents near frequent service in Sydney (the straight-line
- * catchments), population elsewhere.
+ * Car dependency, and the predictor of each setting drawn: residents near frequent AM-peak service in Sydney (the
+ * straight-line catchments), population elsewhere.
  */
 export function mismatchCaption(assessment: NeedsAssessment): string {
   const predictors = { metro: SOURCES.catchments, non_metro: SOURCES.g01 };
@@ -87,7 +87,7 @@ export const SA2_MAP_TITLE = 'SA2 need map';
 /** The SA2 map shades each SA2 by its overall score, made from all the SA2 indicators. */
 export const SA2_MAP_CAPTION = figureCaption(SA2_INDICATOR_IDS);
 
-export const CATCHMENT_TITLE = 'Residents near public transport (straight-line distance)';
+export const CATCHMENT_TITLE = 'Residents near AM-peak public transport (straight-line distance)';
 
 /** The walking catchments: mesh-block residents and the stops with AM-peak service. */
 export const CATCHMENT_CAPTION = sourcesCaption([SOURCES.catchments]);
@@ -108,7 +108,7 @@ export interface Sa2TableRow {
   rank: string;
   transport: string;
   socio: string;
-  /** Residents near frequent public transport (straight-line distance), or "No data". */
+  /** Residents near frequent AM-peak public transport (straight-line distance), or "No data". */
   frequent: string;
 }
 

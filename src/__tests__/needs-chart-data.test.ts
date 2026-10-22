@@ -1,13 +1,13 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  CATCHMENT_CHART_NOTE, CATCHMENT_PANELS, HEATMAP_CATCHMENT_NOTE, HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels,
+  CATCHMENT_PANELS, HEATMAP_CATCHMENT_NOTE, HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels,
   catchmentChartData, domainChartData, heatmapRowLabel, heatmapRowName, labelSide,
   axisFraction, niceAxis, stripData, wrapLabel,
 } from '@/lib/needs/chart-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { AREA_PALETTE_SIZE, DOMAIN_COLORS, areaColor, labelledIds } from '@/lib/needs/colors';
-import { DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
+import { CATCHMENT_NOTE, DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { CHART_COLORS } from '@/lib/utils';
 import type { AreaAssessment, NeedsAssessment, NeedsMode, Universe } from '@/lib/needs/types';
 
@@ -149,13 +149,15 @@ describe('heatmapRowLabel', () => {
     });
   });
 
-  test('the catchment rows have short names, and the heatmap notes give their straight-line definition', () => {
+  test('the catchment rows have short names that keep AM-peak (P2-R17); the heatmap notes define them', () => {
     expect(heatmapRowLabel(INDICATOR_BY_ID.frequent_service_catchment)).toEqual({
-      lines: ['Residents near frequent service'], hint: '(lower value = more need)',
+      lines: ['Near frequent AM-peak public transport'], hint: '(lower value = more need)',
     });
-    expect(heatmapRowName(INDICATOR_BY_ID.any_service_catchment)).toBe('Residents near any service');
+    expect(heatmapRowName(INDICATOR_BY_ID.any_service_catchment)).toBe('Near any AM-peak public transport');
     expect(heatmapRowName(INDICATOR_BY_ID.car_dependency)).toBe('Car dependency');
-    expect(HEATMAP_CATCHMENT_NOTE.join(' ')).toContain('straight-line distance');
+    // The heatmap notes are the shared catchment note, wrapped to the legend
+    expect(HEATMAP_CATCHMENT_NOTE.join(' ').replace(/- /g, '-')).toBe(CATCHMENT_NOTE);
+    expect(HEATMAP_CATCHMENT_NOTE.join(' ')).toContain('straight-line');
     // Each note line fits the 700 px legend at 11 px
     for (const line of HEATMAP_CATCHMENT_NOTE) expect(line.length).toBeLessThanOrEqual(110);
   });
@@ -438,9 +440,9 @@ describe('catchmentChartData', () => {
     expect(data.noData).toEqual(['Blacktown']);
   });
 
-  test('the note says straight-line distance and gives the radii', () => {
-    expect(CATCHMENT_CHART_NOTE).toContain('straight-line distance of 800 m');
-    expect(CATCHMENT_CHART_NOTE).toContain('400 m of a bus or light rail stop');
-    expect(CATCHMENT_CHART_NOTE).toContain('upper bound');
+  test('the panels say what frequent and any service are: weekday 7-9am departures', () => {
+    expect(CATCHMENT_PANELS.map(panel => panel.title)).toEqual([
+      'Near frequent service (8+ weekday 7-9am departures)', 'Near any service (1+ weekday 7-9am departures)',
+    ]);
   });
 });

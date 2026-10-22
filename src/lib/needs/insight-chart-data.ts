@@ -247,7 +247,7 @@ export const SETTING_TEXT: Record<Setting, { heading: string; group: string; xTi
   metro: {
     heading: 'Metropolitan LGAs',
     group: 'metropolitan LGAs',
-    xTitle: 'Residents near frequent public transport (%, straight-line distance)',
+    xTitle: 'Residents near frequent AM-peak public transport (%, straight-line distance)',
   },
   non_metro: { heading: 'Non-metropolitan LGAs', group: 'non-metropolitan LGAs', xTitle: 'Population (log scale)' },
 };

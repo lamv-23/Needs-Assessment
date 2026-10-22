@@ -1,6 +1,6 @@
 import { BENCHMARK_UNIVERSES } from './assess';
 import { markedValue, partialBenchmarkNotes, partialBenchmarks } from './coverage';
-import { INDICATOR_BY_ID, DOMAIN_LABELS, NEED_DOMAINS } from './indicators';
+import { CATCHMENT_NOTE, INDICATOR_BY_ID, DOMAIN_LABELS, NEED_DOMAINS } from './indicators';
 import { formatValue } from './format';
 import { AREA_PALETTE_SIZE, areaColor, BENCHMARK_COLOR, DOMAIN_COLORS, labelledIds } from './colors';
 import type { AreaAssessment, IndicatorDef, IndicatorId, NeedDomain, NeedsAssessment } from './types';
@@ -99,19 +99,19 @@ export const HEATMAP_LABEL_CHARS = 38;
 const LOWER_IS_MORE_NEED = '(lower value = more need)';
 
 /**
- * Heatmap row names of the indicators whose label does not fit the one line beside the hint. The heatmap's notes
- * give their straight-line definition (HEATMAP_CATCHMENT_NOTE).
+ * Heatmap row names of the indicators whose label does not fit the one line beside the hint: the label's terms, AM-peak
+ * kept (P2-R17). The heatmap's notes give their straight-line definition (HEATMAP_CATCHMENT_NOTE).
  */
 const HEATMAP_LABELS: Partial<Record<IndicatorId, string>> = {
-  frequent_service_catchment: 'Residents near frequent service',
-  any_service_catchment: 'Residents near any service',
+  frequent_service_catchment: 'Near frequent AM-peak public transport',
+  any_service_catchment: 'Near any AM-peak public transport',
 };
 
-/** Under the heatmap: what its two catchment rows measure, as two lines that fit the legend's width. */
-export const HEATMAP_CATCHMENT_NOTE = [
-  'Residents near frequent or any service: within a straight-line distance of 800 m of a train, metro or ferry',
-  'stop, or 400 m of a bus or light rail stop, with 8+ (frequent) or 1+ (any) weekday 7-9am departures.',
-];
+/** Longest line of a heatmap note: the legend is 700 px wide, at 11 px. */
+const HEATMAP_NOTE_CHARS = 110;
+
+/** Under the heatmap: what its two catchment rows measure (the shared catchment note), wrapped to the legend's width. */
+export const HEATMAP_CATCHMENT_NOTE = wrapLabel(CATCHMENT_NOTE, HEATMAP_NOTE_CHARS, 4);
 
 /** The name of `def`'s heatmap row: its label, or a shorter name where the label is too long for the row. */
 export const heatmapRowName = (def: IndicatorDef): string => HEATMAP_LABELS[def.id] ?? def.label;
@@ -371,12 +371,6 @@ export const CATCHMENT_PANELS: { id: CatchmentId; title: string }[] = [
   { id: 'any_service_catchment', title: 'Near any service (1+ weekday 7-9am departures)' },
 ];
 
-/** Under the catchment chart: what the shares measure, always as straight-line distance, and why they are an upper bound. */
-export const CATCHMENT_CHART_NOTE =
-  'Share of residents (2021 mesh blocks) within a straight-line distance of 800 m of a train, metro or ferry stop, or '
-  + '400 m of a bus or light rail stop, with 8+ (frequent) or 1+ (any) weekday 7-9am departures. Walking routes are '
-  + 'longer than straight lines, so the shares are an upper bound.';
-
 export interface CatchmentBar {
   id: string;
   name: string;
@@ -396,7 +390,7 @@ export interface CatchmentPanel {
 const CATCHMENT_BAR_PX = 30;
 
 /**
- * The residents near frequent and near any public transport (straight-line distance) of each assessed area (the
+ * The residents near frequent and near any AM-peak public transport (straight-line distance) of each assessed area (the
  * combined area as one bar), one panel per measure, with Greater Sydney and NSW as reference lines, marked "*" with a
  * note when made from only some of their LGAs (R58).
  */

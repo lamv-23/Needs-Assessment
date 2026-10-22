@@ -10,7 +10,7 @@ const missing = (cell: string) => cell === NO_DATA || cell === NO_SCORE;
 /**
  * The selection's highest-need SA2s by overall SA2 need score: the LGAs each is listed for (with their shares of its
  * residents), its band and score with its rank among NSW SA2s, its transport and socio-economic scores, and its
- * residents near frequent public transport (straight-line distance). The notes say what the scores cover.
+ * residents near frequent AM-peak public transport (straight-line distance). The notes say what the scores cover.
  */
 export default function Sa2RankingTable({ table }: { table: Sa2TableData }) {
   const cell = (text: string, align: 'left' | 'right' = 'right') => (
@@ -34,7 +34,7 @@ export default function Sa2RankingTable({ table }: { table: Sa2TableData }) {
                 <th scope="col" className="px-3 py-2 text-right font-semibold">Transport score</th>
                 <th scope="col" className="px-3 py-2 text-right font-semibold">Socio-economic score</th>
                 <th scope="col" className="min-w-[170px] px-3 py-2 text-right font-semibold">
-                  Near frequent service (straight-line distance)
+                  Near frequent AM-peak public transport (straight-line distance)
                 </th>
               </tr>
             </thead>

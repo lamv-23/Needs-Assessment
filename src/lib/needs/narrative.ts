@@ -250,8 +250,9 @@ function pocketsParagraphs(assessment: NeedsAssessment, file: Sa2NeedsFile): Nar
 /** What an SA2 need score covers and how SA2s are ranked and listed, for the data notes. */
 function sa2Note(file: Sa2NeedsFile): NarrativeParagraph {
   return paragraph(
-    'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near public '
-    + 'transport by straight-line distance, so they cover the transport and socio-economic domains and not growth. '
+    'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near AM-peak '
+    + 'public transport by straight-line distance, so they cover the transport and socio-economic domains and not '
+    + 'growth. '
     + `SA2s are ranked against the ${rankSa2s(file).ranked} ${SA2_UNIVERSE_LABEL} with ${SA2_LOW_POPULATION} or more `
     + `residents, and an SA2 is listed for an LGA when at least ${Math.round(SA2_SHARE_THRESHOLD * 100)}% of its `
     + 'residents live there.',
