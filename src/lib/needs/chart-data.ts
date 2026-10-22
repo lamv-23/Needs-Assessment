@@ -1,3 +1,4 @@
+import { BENCHMARK_UNIVERSES } from './assess';
 import { markedValue, partialBenchmarkNotes, partialBenchmarks } from './coverage';
 import { INDICATOR_BY_ID, DOMAIN_LABELS, NEED_DOMAINS } from './indicators';
 import { formatValue } from './format';
@@ -155,9 +156,11 @@ function barChartHeight(categories: number, bars: number, layout: BarLayout, leg
  * - More areas ("by-area"): colours would repeat and the legend could not tell bars apart, so one
  *   row per area (named on the axis) with a bar per domain, coloured by domain, and a Greater
  *   Sydney row last.
+ * Greater Sydney is drawn only when the areas are ranked against NSW or Greater Sydney, where its scores are (R61).
  */
 export function domainChartData(assessment: NeedsAssessment) {
-  const sources = [...assessment.areas, assessment.benchmarks.gsyd];
+  const withBenchmark = BENCHMARK_UNIVERSES.includes(assessment.universe);
+  const sources = [...assessment.areas, ...(withBenchmark ? [assessment.benchmarks.gsyd] : [])];
 
   if (assessment.areas.length > AREA_PALETTE_SIZE) {
     const series: ChartSeries[] = NEED_DOMAINS.map(domain => ({
@@ -173,15 +176,17 @@ export function domainChartData(assessment: NeedsAssessment) {
       rows,
       series,
       bar: ROW_BARS,
-      /** Name of the Greater Sydney row, which the chart sets apart from the areas. */
-      benchmarkName: assessment.benchmarks.gsyd.name,
+      /** Name of the Greater Sydney row, which the chart sets apart from the areas; null when it is not drawn. */
+      benchmarkName: withBenchmark ? assessment.benchmarks.gsyd.name : null,
       height: barChartHeight(rows.length, series.length, ROW_BARS, series.length),
     };
   }
 
   const series: ChartSeries[] = [
     ...assessment.areas.map((area, i) => ({ key: `a${i}`, name: area.name, color: areaColor(i) })),
-    { key: GSYD_KEY, name: assessment.benchmarks.gsyd.name, color: BENCHMARK_COLOR, benchmark: true as const },
+    ...(withBenchmark
+      ? [{ key: GSYD_KEY, name: assessment.benchmarks.gsyd.name, color: BENCHMARK_COLOR, benchmark: true as const }]
+      : []),
   ];
   const rows = NEED_DOMAINS.map(domain => {
     const row: DomainRow = { name: DOMAIN_LABELS[domain] };

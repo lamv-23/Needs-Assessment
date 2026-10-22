@@ -1,3 +1,4 @@
+import { BENCHMARK_UNIVERSES } from './assess';
 import { INDICATOR_BY_ID } from './indicators';
 import { formatValue } from './format';
 import { settingOf, type Setting } from './peer-groups';
@@ -47,9 +48,6 @@ export interface RadarData {
 }
 
 const GSYD_KEY = 'gsyd';
-
-/** Benchmarks are always ranked against NSW or Greater Sydney, so they only share an axis with those two universes. */
-const BENCHMARK_UNIVERSES: Universe[] = ['nsw', 'gsyd'];
 
 /**
  * Need percentiles (0-100, 100 = most need, unrounded) of the first `MAX_RADAR_AREAS` areas on the five axes,

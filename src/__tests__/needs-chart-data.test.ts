@@ -8,7 +8,7 @@ import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { AREA_PALETTE_SIZE, DOMAIN_COLORS, areaColor, labelledIds } from '@/lib/needs/colors';
 import { DOMAIN_LABELS, INDICATORS, INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { CHART_COLORS } from '@/lib/utils';
-import type { AreaAssessment, NeedsAssessment, NeedsMode } from '@/lib/needs/types';
+import type { AreaAssessment, NeedsAssessment, NeedsMode, Universe } from '@/lib/needs/types';
 
 const NSW_LGAS = NEEDS_SNAPSHOT.records.map(r => r.areaId);
 
@@ -206,6 +206,30 @@ describe('domainChartData', () => {
     // ten areas, ten different colours, then the Greater Sydney reference
     expect(new Set(ten.series.slice(0, AREA_PALETTE_SIZE).map(s => s.color)).size).toBe(AREA_PALETTE_SIZE);
     expect(domainChartData(a).layout).toBe('by-domain');
+  });
+});
+
+describe('domainChartData: Greater Sydney only where it is ranked in the same group (R61)', () => {
+  const inUniverse = (areaIds: string[], universe: Universe) =>
+    runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode: 'separate', universe });
+  const names = (a: NeedsAssessment) => domainChartData(a).series.map(s => s.name);
+
+  test('drawn against NSW and Greater Sydney', () => {
+    expect(names(inUniverse(['lga_blacktown'], 'nsw'))).toEqual(['Blacktown', 'Greater Sydney']);
+    expect(names(inUniverse(['lga_blacktown'], 'gsyd'))).toEqual(['Blacktown', 'Greater Sydney']);
+  });
+
+  test('left out against a region or peer group, whose scores are not on the benchmark\'s NSW scale', () => {
+    expect(names(inUniverse(['lga_blacktown'], 'region'))).toEqual(['Blacktown']);
+    expect(names(inUniverse(['lga_blacktown', 'lga_newcastle'], 'peer'))).toEqual(['Blacktown', 'Newcastle']);
+  });
+
+  test('the by-area layout has no Greater Sydney row then', () => {
+    const many = domainChartData(inUniverse(NSW_LGAS.slice(0, AREA_PALETTE_SIZE + 1), 'region'));
+    expect(many.layout).toBe('by-area');
+    expect(many.rows.map(r => r.name)).not.toContain('Greater Sydney');
+    expect(many.rows).toHaveLength(AREA_PALETTE_SIZE + 1);
+    expect(many.benchmarkName).toBeNull();
   });
 });
 
