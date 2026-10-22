@@ -123,3 +123,54 @@ export function citationSegments(numbers: number[]): Array<{ from: number; to: n
   }
   return segments;
 }
+
+/** The comparison group(s) the areas' percentiles are ranked in: each distinct `universeLabel`, joined by ", ". */
+export function comparisonLabel(areas: Pick<AreaAssessment, 'universeLabel'>[]): string {
+  return Array.from(new Set(areas.map(a => a.universeLabel))).join(', ');
+}
+
+/** The note under the indicator table (page and Word export): how to read "(pNN)", the benchmarks and "≈". */
+export function indicatorTableNote(comparison: string): string {
+  return `pNN is an area's need percentile within its comparison group (${comparison}): higher means more need, and p80 or `
+    + 'above is a key need. Greater Sydney and NSW are shown as values only. ≈ marks a population-weighted estimate.';
+}
+
+/** "22 October 2026": the date of an ISO timestamp in Sydney, so the server, the client and the Word export agree. */
+export function formatNeedsDate(iso: string): string {
+  return new Intl.DateTimeFormat('en-AU', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney',
+  }).format(new Date(iso));
+}
+
+const TITLE_PREFIX = 'Needs assessment';
+const MAX_TITLE_NAME_CHARS = 60;
+const SHORT_TITLE_NAMES = 2;
+
+/**
+ * Title of the Word export: "Needs assessment — Blacktown, Penrith", or the combined area's name. A list
+ * of names too long for a title keeps the first two and counts the rest ("A, B and 31 more").
+ */
+export function exportTitle(assessment: Pick<NeedsAssessment, 'areas'>): string {
+  const names = assessment.areas.map(a => a.name);
+  if (names.length === 0) return TITLE_PREFIX;
+  const all = names.join(', ');
+  const shown = all.length <= MAX_TITLE_NAME_CHARS
+    ? all
+    : `${names.slice(0, SHORT_TITLE_NAMES).join(', ')} and ${names.length - SHORT_TITLE_NAMES} more`;
+  return `${TITLE_PREFIX} — ${shown}`;
+}
+
+const MAX_FILE_NAME_CHARS = 80;
+
+/** `title` as a file name: lower-case words joined by "-", at most 80 characters, plus ".docx". */
+export function exportFileName(title: string): string {
+  const slug = title
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_FILE_NAME_CHARS)
+    .replace(/-+$/, '');
+  return `${slug || 'needs-assessment'}.docx`;
+}

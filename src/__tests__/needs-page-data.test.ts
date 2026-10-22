@@ -2,8 +2,8 @@ import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
 import {
-  citationSegments, figureCaption, indicatorCellText, indicatorExcelRows, indicatorTable, NEEDS_SOURCES, sourceNumber,
-  stripIndicatorIds,
+  citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorExcelRows, indicatorTable,
+  indicatorTableNote, NEEDS_SOURCES, sourceNumber, stripIndicatorIds,
 } from '@/lib/needs/page-data';
 import type { AreaAssessment, IndicatorId, IndicatorScore } from '@/lib/needs/types';
 
@@ -192,5 +192,26 @@ describe('citationSegments', () => {
 
   test('no numbers, no segments', () => {
     expect(citationSegments([])).toEqual([]);
+  });
+});
+
+describe('comparisonLabel, indicatorTableNote and formatNeedsDate', () => {
+  test('the comparison label lists each distinct universe label once', () => {
+    expect(comparisonLabel([{ universeLabel: 'NSW LGAs' }, { universeLabel: 'NSW LGAs' }])).toBe('NSW LGAs');
+    expect(comparisonLabel([{ universeLabel: 'NSW LGAs' }, { universeLabel: 'regional cities' }])).toBe('NSW LGAs, regional cities');
+    expect(comparisonLabel([])).toBe('');
+  });
+
+  test('the table note names the comparison group and explains p80, the benchmarks and the approximation sign', () => {
+    expect(indicatorTableNote('NSW LGAs')).toBe(
+      "pNN is an area's need percentile within its comparison group (NSW LGAs): higher means more need, and p80 or above is a key need. "
+      + 'Greater Sydney and NSW are shown as values only. ≈ marks a population-weighted estimate.',
+    );
+  });
+
+  test('dates are shown in Sydney, day month year', () => {
+    expect(formatNeedsDate('2026-10-22T11:41:24.610Z')).toBe('22 October 2026');
+    // 14:00 UTC on 22 October is already 23 October in Sydney (AEDT).
+    expect(formatNeedsDate('2026-10-22T14:00:00.000Z')).toBe('23 October 2026');
   });
 });

@@ -6,6 +6,7 @@ import { AlertTriangle, Target } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import ChartWrapper from '@/components/charts/ChartWrapper';
 import LgaMultiSelect from '@/components/needs/LgaMultiSelect';
+import ExportDocxButton from '@/components/needs/ExportDocxButton';
 import { FigureRegistryProvider } from '@/components/needs/FigureRegistry';
 import NarrativeBlock, { sourceAnchor } from '@/components/needs/NarrativeBlock';
 import IndicatorTable from '@/components/needs/IndicatorTable';
@@ -19,7 +20,7 @@ import { runAssessment } from '@/lib/needs/assess';
 import { INDICATOR_BY_ID } from '@/lib/needs/indicators';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  figureCaption, indicatorExcelRows, indicatorTable, NEEDS_SOURCES, stripIndicatorIds,
+  comparisonLabel, figureCaption, formatNeedsDate, indicatorExcelRows, indicatorTable, NEEDS_SOURCES, stripIndicatorIds,
 } from '@/lib/needs/page-data';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
 import type { NeedsMode, Universe } from '@/lib/needs/types';
@@ -47,9 +48,7 @@ const UNIVERSES: { value: Universe; label: string }[] = [
 
 const EMPTY_STATE = 'Select one or more LGAs, a region, or click the map to start an assessment.';
 
-const snapshotDate = new Intl.DateTimeFormat('en-AU', {
-  day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney',
-}).format(new Date(NEEDS_SNAPSHOT.generatedAt));
+const snapshotDate = formatNeedsDate(NEEDS_SNAPSHOT.generatedAt);
 
 function Notice({ children }: { children: React.ReactNode }) {
   return (
@@ -87,7 +86,7 @@ function NeedsContent() {
   const summary = sections.find(s => s.id === 'summary');
   const notes = sections.find(s => s.id === 'notes');
   const domainSections = sections.filter(s => s.id !== 'summary' && s.id !== 'notes');
-  const comparison = Array.from(new Set(areas.map(a => a.universeLabel))).join(', ');
+  const comparison = comparisonLabel(areas);
   // Every figure shows all the indicators, except a strip plot, which shows one.
   const allSources = figureCaption();
 
@@ -139,6 +138,8 @@ function NeedsContent() {
                 ))}
               </ul>
             )}
+
+            <ExportDocxButton assessment={assessment} sections={sections} />
           </div>
         </div>
 

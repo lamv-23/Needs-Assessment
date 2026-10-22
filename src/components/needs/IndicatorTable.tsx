@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react';
 import { DOMAIN_LABELS } from '@/lib/needs/indicators';
-import type { IndicatorTableData } from '@/lib/needs/page-data';
+import { indicatorTableNote, type IndicatorTableData } from '@/lib/needs/page-data';
 
 const NO_DATA = 'No data';
 // The last two columns are the Greater Sydney and NSW benchmarks.
@@ -69,10 +69,7 @@ export default function IndicatorTable({ table, comparison }: { table: Indicator
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-gray-600">
-        pNN is an area&apos;s need percentile within its comparison group ({comparison}): higher means more need, and p80 or
-        above is a key need. Greater Sydney and NSW are shown as values only. ≈ marks a population-weighted estimate.
-      </p>
+      <p className="mt-3 text-xs text-gray-600">{indicatorTableNote(comparison)}</p>
     </div>
   );
 }

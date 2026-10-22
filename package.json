@@ -36,6 +36,7 @@
     "@turf/helpers": "^7.3.4",
     "better-sqlite3": "^11.10.0",
     "clsx": "^2.1.1",
+    "docx": "^9.13.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",
     "leaflet": "^1.9.4",
