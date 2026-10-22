@@ -357,7 +357,8 @@ function sourcesBlock(assessment: NeedsAssessment): FileChild[] {
 
 /**
  * The needs assessment as a Word document: title and selection, written findings (key findings first, then the summary,
- * the domains and further findings, in the narrative's order), the indicator table(s), figures, data notes and sources.
+ * the domains, the pockets of need when the SA2 file was loaded, and further findings, in the narrative's order), the
+ * indicator table(s), figures (the SA2 map and catchment chart among them, in page order), data notes and sources.
  * The data notes are the narrative's own notes section, which already ends with the method sentence, so it is not
  * added again.
  */

@@ -440,6 +440,11 @@ describe('LGA behaviour is unchanged by the SA2 generalisation (P2-R1)', () => {
    * assessed for LGAs) must reproduce it exactly, so the generalised scoring changes nothing else. Left out of the
    * comparison are the intended changes that the old registry cannot re-create: mismatch insights (their metro
    * predictor is now the frequent-service catchment, P2-R4) and the method note, which names the new context indicator.
+   * The SA2 pockets of need never enter it: buildNarrative is called without the SA2 file, so there is no 'pockets'
+   * section or SA2 data note.
+   *
+   * This is a one-off migration guard for P2-R1. If it fails after a data refresh (a rebuilt snapshot) or a wording
+   * change, delete this describe block and its fixture (fixtures/needs-pre-catchment.json); do not update the fixture.
    */
   interface Golden {
     selection: { areaIds: string[]; mode: NeedsMode; universe: Universe };

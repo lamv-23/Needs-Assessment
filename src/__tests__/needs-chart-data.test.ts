@@ -1,8 +1,8 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  HEATMAP_CATCHMENT_NOTE, HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels, domainChartData, heatmapRowLabel,
-  heatmapRowName, labelSide,
+  CATCHMENT_CHART_NOTE, CATCHMENT_PANELS, HEATMAP_CATCHMENT_NOTE, HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels,
+  catchmentChartData, domainChartData, heatmapRowLabel, heatmapRowName, labelSide,
   axisFraction, niceAxis, stripData, wrapLabel,
 } from '@/lib/needs/chart-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
@@ -399,5 +399,48 @@ describe('stripData', () => {
     const s = stripData({ ...base, areas: [base.areas[0], twin] }, 'unemployment_rate');
     expect(s.selected.map(p => p.x)[0]).toBe(s.selected.map(p => p.x)[1]);
     expect(s.selected[0].level).not.toBe(s.selected[1].level);
+  });
+});
+
+describe('catchmentChartData', () => {
+  test('one panel per measure, a bar per selected LGA, Greater Sydney and NSW as reference lines', () => {
+    const data = catchmentChartData(assess(['lga_blacktown', 'lga_penrith']));
+    expect(data.panels.map(p => p.id)).toEqual(['frequent_service_catchment', 'any_service_catchment']);
+    expect(data.panels.map(p => p.title)).toEqual(CATCHMENT_PANELS.map(p => p.title));
+    const [frequent, any] = data.panels;
+    expect(frequent.bars.map(b => [b.name, b.text])).toEqual([['Blacktown', '59.4%'], ['Penrith', '40.7%']]);
+    expect(any.bars.map(b => b.text)).toEqual(['95.0%', '90.2%']);
+    expect(frequent.references.map(r => [r.key, r.name, r.text])).toEqual([
+      ['gsyd', 'Greater Sydney', '67.2%'], ['nsw', 'NSW', '46.8%'],
+    ]);
+    expect(any.references.map(r => r.text)).toEqual(['93.5%', '81.2%']);
+    expect(data.axis).toEqual({ lo: 0, hi: 100, ticks: [0, 20, 40, 60, 80, 100] });
+    expect(data.noData).toEqual([]);
+    expect(data.notes).toEqual([]);
+  });
+
+  test('a combined selection is one bar, its residents summed', () => {
+    const data = catchmentChartData(assess(['lga_blacktown', 'lga_penrith'], 'combined'));
+    expect(data.panels[0].bars.map(b => b.name)).toEqual(['Blacktown + Penrith']);
+    const value = data.panels[0].bars[0].value!;
+    expect(value).toBeGreaterThan(40.7);
+    expect(value).toBeLessThan(59.4);
+  });
+
+  test('a missing share is "No data", never 0', () => {
+    const a = assess(['lga_blacktown']);
+    const areas = a.areas.map(area => ({
+      ...area,
+      indicators: area.indicators.map(s => (s.id === 'frequent_service_catchment' ? { ...s, value: null } : s)),
+    }));
+    const data = catchmentChartData({ ...a, areas });
+    expect(data.panels[0].bars[0]).toMatchObject({ value: null, text: 'No data' });
+    expect(data.noData).toEqual(['Blacktown']);
+  });
+
+  test('the note says straight-line distance and gives the radii', () => {
+    expect(CATCHMENT_CHART_NOTE).toContain('straight-line distance of 800 m');
+    expect(CATCHMENT_CHART_NOTE).toContain('400 m of a bus or light rail stop');
+    expect(CATCHMENT_CHART_NOTE).toContain('upper bound');
   });
 });

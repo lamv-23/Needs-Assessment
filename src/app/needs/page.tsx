@@ -19,20 +19,25 @@ import QuadrantScatter from '@/components/needs/QuadrantScatter';
 import TrendSmallMultiples from '@/components/needs/TrendSmallMultiples';
 import GrowthServiceChart from '@/components/needs/GrowthServiceChart';
 import JobsHousingChart from '@/components/needs/JobsHousingChart';
+import Sa2RankingTable from '@/components/needs/Sa2RankingTable';
+import CatchmentChart from '@/components/needs/CatchmentChart';
 import { useNeedsSelection } from '@/hooks/useNeedsSelection';
+import { useSa2Needs } from '@/hooks/useSa2Needs';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { INDICATOR_BY_ID, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { TREND_FIGURE_SUBTITLE } from '@/lib/needs/insight-chart-data';
 import {
-  domainScoresExcel, growthServiceExcel, indicatorTableExcel, jobsHousingExcel, mismatchExcel, needMapExcel, quadrantExcel,
-  radarExcel, stripExcel, trendsExcel,
+  catchmentExcel, domainScoresExcel, growthServiceExcel, indicatorTableExcel, jobsHousingExcel, mismatchExcel, needMapExcel,
+  quadrantExcel, radarExcel, sa2MapExcel, sa2TableExcel, stripExcel, trendsExcel,
 } from '@/lib/needs/excel-data';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION, indicatorTable,
-  JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, stripIndicatorIds, trendsCaption,
+  CATCHMENT_CAPTION, CATCHMENT_TITLE, comparisonLabel, figureCaption, formatNeedsDate, GROWTH_SERVICE_CAPTION,
+  indicatorTable, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, sa2Table,
+  stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
+import { SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD } from '@/lib/needs/sa2';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
 import { QUADRANT_SCATTERS, RADAR_AXES, type QuadrantSpec } from '@/lib/needs/project-need';
 import type { NeedsMode, Universe } from '@/lib/needs/types';
@@ -41,6 +46,17 @@ const NeedsMap = dynamic(() => import('@/components/needs/NeedsMap'), {
   ssr: false,
   loading: () => (
     <div className="w-full rounded-lg bg-gray-100 flex items-center justify-center" style={{ height: 500 }}>
+      <p className="text-gray-500 text-sm">Loading map…</p>
+    </div>
+  ),
+});
+
+const SA2_MAP_HEIGHT = 460;
+
+const Sa2NeedsMap = dynamic(() => import('@/components/needs/Sa2NeedsMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full rounded-lg bg-gray-100 flex items-center justify-center" style={{ height: SA2_MAP_HEIGHT }}>
       <p className="text-gray-500 text-sm">Loading map…</p>
     </div>
   ),
@@ -72,12 +88,50 @@ const EMPTY_STATE = 'Select one or more LGAs, a region, or click the map to star
 
 const snapshotDate = formatNeedsDate(NEEDS_SNAPSHOT.generatedAt);
 
+/** "Blacktown" by area id, for the SA2 map's tooltips. */
+const LGA_NAMES = new Map(NEEDS_SNAPSHOT.records.map(r => [r.areaId, r.name]));
+
+const SA2_INTRO =
+  `The SA2s (ABS Statistical Areas Level 2) with at least ${Math.round(SA2_SHARE_THRESHOLD * 100)}% of their residents in a `
+  + `selected LGA, each scored against the NSW SA2s with ${SA2_LOW_POPULATION} or more residents, whatever the comparison `
+  + 'group above. SA2 scores use the indicators available for SA2s, so they cover the transport and socio-economic '
+  + 'domains only: there are no growth indicators for SA2s.';
+const SA2_ERROR = 'The SA2 data could not be loaded. Reload the page to try again.';
+
 function Notice({ children }: { children: React.ReactNode }) {
   return (
     <div role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
       <div>{children}</div>
     </div>
+  );
+}
+
+/** Inside a drill-down figure until the SA2 file is in: a skeleton while it loads, a message if it failed. */
+function Sa2Pending({ failed, height }: { failed: boolean; height: number }) {
+  if (failed) return <p className="text-sm text-gray-600">{SA2_ERROR}</p>;
+  return (
+    <div role="status" aria-busy="true" className="w-full animate-pulse rounded-lg bg-gray-100 flex items-center justify-center" style={{ height }}>
+      <p className="text-gray-500 text-sm">Loading SA2 data…</p>
+    </div>
+  );
+}
+
+/** The pockets of need's place on the page until the SA2 file is in. */
+function PocketsPending({ failed }: { failed: boolean }) {
+  return (
+    <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">Pockets of need</h2>
+      {failed ? (
+        <p className="text-sm text-gray-600">{SA2_ERROR}</p>
+      ) : (
+        <div role="status" aria-busy="true" className="space-y-2">
+          <span className="sr-only">Loading SA2 data…</span>
+          <div className="h-3 w-11/12 animate-pulse rounded bg-gray-100" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-gray-100" />
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -89,8 +143,16 @@ function NeedsContent() {
     () => runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe }),
     [areaIds, mode, universe],
   );
-  const sections = useMemo(() => buildNarrative(assessment), [assessment]);
+  // The SA2 drill-down (P2-R5): its figures are mounted with the others and fill in when the file arrives
+  const sa2 = useSa2Needs();
+  const sa2File = sa2.file;
+  const sa2Failed = sa2.error !== null && sa2File === null;
+  const sections = useMemo(
+    () => buildNarrative(assessment, sa2File ? { file: sa2File } : undefined),
+    [assessment, sa2File],
+  );
   const table = useMemo(() => indicatorTable(assessment), [assessment]);
+  const sa2Rows = useMemo(() => (sa2File ? sa2Table(sa2File, assessment) : null), [sa2File, assessment]);
   const stripIds = useMemo(() => stripIndicatorIds(assessment.areas), [assessment.areas]);
   // Every figure's Excel data, as numbers (R64); the heatmap's cells are the indicator table's
   const excel = useMemo(() => ({
@@ -104,7 +166,10 @@ function NeedsContent() {
     trends: trendsExcel(assessment),
     growth: growthServiceExcel(assessment),
     jobs: jobsHousingExcel(assessment),
-  }), [assessment, stripIds]);
+    sa2Map: sa2File ? sa2MapExcel(sa2File, assessment) : {},
+    sa2Table: sa2File ? sa2TableExcel(sa2File, assessment) : {},
+    catchments: catchmentExcel(assessment),
+  }), [assessment, stripIds, sa2File]);
 
   const toggleArea = useCallback(
     (id: string) => setAreaIds(areaIds.includes(id) ? areaIds.filter(a => a !== id) : [...areaIds, id]),
@@ -116,6 +181,7 @@ function NeedsContent() {
   const keyFindings = sections.find(s => s.id === 'key_findings');
   const summary = sections.find(s => s.id === 'summary');
   const furtherFindings = sections.find(s => s.id === 'insights');
+  const pockets = sections.find(s => s.id === 'pockets');
   const notes = sections.find(s => s.id === 'notes');
   const domainSections = sections.filter(s => NEED_DOMAINS.some(domain => domain === s.id));
   const comparison = comparisonLabel(areas);
@@ -174,7 +240,12 @@ function NeedsContent() {
               </ul>
             )}
 
-            <ExportDocxButton assessment={assessment} sections={sections} />
+            <ExportDocxButton
+              assessment={assessment}
+              sections={sections}
+              // The document waits for the SA2 file; if it failed, its figure is left out and named (P2-R5, R22)
+              waitingFor={sa2.isLoading ? 'SA2 data' : null}
+            />
           </div>
         </div>
 
@@ -314,6 +385,56 @@ function NeedsContent() {
         )}
 
         {domainSections.map(section => <NarrativeBlock key={section.id} section={section} />)}
+
+        {/* The SA2 drill-down: its two figures follow the jobs-housing figure in the fixed order (P2-R5). */}
+        {hasAreas && (
+          <>
+            <section aria-labelledby="sa2-drill-down" className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <h2 id="sa2-drill-down" className="text-lg font-semibold text-gray-900">Areas within the selection</h2>
+              <p className="mt-2 text-sm leading-relaxed text-gray-700">{SA2_INTRO}</p>
+            </section>
+
+            {sa2Failed && (
+              <Notice>
+                The SA2 data could not be loaded, so the SA2 map, table and pockets of need are not shown and are left
+                out of the Word export. The rest of the assessment is unaffected. Reload the page to try again.
+              </Notice>
+            )}
+
+            <ChartWrapper
+              figureId="sa2-need-map"
+              title={SA2_MAP_TITLE}
+              subtitle="Overall need of each SA2 in the selected LGAs as a percentile among NSW SA2s, with the selected LGAs outlined."
+              caption={SA2_MAP_CAPTION}
+              unavailable={sa2Failed ? 'the SA2 data could not be loaded' : null}
+              {...excel.sa2Map}
+            >
+              {sa2File
+                ? <Sa2NeedsMap file={sa2File} lgaIds={assessment.memberIds} lgaNames={LGA_NAMES} />
+                : <Sa2Pending failed={sa2Failed} height={SA2_MAP_HEIGHT} />}
+            </ChartWrapper>
+
+            <ChartWrapper
+              title="Highest-need SA2s"
+              subtitle="The SA2s in the selected LGAs with the highest overall SA2 need score."
+              {...excel.sa2Table}
+            >
+              {sa2Rows ? <Sa2RankingTable table={sa2Rows} /> : <Sa2Pending failed={sa2Failed} height={240} />}
+            </ChartWrapper>
+
+            <ChartWrapper
+              figureId="catchments"
+              title={CATCHMENT_TITLE}
+              subtitle="Share of residents within a straight-line walk of a stop with frequent, or any, weekday AM-peak service, against Greater Sydney and NSW."
+              caption={CATCHMENT_CAPTION}
+              {...excel.catchments}
+            >
+              <CatchmentChart assessment={assessment} />
+            </ChartWrapper>
+
+            {pockets ? <NarrativeBlock section={pockets} /> : <PocketsPending failed={sa2Failed} />}
+          </>
+        )}
 
         {furtherFindings && <NarrativeBlock section={furtherFindings} />}
 

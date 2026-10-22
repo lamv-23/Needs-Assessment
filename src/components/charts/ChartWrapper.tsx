@@ -38,6 +38,11 @@ interface ChartWrapperProps {
    * chart SVG and no HTML legend or note, which an SVG file would leave out (R62). PNG and Word are unaffected.
    */
   svgExport?: boolean;
+  /**
+   * Why the figure has nothing to export, e.g. its data could not be loaded. Its Word capture then fails, so the export
+   * leaves it out and names it (R22) instead of picturing the message.
+   */
+  unavailable?: string | null;
 }
 
 /** The caption element carries `data-figure-caption` so the registry's capture() can leave it out (Word adds its own). */
@@ -116,6 +121,7 @@ export default function ChartWrapper({
   caption,
   figureId,
   svgExport,
+  unavailable,
 }: ChartWrapperProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -158,6 +164,7 @@ export default function ChartWrapper({
 
   // PNG bytes for the Word export: same render as the PNG download, minus the caption element.
   const captureFigure = useCallback(async () => {
+    if (unavailable) throw new Error(`Figure "${title}" is unavailable: ${unavailable}`);
     const canvas = await captureCanvas(true);
     if (!canvas) throw new Error(`Figure "${title}" is not rendered (collapsed or unmounted)`);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
@@ -167,7 +174,7 @@ export default function ChartWrapper({
       widthPx: canvas.width,
       heightPx: canvas.height,
     };
-  }, [captureCanvas, title]);
+  }, [captureCanvas, title, unavailable]);
 
   // Registering again with the same id updates in place (keeps the figure's number), so changes
   // to title/caption don't reorder; the separate unmount effect is the only thing that unregisters.

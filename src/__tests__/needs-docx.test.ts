@@ -8,9 +8,11 @@ import {
 import { DOMAIN_LABELS, INDICATORS, NEED_DOMAINS } from '@/lib/needs/indicators';
 import { buildNarrative } from '@/lib/needs/narrative';
 import {
-  citationSegments, comparisonLabel, exportFileName, exportTitle, indicatorTable, NEEDS_SOURCES, sourceNumber,
+  CATCHMENT_CAPTION, CATCHMENT_TITLE, citationSegments, comparisonLabel, exportFileName, exportTitle, indicatorTable,
+  NEEDS_SOURCES, SA2_MAP_CAPTION, SA2_MAP_TITLE, sourceNumber,
 } from '@/lib/needs/page-data';
 import type { NeedsAssessment, NeedsMode, NeedsSnapshot, Universe } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 const METHOD_SENTENCE =
   'Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. '
@@ -407,6 +409,46 @@ describe('buildNeedsDocument: figures', () => {
   test('wide figures following a landscape table (many areas) continue in the same landscape section', async () => {
     const { xml } = await documentParts(inputFor(assess(GSYD_IDS.slice(0, 8)), [figure('A', 3000, 1000), figure('B', 3000, 1000)]));
     expect(sections(xml).map(s => s.orientation)).toEqual(['portrait', 'landscape', 'portrait']);
+  });
+});
+
+describe('buildNeedsDocument: SA2 drill-down', () => {
+  const assessment = assess(['lga_blacktown', 'lga_mosman']);
+  const narrative = buildNarrative(assessment, { file: SA2_POCKETS_FILE });
+  const drillDown = [figure(SA2_MAP_TITLE, 1000, 700, SA2_MAP_CAPTION), figure(CATCHMENT_TITLE, 2000, 700, CATCHMENT_CAPTION)];
+
+  test('docx includes the pockets section and a straight-line note in the catchment caption', async () => {
+    const { xml } = await documentParts({ ...inputFor(assessment, [figure('Need map'), ...drillDown]), narrative });
+
+    const order = headings(xml, 'Heading2');
+    expect(order.indexOf('Pockets of need')).toBe(order.indexOf(DOMAIN_LABELS.growth) + 1);
+    const texts = paragraphs(xml).map(p => p.text);
+    const pockets = narrative.find(s => s.id === 'pockets')!;
+    expect(pockets.paragraphs.map(p => p.text)).toEqual([
+      'Within Blacktown, Mount Druitt - Whalan, Lethbridge Park - Tregear and Blackett - Dharruk are in the highest-need 10% of NSW SA2s.',
+      'No SA2 in Mosman is in the highest-need 10% of NSW SA2s.',
+    ]);
+    for (const p of pockets.paragraphs) {
+      const citation = citationSegments(p.citations.map(sourceNumber))
+        .map(({ from, to }) => (from === to ? `${from}` : `${from}–${to}`)).join(', ');
+      expect(citation).not.toBe('');
+      expect(texts).toContain(p.text + citation);
+    }
+
+    const captions = paragraphs(xml).filter(p => p.style === 'Caption').map(p => p.text);
+    expect(captions).toEqual([
+      'Figure 1. Need map. Source: ABS Census 2021 G62',
+      `Figure 2. SA2 need map. Source: ${SA2_MAP_CAPTION}`,
+      `Figure 3. ${CATCHMENT_TITLE}. Source: ${CATCHMENT_CAPTION}`,
+    ]);
+    expect(captions[2]).toContain('straight-line distance');
+  });
+
+  test('the SA2 map and catchment captions cite numbered sources only (R31, R45)', () => {
+    for (const caption of [SA2_MAP_CAPTION, CATCHMENT_CAPTION]) {
+      for (const short of caption.split('; ')) expect(NEEDS_SOURCES.map(s => s.short)).toContain(short);
+    }
+    expect(CATCHMENT_CAPTION).toBe('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
   });
 });
 

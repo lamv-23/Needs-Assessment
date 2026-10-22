@@ -5,8 +5,11 @@ import type { CatchmentShare } from '@/lib/catchments';
 import { SAMPLE_AREAS } from '@/lib/data/sample-areas';
 import { extractIndicators, type IndicatorInputs } from './extract';
 import { INDICATORS } from './indicators';
-import { assessRecord } from './scoring';
-import type { AreaAssessment, IndicatorId, IndicatorValue, Sa2NeedsFile, Sa2Record, ScorableRecord } from './types';
+import { rankPhrase } from './insights';
+import { assessRecord, needPercentile, needRank, SA2_UNIVERSE_LABEL } from './scoring';
+import type {
+  AreaAssessment, IndicatorId, IndicatorValue, Sa2Assessed, Sa2NeedsFile, Sa2Ranking, Sa2Record, ScorableRecord,
+} from './types';
 
 /**
  * SA2 needs (Phase 2): the SA2 indicators of every NSW SA2, from its decoded Census tables and its straight-line
@@ -19,6 +22,12 @@ export const SA2_LOW_POPULATION = 100;
 
 /** An SA2 is in an LGA's drill-down when at least this share of its located residents live in the LGA. */
 export const SA2_SHARE_THRESHOLD = 0.1;
+
+/** A pocket of need is an SA2 ranked in this highest-need share of NSW SA2s on its overall score (P2-R15). */
+export const SA2_POCKET_SHARE = 0.1;
+
+/** The most pockets of need named for one LGA. */
+export const MAX_POCKETS = 3;
 
 /** The indicators assessed at SA2, in registry order. */
 export const SA2_INDICATOR_IDS: IndicatorId[] = INDICATORS.filter(def => def.levels.includes('sa2')).map(def => def.id);
@@ -119,11 +128,16 @@ function scorable(record: Sa2Record): ScorableRecord {
   };
 }
 
-/** A low-population or non-spatial SA2 keeps its values but has no percentile, rank or score. */
+/**
+ * A low-population or non-spatial SA2 keeps its values but has no percentile, rank or score, and no `ranked` count, so
+ * nothing can place it "of 623".
+ */
 function withoutRanking(assessment: AreaAssessment): AreaAssessment {
   return {
     ...assessment,
-    indicators: assessment.indicators.map(s => ({ ...s, percentile: null, rank: null, unranked: false, keyNeed: false })),
+    indicators: assessment.indicators.map(s => ({
+      ...s, percentile: null, rank: null, ranked: null, unranked: false, keyNeed: false,
+    })),
     domains: assessment.domains.map(d => ({ ...d, score: null, band: null, available: 0 })),
     overall: null,
     band: null,
@@ -156,4 +170,84 @@ export function assessSa2s(file: Sa2NeedsFile, sa2Codes: string[]): AreaAssessme
     const assessment = assessRecord(scorable(record), 'nsw', peers, {}, 'sa2');
     return [isRankedSa2(record) ? assessment : withoutRanking(assessment)];
   });
+}
+
+const rankings = new WeakMap<Sa2NeedsFile, Sa2Ranking>();
+
+/**
+ * Every SA2 of `file` assessed (`assessSa2s`) and placed on its overall score among the ranked SA2s that have one:
+ * rank 1 is the highest need, ties share the better rank, and the percentile is the mid-rank need percentile. Worked
+ * out once per file, as the page, the map, the table and the narrative all read it.
+ */
+export function rankSa2s(file: Sa2NeedsFile): Sa2Ranking {
+  const cached = rankings.get(file);
+  if (cached) return cached;
+
+  const assessments = new Map(assessSa2s(file, file.records.map(r => r.sa2Code)).map(a => [a.areaId, a]));
+  // An SA2 that is not ranked has no overall score (withoutRanking), so these are the ranked SA2s' scores
+  const scores = Array.from(assessments.values()).flatMap(a => (a.overall === null ? [] : [a.overall]));
+  const byCode = new Map(file.records.map((record): [string, Sa2Assessed] => {
+    const assessment = assessments.get(record.sa2Code)!;
+    const { overall } = assessment;
+    return [record.sa2Code, {
+      record,
+      assessment,
+      overallRank: overall === null ? null : needRank(overall, scores, 'higher'),
+      overallPercentile: overall === null ? null : needPercentile(overall, scores, 'higher'),
+    }];
+  }));
+
+  const ranking = { byCode, ranked: scores.length, pocketRank: Math.floor(SA2_POCKET_SHARE * scores.length) };
+  rankings.set(file, ranking);
+  return ranking;
+}
+
+/** The drill-down of `lgaIds` (`sa2sForLgas`: each SA2 once, sorted by name), with each SA2's assessment and rank. */
+export function drillDownSa2s(file: Sa2NeedsFile, lgaIds: string[]): Sa2Assessed[] {
+  const { byCode } = rankSa2s(file);
+  return sa2sForLgas(file, lgaIds).map(r => byCode.get(r.sa2Code)!);
+}
+
+/** The ranked SA2s of `entries`, highest overall need first; Array.prototype.sort is stable, so ties keep their order. */
+const byOverall = (entries: Sa2Assessed[]) => entries
+  .filter(e => e.overallRank !== null)
+  .sort((a, b) => (a.overallRank as number) - (b.overallRank as number));
+
+/** The `count` SA2s of the drill-down of `lgaIds` with the highest overall need, each once; unranked SA2s left out. */
+export function topSa2s(file: Sa2NeedsFile, lgaIds: string[], count: number): Sa2Assessed[] {
+  return byOverall(drillDownSa2s(file, lgaIds)).slice(0, count);
+}
+
+/**
+ * The pockets of need of one LGA: the SA2s of its drill-down ranked in the highest-need 10% of NSW SA2s
+ * (rank ≤ floor(10% of the ranked SA2s), so the claim holds by rank, P2-R15), highest first, at most `max`.
+ */
+export function sa2Pockets(file: Sa2NeedsFile, lgaId: string, max = MAX_POCKETS): Sa2Assessed[] {
+  const { pocketRank } = rankSa2s(file);
+  return byOverall(drillDownSa2s(file, [lgaId]))
+    .filter(e => (e.overallRank as number) <= pocketRank)
+    .slice(0, max);
+}
+
+/**
+ * The LGAs an SA2 is listed for and their shares of its residents, largest first: "Blacktown (71%), Cumberland (29%)".
+ * Shares under the drill-down threshold are left out, so the list names the LGAs whose drill-downs show the SA2.
+ */
+export function lgaShareText(record: Sa2Record, lgaNames: Map<string, string>): string {
+  return record.lgaShares
+    .filter(s => s.share >= SA2_SHARE_THRESHOLD)
+    .map(s => `${lgaNames.get(s.lgaId) ?? s.lgaId} (${Math.round(s.share * 100)}%)`)
+    .join(', ');
+}
+
+/**
+ * Where an SA2's overall score ranks (R57): "ranks in the highest-need 25% of NSW SA2s", or "ranks 3rd of 8 NSW SA2s"
+ * with fewer than 20 ranked; null when it is not ranked.
+ */
+export function sa2RankText(entry: Sa2Assessed, ranking: Pick<Sa2Ranking, 'ranked'>): string | null {
+  if (entry.overallRank === null) return null;
+  return rankPhrase(
+    { rank: entry.overallRank, ranked: ranking.ranked },
+    { universeLabel: SA2_UNIVERSE_LABEL, universeSize: ranking.ranked },
+  );
 }

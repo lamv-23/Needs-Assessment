@@ -4,9 +4,12 @@ import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { SA2_AREAS } from '@/lib/data/sa2-areas';
 import { INDICATORS } from '@/lib/needs/indicators';
 import {
-  assessSa2s, extractSa2Indicators, isRankedSa2, SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD, sa2sForLgas,
+  assessSa2s, extractSa2Indicators, isRankedSa2, rankSa2s, SA2_LOW_POPULATION, SA2_SHARE_THRESHOLD, sa2Pockets,
+  sa2RankText, sa2sForLgas, topSa2s,
 } from '@/lib/needs/sa2';
-import type { AreaAssessment, IndicatorId, Sa2NeedsFile, Sa2Record } from '@/lib/needs/types';
+import { needPercentile } from '@/lib/needs/scoring';
+import type { AreaAssessment, IndicatorId, Sa2Assessed, Sa2NeedsFile, Sa2Record } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 const SA2_IDS = INDICATORS.filter(d => d.levels.includes('sa2')).map(d => d.id);
 
@@ -50,7 +53,8 @@ describe('assessSa2s', () => {
     expect(ranked.universeSize).toBe(6);
     expect(byId(ranked, 'car_dependency')).toMatchObject({ percentile: (5.5 * 100) / 6, rank: 1, ranked: 6 });
 
-    expect(lowAssessed.indicators.every(s => s.percentile === null && s.rank === null && !s.keyNeed)).toBe(true);
+    // ranked is null too, so nothing can read "… of 623" for an SA2 that is not ranked
+    expect(lowAssessed.indicators.every(s => s.percentile === null && s.rank === null && s.ranked === null && !s.keyNeed)).toBe(true);
     expect(byId(lowAssessed, 'car_dependency').value).toBe(99);   // the value is kept, only the ranking is withheld
     expect(lowAssessed.domains.every(d => d.score === null && d.band === null)).toBe(true);
     expect([lowAssessed.overall, lowAssessed.band]).toEqual([null, null]);
@@ -104,6 +108,72 @@ describe('sa2sForLgas', () => {
     expect(sa2sForLgas(all, ['lga_a', 'lga_b']).map(r => r.name)).toEqual(['Airport', 'Bravo', 'Sliver', 'Split']);
     expect(sa2sForLgas(all, ['lga_a', 'lga_b', 'lga_lord_howe'])).not.toContainEqual(noLga);
     expect(sa2sForLgas(all, [])).toEqual([]);
+  });
+});
+
+describe('rankSa2s', () => {
+  test('ranks every ranked SA2 on its overall score: 1 is the highest need, ties share the better rank', () => {
+    const tied = makeSa2('10000009', Object.fromEntries(SA2_IDS.map(id => [id, 5])), { name: 'Tied' });
+    const ranking = rankSa2s(file([...ramp(), tied]));
+    const overall = (code: string) => ranking.byCode.get(code)!.assessment.overall!;
+    expect(ranking.ranked).toBe(7);
+    expect(overall('10000009')).toBe(overall('10000005'));
+    expect(ranking.byCode.get('10000005')!.overallRank).toBe(ranking.byCode.get('10000009')!.overallRank);
+    const ranks = Array.from(ranking.byCode.values()).map(e => e.overallRank!).sort((a, b) => a - b);
+    expect(ranks[0]).toBe(1);
+    // The overall percentile is the mid-rank need percentile of the overall score among ranked SA2s
+    for (const e of Array.from(ranking.byCode.values())) {
+      const scores = Array.from(ranking.byCode.values()).map(x => x.assessment.overall!);
+      expect(e.overallPercentile).toBeCloseTo(needPercentile(e.assessment.overall!, scores, 'higher'), 10);
+    }
+  });
+
+  test('low-population and non-spatial SA2s have no overall rank or percentile and do not count', () => {
+    const low = makeSa2('20000000', { car_dependency: 99 }, { population: 40, lowPopulation: true });
+    const offshore = makeSa2('197979799', { car_dependency: 99 }, { nonSpatial: true, lgaShares: [], primaryLgaId: null });
+    const ranking = rankSa2s(file([...ramp(), low, offshore]));
+    expect(ranking.ranked).toBe(6);
+    for (const code of ['20000000', '197979799']) {
+      expect(ranking.byCode.get(code)).toMatchObject({ overallRank: null, overallPercentile: null });
+    }
+  });
+
+  test('the pocket cut-off is floor(10% of ranked SA2s), and the ranking is worked out once per file', () => {
+    const ranking = rankSa2s(SA2_POCKETS_FILE);
+    expect(ranking).toMatchObject({ ranked: 50, pocketRank: 5 });
+    expect(rankSa2s(SA2_POCKETS_FILE)).toBe(ranking);
+    expect(ranking.byCode.get('116031317')!.overallRank).toBe(1);   // Mount Druitt - Whalan
+    expect(ranking.byCode.get('124031458')!.overallRank).toBe(6);   // Colyton - Oxley Park
+  });
+});
+
+describe('sa2Pockets and topSa2s', () => {
+  const names = (entries: Sa2Assessed[]) => entries.map(e => e.record.name);
+
+  test('pockets: an LGA\'s SA2s ranked in the highest-need 10%, highest first, at most 3', () => {
+    expect(names(sa2Pockets(SA2_POCKETS_FILE, 'lga_blacktown')))
+      .toEqual(['Mount Druitt - Whalan', 'Lethbridge Park - Tregear', 'Blackett - Dharruk']);
+    expect(names(sa2Pockets(SA2_POCKETS_FILE, 'lga_blacktown', 10))).toHaveLength(4);
+    expect(names(sa2Pockets(SA2_POCKETS_FILE, 'lga_penrith'))).toEqual(['St Marys - North St Marys']);
+    expect(sa2Pockets(SA2_POCKETS_FILE, 'lga_mosman')).toEqual([]);
+  });
+
+  test('topSa2s: the ranked SA2s of the drill-down by overall score, each once; low-population SA2s left out', () => {
+    const top = topSa2s(SA2_POCKETS_FILE, ['lga_blacktown', 'lga_cumberland'], 10);
+    expect(names(top)).toEqual([
+      'Mount Druitt - Whalan', 'Lethbridge Park - Tregear', 'Blackett - Dharruk', 'Bidwill - Hebersham - Emerton',
+      'Toongabbie - West',
+    ]);
+    expect(names(topSa2s(SA2_POCKETS_FILE, ['lga_blacktown'], 2))).toEqual(['Mount Druitt - Whalan', 'Lethbridge Park - Tregear']);
+  });
+
+  test('sa2RankText follows R57: a share of NSW SA2s from 20 ranked, an ordinal below', () => {
+    const ranking = rankSa2s(SA2_POCKETS_FILE);
+    expect(sa2RankText(ranking.byCode.get('124031463')!, ranking)).toBe('ranks in the highest-need 10% of NSW SA2s');
+    expect(sa2RankText(ranking.byCode.get('124031458')!, ranking)).toBe('ranks in the highest-need 12% of NSW SA2s');
+    const small = rankSa2s(file(ramp()));
+    expect(sa2RankText(small.byCode.get('10000005')!, small)).toBe('ranks 1st of 6 NSW SA2s');
+    expect(sa2RankText(ranking.byCode.get('116031316')!, ranking)).toBeNull();   // Prospect Reservoir: low population
   });
 });
 

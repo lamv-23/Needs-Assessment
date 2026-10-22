@@ -172,6 +172,28 @@ export interface Sa2Record {
 /** public/data/sa2-needs.json: every NSW SA2, sorted by code. */
 export interface Sa2NeedsFile { generatedAt: string; records: Sa2Record[] }
 
+/** An SA2 scored against the ranked NSW SA2s, with the place of its overall score among theirs. */
+export interface Sa2Assessed {
+  record: Sa2Record;
+  assessment: AreaAssessment;
+  /**
+   * 1 + the ranked SA2s with a higher overall score (ties share the better rank); null for an SA2 that is not ranked
+   * (low population, non-spatial) or has no overall score.
+   */
+  overallRank: number | null;
+  /** Mid-rank need percentile (0-100, unrounded) of the overall score among the ranked SA2s' scores; null likewise. */
+  overallPercentile: number | null;
+}
+
+/** Every SA2 of a needs file, ranked on its overall score. */
+export interface Sa2Ranking {
+  byCode: Map<string, Sa2Assessed>;
+  /** The ranked SA2s with an overall score: what an `overallRank` is out of. */
+  ranked: number;
+  /** The lowest rank in the highest-need 10%: floor(0.1 × ranked) (P2-R15). */
+  pocketRank: number;
+}
+
 /** A combined selection or a benchmark, rolled up (values and series) from the member LGAs it covers. */
 export type AggregatedRecord = AssessableRecord & {
   memberIds: string[];

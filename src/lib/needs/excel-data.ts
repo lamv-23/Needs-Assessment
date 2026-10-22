@@ -6,9 +6,13 @@ import {
   type TrendSeries,
 } from './insight-chart-data';
 import { mapScores } from './map-data';
+import { SA2_TABLE_SIZE } from './page-data';
 import { inNeedQuadrant, quadrantPanels, radarData, typicalLabel, type QuadrantSpec } from './project-need';
+import { drillDownSa2s, lgaShareText, rankSa2s, topSa2s } from './sa2';
 import { needPercentile } from './scoring';
-import type { AreaAssessment, IndicatorDef, IndicatorId, NeedsAssessment } from './types';
+import type {
+  AreaAssessment, IndicatorDef, IndicatorId, NeedDomain, NeedsAssessment, Sa2Assessed, Sa2NeedsFile,
+} from './types';
 
 /**
  * The Excel data of every figure on /needs (R64), built from the same data shapers as the figures, as numbers rather
@@ -266,6 +270,69 @@ export function growthServiceExcel(a: NeedsAssessment): FigureExcel {
       header: "AM-peak departures per 1,000 residents: 2041 at today's service",
       value: r => roundTo(r.in2041, DEPARTURES.decimals),
     },
+  ]);
+}
+
+// SA2 drill-down (Phase 2)
+
+const domainScore = (entry: Sa2Assessed, domain: NeedDomain) => floored(entry.assessment.domains.find(d => d.domain === domain)?.score);
+
+/** The columns every SA2 sheet starts with: name, code, LGA shares, overall score, band and rank. */
+function sa2Columns(a: Pick<NeedsAssessment, 'records'>, ranked: number): ExcelColumn<Sa2Assessed>[] {
+  const names = new Map(a.records.map(r => [r.areaId, r.name]));
+  return [
+    { key: 'sa2', header: 'SA2', value: e => e.record.name },
+    { key: 'code', header: 'SA2 code', value: e => e.record.sa2Code },
+    { key: 'lgas', header: 'LGAs (share of residents)', value: e => lgaShareText(e.record, names) },
+    { key: 'overall', header: 'Overall SA2 need score', value: e => floored(e.assessment.overall) },
+    { key: 'band', header: 'Band', value: e => e.assessment.band },
+    { key: 'rank', header: `Rank among ${ranked} NSW SA2s (1 = highest need)`, value: e => e.overallRank },
+  ];
+}
+
+/**
+ * Every SA2 on the SA2 map: its shading (the need percentile of its overall score among NSW SA2s, floored), score, band
+ * and rank, residents and whether it is too small to rank.
+ */
+export function sa2MapExcel(file: Sa2NeedsFile, a: Pick<NeedsAssessment, 'records' | 'memberIds'>): FigureExcel {
+  const { ranked } = rankSa2s(file);
+  return excelOf(drillDownSa2s(file, a.memberIds), [
+    ...sa2Columns(a, ranked),
+    { key: 'percentile', header: 'Need percentile among NSW SA2s', value: e => floored(e.overallPercentile) },
+    { key: 'residents', header: 'Residents (Census 2021)', value: e => e.record.population },
+    { key: 'lowPopulation', header: 'Low population, not ranked (Y/N)', value: e => yesNo(e.record.lowPopulation) },
+  ]);
+}
+
+/** The SA2 table's rows: score, band, rank, domain scores and the frequent-service catchment at its decimals. */
+export function sa2TableExcel(file: Sa2NeedsFile, a: Pick<NeedsAssessment, 'records' | 'memberIds'>): FigureExcel {
+  const { ranked } = rankSa2s(file);
+  return excelOf(topSa2s(file, a.memberIds, SA2_TABLE_SIZE), [
+    ...sa2Columns(a, ranked),
+    { key: 'transport', header: DOMAIN_LABELS.transport, value: e => domainScore(e, 'transport') },
+    { key: 'socio', header: DOMAIN_LABELS.socio, value: e => domainScore(e, 'socio') },
+    {
+      key: 'frequent',
+      header: withUnit(CATCHMENT),
+      value: e => roundTo(e.assessment.indicators.find(s => s.id === CATCHMENT.id)?.value, CATCHMENT.decimals),
+    },
+  ]);
+}
+
+/** The catchment chart's bars and reference lines: each assessed area, Greater Sydney and NSW, on both measures. */
+export function catchmentExcel(a: NeedsAssessment): FigureExcel {
+  const any = INDICATOR_BY_ID.any_service_catchment;
+  const rows = [
+    ...a.areas.map(area => ({ area, point: 'Selected area' })),
+    { area: a.benchmarks.gsyd, point: 'Greater Sydney' },
+    { area: a.benchmarks.nsw, point: 'NSW' },
+  ];
+  const valueOf = (area: AreaAssessment, def: IndicatorDef) => roundTo(area.indicators.find(s => s.id === def.id)?.value, def.decimals);
+  return excelOf(rows, [
+    { key: 'area', header: 'Area', value: r => r.area.name },
+    { key: 'point', header: 'Point', value: r => r.point },
+    { key: 'frequent', header: withUnit(CATCHMENT), value: r => valueOf(r.area, CATCHMENT) },
+    { key: 'any', header: withUnit(any), value: r => valueOf(r.area, any) },
   ]);
 }
 

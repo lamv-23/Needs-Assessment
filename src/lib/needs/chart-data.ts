@@ -360,3 +360,75 @@ export function stripData(assessment: NeedsAssessment, indicatorId: IndicatorId,
     notes: partialBenchmarkNotes(partialBenchmarks(assessment, [indicatorId])),
   };
 }
+
+// Walking catchments (Phase 2)
+
+export type CatchmentId = 'frequent_service_catchment' | 'any_service_catchment';
+
+/** The catchment chart's two panels, in order, with their titles. */
+export const CATCHMENT_PANELS: { id: CatchmentId; title: string }[] = [
+  { id: 'frequent_service_catchment', title: 'Near frequent service (8+ weekday 7-9am departures)' },
+  { id: 'any_service_catchment', title: 'Near any service (1+ weekday 7-9am departures)' },
+];
+
+/** Under the catchment chart: what the shares measure, always as straight-line distance, and why they are an upper bound. */
+export const CATCHMENT_CHART_NOTE =
+  'Share of residents (2021 mesh blocks) within a straight-line distance of 800 m of a train, metro or ferry stop, or '
+  + '400 m of a bus or light rail stop, with 8+ (frequent) or 1+ (any) weekday 7-9am departures. Walking routes are '
+  + 'longer than straight lines, so the shares are an upper bound.';
+
+export interface CatchmentBar {
+  id: string;
+  name: string;
+  /** The share in percent; null when the area has none (drawn as "No data"). */
+  value: number | null;
+  text: string;
+}
+
+export interface CatchmentPanel {
+  id: CatchmentId;
+  title: string;
+  bars: CatchmentBar[];
+  /** Greater Sydney and NSW, drawn as reference lines; a benchmark with no value is left out. */
+  references: StripReference[];
+}
+
+const CATCHMENT_BAR_PX = 30;
+
+/**
+ * The residents near frequent and near any public transport (straight-line distance) of each assessed area (the
+ * combined area as one bar), one panel per measure, with Greater Sydney and NSW as reference lines, marked "*" with a
+ * note when made from only some of their LGAs (R58).
+ */
+export function catchmentChartData(assessment: NeedsAssessment) {
+  const ids = CATCHMENT_PANELS.map(panel => panel.id);
+  const panels: CatchmentPanel[] = CATCHMENT_PANELS.map(({ id, title }) => {
+    const def = INDICATOR_BY_ID[id];
+    const scoreOf = (area: AreaAssessment) => area.indicators.find(s => s.id === id);
+    return {
+      id,
+      title,
+      bars: assessment.areas.map(area => {
+        const value = scoreOf(area)?.value ?? null;
+        return { id: area.areaId, name: area.name, value, text: formatValue(def, value) };
+      }),
+      references: (['gsyd', 'nsw'] as const).flatMap(key => {
+        const benchmark = assessment.benchmarks[key];
+        const score = scoreOf(benchmark);
+        if (!score || score.value === null) return [];
+        return [{ key, name: benchmark.name, x: score.value, text: markedValue(def, score, 'benchmark') }];
+      }),
+    };
+  });
+  return {
+    panels,
+    /** Shares run 0-100%. */
+    axis: { lo: 0, hi: 100, ticks: [0, 20, 40, 60, 80, 100] } satisfies NiceAxis,
+    /** Each panel's height: a row per area, plus the axis and room for the reference labels. */
+    height: Math.max(150, 96 + assessment.areas.length * CATCHMENT_BAR_PX),
+    noData: assessment.areas
+      .filter(area => ids.some(id => (area.indicators.find(s => s.id === id)?.value ?? null) === null))
+      .map(area => area.name),
+    notes: partialBenchmarkNotes(partialBenchmarks(assessment, ids)),
+  };
+}

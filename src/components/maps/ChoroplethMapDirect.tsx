@@ -37,7 +37,18 @@ interface ChoroplethMapDirectProps {
    * empty. Without it the view is fitted to every area once, and left where the user puts it.
    */
   focusAreaIds?: (string | number)[];
+  /**
+   * Boundaries drawn over the areas as plain outlines, with no fill and no pointer events, so the areas beneath keep
+   * their tooltips (e.g. the selected LGAs over their SA2s).
+   */
+  outlines?: FeatureCollection;
+  /** Colour of `outlines`. */
+  outlineColor?: string;
 }
+
+/** The pane `outlines` are drawn in: above the areas (the overlay pane is at z-index 400), below tooltips (650). */
+const OUTLINE_PANE = 'outlinePane';
+const OUTLINE_WEIGHT = 2.5;
 
 function getQuantileBreaks(values: number[], numClasses: number): number[] {
   const sorted = [...values].filter((v) => v != null).sort((a, b) => a - b);
@@ -110,10 +121,13 @@ export default function ChoroplethMapDirect({
   showLegend = true,
   scrollWheelZoom = true,
   focusAreaIds,
+  outlines,
+  outlineColor = '#111827',
 }: ChoroplethMapDirectProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const geoJsonLayer = useRef<L.GeoJSON | null>(null);
+  const outlineLayer = useRef<L.GeoJSON | null>(null);
   // The `areaKey` (and focus) the view was last fitted to.
   const fittedFor = useRef<string | null>(null);
   // Where the map starts; later changes to these props do not move it.
@@ -214,6 +228,11 @@ export default function ChoroplethMapDirect({
         (el) => el?.setAttribute('data-html2canvas-ignore', 'true')
       );
 
+      // Outlines stay on top of the areas however often the area layer is rebuilt, and let the pointer through.
+      const outlinePane = leafletMap.createPane(OUTLINE_PANE);
+      outlinePane.style.zIndex = '450';
+      outlinePane.style.pointerEvents = 'none';
+
       if (start.basemap) {
         L.tileLayer(
           'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
@@ -245,9 +264,24 @@ export default function ChoroplethMapDirect({
       map.current?.remove();
       map.current = null;
       geoJsonLayer.current = null;
+      outlineLayer.current = null;
       fittedFor.current = null;
     };
   }, []);
+
+  // Redraw the outlines when they change
+  useEffect(() => {
+    const leafletMap = map.current;
+    if (!leafletMap) return;
+    outlineLayer.current?.remove();
+    outlineLayer.current = outlines
+      ? L.geoJSON(outlines, {
+          pane: OUTLINE_PANE,
+          interactive: false,
+          style: { fill: false, color: outlineColor, weight: OUTLINE_WEIGHT, opacity: 1 },
+        }).addTo(leafletMap)
+      : null;
+  }, [outlines, outlineColor]);
 
   const hasTooltip = getTooltip !== undefined;
 

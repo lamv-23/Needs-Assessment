@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { partialBenchmarkNotes, partialBenchmarks } from '@/lib/needs/coverage';
@@ -7,9 +9,11 @@ import { buildNarrative } from '@/lib/needs/narrative';
 import {
   citationSegments, comparisonLabel, figureCaption, formatNeedsDate, indicatorCellText, indicatorTable,
   GROWTH_SERVICE_CAPTION, indicatorTableNote, JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, sameSelection,
-  sourceNumber, stripIndicatorIds, trendsCaption,
+  SA2_TABLE_SIZE, sa2Table, sourceNumber, stripIndicatorIds, trendsCaption,
 } from '@/lib/needs/page-data';
-import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Universe } from '@/lib/needs/types';
+import { rankSa2s } from '@/lib/needs/sa2';
+import type { AreaAssessment, IndicatorId, IndicatorScore, NeedsMode, Sa2NeedsFile, Universe } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 const score = (id: IndicatorId, overrides: Partial<IndicatorScore> = {}): IndicatorScore => ({
   id, value: 1, percentile: 50, rank: 64, ranked: 128, unranked: false, keyNeed: false, approximate: false, partial: false,
@@ -314,6 +318,49 @@ describe('sources', () => {
     });
     for (const source of cited) expect(sourceNumber(source)).toBeGreaterThan(0);
     expect(new Set(cited.map(s => s.full))).toEqual(new Set(NEEDS_SOURCES.map(s => s.full)));
+  });
+});
+
+describe('sa2Table', () => {
+  const table = (areaIds: string[], mode: NeedsMode = 'separate') => sa2Table(SA2_POCKETS_FILE, assess(areaIds, mode));
+
+  test('the ranked SA2s of the selection, highest overall need first, each once; low-population SA2s are named in a note', () => {
+    const { rows, notes } = table(['lga_blacktown', 'lga_cumberland'], 'combined');
+    expect(rows.map(r => r.name)).toEqual([
+      'Mount Druitt - Whalan', 'Lethbridge Park - Tregear', 'Blackett - Dharruk', 'Bidwill - Hebersham - Emerton',
+      'Toongabbie - West',
+    ]);
+    expect(rows[4].lgas).toBe('Blacktown (71%), Cumberland (29%)');
+    expect(notes[0]).toMatch(/^All 5 ranked SA2s in the selection, by overall SA2 need score\./);
+    expect(notes[0]).toContain('ranked against the 50 NSW SA2s with 100 or more residents');
+    expect(notes[1]).toBe('Not ranked (fewer than 100 residents, or no score): Prospect Reservoir.');
+  });
+
+  test('a row: band and floored score, rank among NSW SA2s (R57), domain scores and the frequent catchment', () => {
+    const [row] = table(['lga_blacktown']).rows;
+    const { assessment } = rankSa2s(SA2_POCKETS_FILE).byCode.get('116031317')!;
+    const domain = (d: string) => String(Math.floor(assessment.domains.find(x => x.domain === d)!.score!));
+    expect(row).toEqual({
+      code: '116031317',
+      name: 'Mount Druitt - Whalan',
+      lgas: 'Blacktown (100%)',
+      overall: `${assessment.band} (${Math.floor(assessment.overall!)})`,
+      rank: 'ranks in the highest-need 2% of NSW SA2s',
+      transport: domain('transport'),
+      socio: domain('socio'),
+      frequent: '50.0%',
+    });
+  });
+
+  test('at most 10 rows, and the notes say so; the catchment note says straight-line distance', () => {
+    const file = JSON.parse(fs.readFileSync(path.join(__dirname, '../../public/data/sa2-needs.json'), 'utf-8')) as Sa2NeedsFile;
+    const { rows, notes } = sa2Table(file, assess(['lga_blacktown']));
+    expect(SA2_TABLE_SIZE).toBe(10);
+    expect(rows).toHaveLength(10);
+    expect(notes[0]).toMatch(/^The 10 highest-need of the 23 ranked SA2s in the selection/);
+    expect(notes[1]).toBe('Not ranked (fewer than 100 residents, or no score): Prospect Reservoir.');
+    expect(notes[2]).toContain('straight-line distance');
+    expect(rows.map(r => r.name)).not.toContain('Prospect Reservoir');
   });
 });
 

@@ -12,6 +12,8 @@ import type { NeedsAssessment } from '@/lib/needs/types';
 interface ExportDocxButtonProps {
   assessment: NeedsAssessment;
   sections: NarrativeSection[];
+  /** Data the document needs that is still loading ("SA2 data"): until it arrives the button waits, disabled. */
+  waitingFor?: string | null;
 }
 
 /**
@@ -23,11 +25,12 @@ interface ExportDocxButtonProps {
  * selection in a document whose text and table describe the old one. The export is therefore dropped, with a message,
  * if the selection changed at all since the click, checked when the figures are done and again before the download.
  */
-export default function ExportDocxButton({ assessment, sections }: ExportDocxButtonProps) {
+export default function ExportDocxButton({ assessment, sections, waitingFor = null }: ExportDocxButtonProps) {
   const registry = useFigureRegistry();
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const hasAreas = assessment.areas.length > 0;
+  const waiting = hasAreas && waitingFor !== null;
 
   // Counts every change of the selection the page shows. An export remembers the count at its click, so a selection
   // changed and changed back (A, B, A) during the export still counts as changed, which comparing A with A would miss.
@@ -95,12 +98,14 @@ export default function ExportDocxButton({ assessment, sections }: ExportDocxBut
       <button
         type="button"
         onClick={handleExport}
-        disabled={!hasAreas || working}
+        disabled={!hasAreas || working || waiting}
         title={hasAreas ? 'Download an editable Word document of this assessment' : 'Select an area to export'}
         className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:border-primary-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {working ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <FileDown className="h-4 w-4" aria-hidden="true" />}
-        <span>{working ? 'Preparing Word document…' : 'Export to Word'}</span>
+        {working || waiting
+          ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          : <FileDown className="h-4 w-4" aria-hidden="true" />}
+        <span>{working ? 'Preparing Word document…' : waiting ? `Loading ${waitingFor}…` : 'Export to Word'}</span>
       </button>
     </div>
   );

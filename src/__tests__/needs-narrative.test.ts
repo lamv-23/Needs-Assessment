@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import { displayScore, formatDiff, formatValue, ordinal } from '@/lib/needs/format';
@@ -5,9 +7,12 @@ import { DOMAIN_LABELS, INDICATOR_BY_ID, INDICATORS, NEED_DOMAINS } from '@/lib/
 import { buildInsights } from '@/lib/needs/insights';
 import { buildNarrative, narrativeToPlainText, type NarrativeSection } from '@/lib/needs/narrative';
 import { sourceNumber } from '@/lib/needs/page-data';
+import { rankSa2s, SA2_INDICATOR_IDS, sa2sForLgas } from '@/lib/needs/sa2';
 import type {
-  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedBand, NeedDomain, NeedsAssessment, NeedsMode, Universe,
+  AreaAssessment, IndicatorId, IndicatorScore, Insight, NeedBand, NeedDomain, NeedsAssessment, NeedsMode, Sa2NeedsFile,
+  Universe,
 } from '@/lib/needs/types';
+import { SA2_POCKETS_FILE } from './fixtures/sa2-pockets';
 
 type Score = Partial<Omit<IndicatorScore, 'id'>>;
 
@@ -999,5 +1004,104 @@ describe('buildNarrative: key findings and further findings', () => {
     expect(blocks.indexOf('Further findings')).toBeLessThan(blocks.indexOf('Data notes'));
     expect(blocks.indexOf('Summary')).toBe(6);
     expect(narrativeToPlainText(sections)).not.toMatch(/NaN|undefined|null|Infinity|\[object/);
+  });
+});
+
+describe('buildNarrative: pockets of need (SA2s)', () => {
+  const run = (areaIds: string[], mode: NeedsMode = 'separate') =>
+    runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe: 'nsw' });
+  const sa2 = { file: SA2_POCKETS_FILE };
+  const pockets = (sections: NarrativeSection[]) => section(sections, 'pockets');
+
+  const BLACKTOWN = 'Within Blacktown, Mount Druitt - Whalan, Lethbridge Park - Tregear and Blackett - Dharruk are in the highest-need 10% of NSW SA2s.';
+  const PENRITH = 'Within Penrith, St Marys - North St Marys is in the highest-need 10% of NSW SA2s.';
+  const MOSMAN = 'No SA2 in Mosman is in the highest-need 10% of NSW SA2s.';
+
+  test('names the top 3 SA2s of an LGA in the highest-need 10% of NSW SA2s, highest first', () => {
+    // Bidwill - Hebersham - Emerton is the fourth pocket in Blacktown, so it is left out
+    expect(texts(pockets(buildNarrative(run(['lga_blacktown']), sa2)))).toEqual([BLACKTOWN]);
+  });
+
+  test('says so when no SA2 of the LGA is in the highest-need 10%', () => {
+    expect(texts(pockets(buildNarrative(run(['lga_mosman']), sa2)))).toEqual([MOSMAN]);
+  });
+
+  test('the 10% is by rank (P2-R15): rank 5 of 50 is a pocket, rank 6 is not; one pocket reads in the singular', () => {
+    expect(texts(pockets(buildNarrative(run(['lga_penrith']), sa2)))).toEqual([PENRITH]);
+  });
+
+  test('a low-population SA2 is never a pocket, however extreme its values', () => {
+    expect(narrativeToPlainText(buildNarrative(run(['lga_blacktown']), sa2))).not.toContain('Prospect Reservoir');
+  });
+
+  test('pocket sentences cite the SA2 sources', () => {
+    const expected = Array.from(new Set(SA2_INDICATOR_IDS.map(id => INDICATOR_BY_ID[id].source)));
+    const sections = buildNarrative(run(['lga_blacktown', 'lga_mosman']), sa2);
+    for (const p of pockets(sections).paragraphs) {
+      expect(p.citations).toEqual(expected);
+      expect(p.citations.every(c => sourceNumber(c) > 0)).toBe(true);
+    }
+    expect(expected.map(s => s.short)).toContain('ABS Mesh Block Counts 2021 + TfNSW GTFS (straight-line catchments)');
+  });
+
+  test('combined mode writes one pockets paragraph per member LGA', () => {
+    const combined = buildNarrative(run(['lga_blacktown', 'lga_penrith', 'lga_mosman'], 'combined'), sa2);
+    expect(texts(pockets(combined))).toEqual([BLACKTOWN, PENRITH, MOSMAN]);
+    // P2-R6: pockets belong to the member LGAs, never to "the combined area"
+    expect(texts(pockets(combined)).join(' ')).not.toContain('combined area');
+  });
+
+  test('separate mode writes one paragraph per area, in selection order', () => {
+    expect(texts(pockets(buildNarrative(run(['lga_mosman', 'lga_blacktown']), sa2)))).toEqual([MOSMAN, BLACKTOWN]);
+  });
+
+  test('the pockets section follows the domains, before further findings and the data notes', () => {
+    const sections = buildNarrative(run(['lga_blacktown', 'lga_newcastle']), sa2);
+    expect(sections.map(s => s.id)).toEqual(['key_findings', 'summary', 'transport', 'socio', 'growth', 'pockets', 'insights', 'notes']);
+    expect(pockets(sections).heading).toBe('Pockets of need');
+  });
+
+  test('without the SA2 file there is no pockets section and no SA2 note', () => {
+    const sections = buildNarrative(run(['lga_blacktown']));
+    expect(sections.map(s => s.id)).not.toContain('pockets');
+    expect(narrativeToPlainText(sections)).not.toContain('SA2');
+  });
+
+  test('the data notes say what an SA2 score covers and how SA2s are ranked, before the method sentence', () => {
+    const notes = texts(section(buildNarrative(run(['lga_blacktown']), sa2), 'notes'));
+    expect(notes[notes.length - 1]).toBe(METHOD_SENTENCE);
+    expect(notes[notes.length - 2]).toBe(
+      'SA2 need scores use only the indicators available for SA2s, the Census indicators and residents near public '
+      + 'transport by straight-line distance, so they cover the transport and socio-economic domains and not growth. '
+      + 'SA2s are ranked against the 50 NSW SA2s with 100 or more residents, and an SA2 is listed for an LGA when at '
+      + 'least 10% of its residents live there.',
+    );
+  });
+
+  test('on real data: one clean sentence per LGA, naming only its SA2s ranked in the highest-need 10%', () => {
+    const file = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../../public/data/sa2-needs.json'), 'utf-8'),
+    ) as Sa2NeedsFile;
+    const ranking = rankSa2s(file);
+    expect(ranking.pocketRank).toBe(Math.floor(0.1 * ranking.ranked));
+    const codes = new Map(file.records.map(r => [r.name, r.sa2Code]));
+    for (const record of NEEDS_SNAPSHOT.records) {
+      const [p, ...rest] = pockets(buildNarrative(run([record.areaId]), { file })).paragraphs;
+      expect(rest).toHaveLength(0);
+      const named = /^Within (.+?), (.+) (?:is|are) in the highest-need 10% of NSW SA2s\.$/.exec(p.text);
+      if (!named) {
+        expect(p.text).toBe(`No SA2 in ${record.name} is in the highest-need 10% of NSW SA2s.`);
+        continue;
+      }
+      expect(named[1]).toBe(record.name);
+      const drillDown = new Set(sa2sForLgas(file, [record.areaId]).map(r => r.sa2Code));
+      const listed = named[2].split(/, | and /);
+      expect(listed.length).toBeLessThanOrEqual(3);
+      for (const name of listed) {
+        const code = codes.get(name)!;
+        expect(drillDown.has(code)).toBe(true);
+        expect(ranking.byCode.get(code)!.overallRank).toBeLessThanOrEqual(ranking.pocketRank);
+      }
+    }
   });
 });
