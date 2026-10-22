@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { Download, ChevronDown, Clipboard, Check, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { serializeSvg } from '@/lib/export/svg-export';
+import { useFigureRegistry } from '@/components/needs/FigureRegistry';
 
 interface ChartWrapperProps {
   title: string;
@@ -18,7 +20,18 @@ interface ChartWrapperProps {
   collapseSummary?: string;
   /** Start collapsed. Default: false (expanded) */
   defaultCollapsed?: boolean;
+  /**
+   * Source line rendered under the chart, inside the exported area so PNG and clipboard exports
+   * include it: "Figure {n}. {title}. Source: {caption}" inside a FigureRegistryProvider (with
+   * `figureId`), otherwise "{title}. Source: {caption}". Nothing is rendered when omitted.
+   */
+  caption?: string;
+  /** Registers this chart with the nearest FigureRegistryProvider (numbering and Word export). Must be unique within the provider. */
+  figureId?: string;
 }
+
+/** The caption element carries `data-figure-caption` so the registry's capture() can leave it out (Word adds its own). */
+const isFigureCaption = (element: Element) => element.hasAttribute('data-figure-caption');
 
 function toHeaderLabel(key: string): string {
   const spaced = key
@@ -44,6 +57,8 @@ export default function ChartWrapper({
   xAxisKey = 'name',
   collapseSummary,
   defaultCollapsed = false,
+  caption,
+  figureId,
 }: ChartWrapperProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -57,14 +72,58 @@ export default function ChartWrapper({
     setClipboardSupported(!!navigator.clipboard);
   }, []);
 
-  const captureCanvas = async () => {
-    if (!chartRef.current) return null;
+  const [svgAvailable, setSvgAvailable] = useState(false);
+
+  const registry = useFigureRegistry();
+  const register = registry?.register;
+  const unregister = registry?.unregister;
+  const figureNumber = registry && figureId ? registry.numberOf(figureId) : null;
+
+  const fileBase = title.replace(/\s+/g, '_').toLowerCase();
+
+  const captureCanvas = useCallback(async (excludeCaption = false) => {
     await new Promise((resolve) => setTimeout(resolve, 100));
+    if (!chartRef.current) return null;
     return html2canvas(chartRef.current, {
       backgroundColor: '#ffffff',
       scale: 3,
       useCORS: true,
+      ...(excludeCaption && { ignoreElements: isFigureCaption }),
     });
+  }, []);
+
+  // PNG bytes for the Word export: same render as the PNG download, minus the caption element.
+  const captureFigure = useCallback(async () => {
+    const canvas = await captureCanvas(true);
+    if (!canvas) throw new Error(`Figure "${title}" is not rendered (collapsed or unmounted)`);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error(`Failed to render figure "${title}" as PNG`);
+    return {
+      png: new Uint8Array(await blob.arrayBuffer()),
+      widthPx: canvas.width,
+      heightPx: canvas.height,
+    };
+  }, [captureCanvas, title]);
+
+  // Registering again with the same id updates in place (keeps the figure's number), so changes
+  // to title/caption don't reorder; the separate unmount effect is the only thing that unregisters.
+  useEffect(() => {
+    if (!figureId || !register) return;
+    register({ id: figureId, title, caption: caption ?? '', capture: captureFigure });
+  }, [figureId, register, title, caption, captureFigure]);
+  useEffect(() => {
+    if (!figureId || !unregister) return;
+    return () => unregister(figureId);
+  }, [figureId, unregister]);
+
+  const captionText = caption
+    ? `${figureNumber !== null ? `Figure ${figureNumber}. ` : ''}${title}. Source: ${caption}`
+    : null;
+
+  const toggleDropdown = () => {
+    // Checked when the menu opens: charts render after data loads, so chartRef is only reliable now.
+    if (!dropdownOpen) setSvgAvailable(!!chartRef.current && serializeSvg(chartRef.current) !== null);
+    setDropdownOpen(!dropdownOpen);
   };
 
   const handleExportPNG = async () => {
@@ -73,7 +132,7 @@ export default function ChartWrapper({
       const canvas = await captureCanvas();
       if (!canvas) return;
       const link = document.createElement('a');
-      link.download = `${title.replace(/\s+/g, '_').toLowerCase()}.png`;
+      link.download = `${fileBase}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (error) {
@@ -100,6 +159,23 @@ export default function ChartWrapper({
     }
   };
 
+  const handleExportSVG = () => {
+    setDropdownOpen(false);
+    if (!chartRef.current) return;
+    try {
+      const svg = serializeSvg(chartRef.current);
+      if (!svg) return;
+      const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.download = `${fileBase}.svg`;
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (error) {
+      console.error('Failed to export SVG:', error);
+    }
+  };
+
   const handleExportExcel = () => {
     if (!data || data.length === 0) return;
     setDropdownOpen(false);
@@ -113,7 +189,7 @@ export default function ChartWrapper({
       const workbook = XLSX.utils.book_new();
       const sheetName = title.slice(0, 31);
       XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-      XLSX.writeFile(workbook, `${title.replace(/\s+/g, '_').toLowerCase()}.xlsx`);
+      XLSX.writeFile(workbook, `${fileBase}.xlsx`);
     } catch (error) {
       console.error('Failed to export Excel:', error);
     }
@@ -179,7 +255,7 @@ export default function ChartWrapper({
             )}
             <div className="relative">
               <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
+                onClick={toggleDropdown}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
                 disabled={exporting}
               >
@@ -199,6 +275,14 @@ export default function ChartWrapper({
                     >
                       Download PNG (3x)
                     </button>
+                    {svgAvailable && (
+                      <button
+                        onClick={handleExportSVG}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Download SVG
+                      </button>
+                    )}
                     {hasExcelData && (
                       <button
                         onClick={handleExportExcel}
@@ -219,6 +303,11 @@ export default function ChartWrapper({
       {!collapsed && (
         <div ref={chartRef} className="px-6 pb-6">
           {children}
+          {captionText && (
+            <p data-figure-caption className="mt-3 text-xs text-gray-500">
+              {captionText}
+            </p>
+          )}
         </div>
       )}
     </div>
