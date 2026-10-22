@@ -448,7 +448,7 @@
   expect(summary.paragraphs[1].text).toBe('Its most pronounced needs are car dependency.');   // key needs only, top 3 by percentile, joined 'a, b and c'
   // key-need sentence in the transport section:
   expect(transport.paragraphs.map(p => p.text)).toContain(
-    "Blacktown's car dependency (83.8%) ranks in the highest-need 8% of NSW LGAs, 17.5 pp above the Greater Sydney figure of 66.3%.");
+    "On car dependency, Blacktown (83.8%) ranks in the highest-need 8% of NSW LGAs, 17.5 pp above the Greater Sydney figure of 66.3%.");   // R19
   expect(transport.paragraphs[0].text).toBe('Transport disadvantage: high (score 64/100).');
   test('every key-need sentence cites the indicator source', ...)       // citations[0].short === 'ABS Census 2021 G62'
   test('notes list missing indicators', ...)  // 'No data is available for stops with frequent AM-peak service in Blacktown; this is excluded from the scores.'
