@@ -72,7 +72,8 @@ function Legend({ universeNote }: { universeNote: string }) {
 
 /**
  * Every NSW LGA shaded by its overall need score against the assessment's comparison universe;
- * the selected LGAs are outlined. Clicking an LGA calls `onToggle` with its area id. Load it with
+ * the selected LGAs are outlined and the view is fitted to them (all of NSW when none is selected).
+ * Clicking an LGA calls `onToggle` with its area id. Load it with
  * `dynamic(() => import(...), { ssr: false })`: Leaflet needs the DOM.
  */
 export default function NeedsMap({
@@ -146,6 +147,9 @@ export default function NeedsMap({
         valueField="need"
         colorForValue={colorForNeed}
         selectedAreaIds={memberIds}
+        // Framed on the selection (NSW when empty); the wheel is left to the page scroll.
+        focusAreaIds={memberIds}
+        scrollWheelZoom={false}
         selectedColor={SELECTED_OUTLINE}
         fillOpacity={1}
         onAreaClick={toggle}

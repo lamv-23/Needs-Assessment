@@ -30,6 +30,13 @@ interface ChoroplethMapDirectProps {
   basemap?: boolean;
   /** Draw the built-in quantile legend. Off when the caller draws its own. */
   showLegend?: boolean;
+  /** Zoom with the mouse wheel. Off where the map sits in a scrolling page. Read once, when the map is created. */
+  scrollWheelZoom?: boolean;
+  /**
+   * Fit the view to these areas (by `id` or `SA2_CODE`) whenever the set changes, or to every area when it is
+   * empty. Without it the view is fitted to every area once, and left where the user puts it.
+   */
+  focusAreaIds?: (string | number)[];
 }
 
 function getQuantileBreaks(values: number[], numClasses: number): number[] {
@@ -69,6 +76,21 @@ function isSelected(feature: Feature, selected: Set<string | number>): boolean {
   return selected.has(id) || selected.has(sa2);
 }
 
+/** Closest zoom when fitting to focused areas: a single small LGA keeps its neighbours in view. */
+const FOCUS_MAX_ZOOM = 11;
+
+/** Bounds of the focused areas, or of every area when none is focused (or none of them is drawn). */
+function viewBounds(layer: L.GeoJSON, focus: Set<string | number>): L.LatLngBounds {
+  const focused = L.latLngBounds([]);
+  if (focus.size > 0) {
+    layer.eachLayer((featureLayer) => {
+      const feature = (featureLayer as L.Layer & { feature?: Feature }).feature;
+      if (feature && isSelected(feature, focus)) focused.extend((featureLayer as L.Polygon).getBounds());
+    });
+  }
+  return focused.isValid() ? focused : layer.getBounds();
+}
+
 export default function ChoroplethMapDirect({
   geoJsonData,
   valueField,
@@ -86,14 +108,16 @@ export default function ChoroplethMapDirect({
   fillOpacity = 0.7,
   basemap = true,
   showLegend = true,
+  scrollWheelZoom = true,
+  focusAreaIds,
 }: ChoroplethMapDirectProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const geoJsonLayer = useRef<L.GeoJSON | null>(null);
-  // The `areaKey` the view was last fitted to.
+  // The `areaKey` (and focus) the view was last fitted to.
   const fittedFor = useRef<string | null>(null);
   // Where the map starts; later changes to these props do not move it.
-  const initial = useRef({ center, zoom, basemap });
+  const initial = useRef({ center, zoom, basemap, scrollWheelZoom });
 
   const { breaks, minValue, maxValue } = useMemo(() => {
     const values = geoJsonData.features
@@ -141,11 +165,30 @@ export default function ChoroplethMapDirect({
     [valueField, breaks, colorScale, colorForValue, selected, selectedColor, fillOpacity]
   );
 
+  // The areas drawn: the map is only re-fitted when these or the focus change, not when a value or selection does.
+  const areaKey = useMemo(
+    () => geoJsonData.features.map((f) => f.properties?.id ?? f.properties?.SA2_CODE ?? '').join('|'),
+    [geoJsonData]
+  );
+  const viewKey = `${areaKey}#${(focusAreaIds ?? []).join('|')}`;
+
   // The layer's handlers read the latest props through this, so they never need the layer rebuilt.
-  const latest = useRef({ style, selected, onAreaClick, getTooltip, valueField });
+  const latest = useRef({ style, selected, onAreaClick, getTooltip, valueField, focusAreaIds, viewKey });
   useEffect(() => {
-    latest.current = { style, selected, onAreaClick, getTooltip, valueField };
+    latest.current = { style, selected, onAreaClick, getTooltip, valueField, focusAreaIds, viewKey };
   });
+
+  // Fits the view to the focused areas (every area when none), unless it already is for this `viewKey`.
+  const fitView = useCallback(() => {
+    const leafletMap = map.current;
+    const layer = geoJsonLayer.current;
+    const { focusAreaIds: focus, viewKey: key } = latest.current;
+    if (!leafletMap || !layer || fittedFor.current === key) return;
+    const bounds = viewBounds(layer, new Set(focus));
+    if (!bounds.isValid()) return;
+    leafletMap.fitBounds(bounds, { padding: [50, 50], maxZoom: focus?.length ? FOCUS_MAX_ZOOM : undefined });
+    fittedFor.current = key;
+  }, []);
 
   // Initialize map once on mount
   useEffect(() => {
@@ -160,6 +203,7 @@ export default function ChoroplethMapDirect({
         // Only the tiles need an attribution; without them the control would just print "Leaflet" on an exported figure.
         attributionControl: start.basemap,
         zoomControl: true,
+        scrollWheelZoom: start.scrollWheelZoom,
         // Fits the bounds to the map instead of to the next whole zoom level, which can leave half of it empty.
         zoomSnap: 0.25,
       }).setView(start.center, start.zoom);
@@ -204,12 +248,6 @@ export default function ChoroplethMapDirect({
       fittedFor.current = null;
     };
   }, []);
-
-  // The areas drawn: the map is only re-fitted when these change, not when a value or selection does.
-  const areaKey = useMemo(
-    () => geoJsonData.features.map((f) => f.properties?.id ?? f.properties?.SA2_CODE ?? '').join('|'),
-    [geoJsonData]
-  );
 
   const hasTooltip = getTooltip !== undefined;
 
@@ -264,17 +302,16 @@ export default function ChoroplethMapDirect({
       }).addTo(leafletMap);
       geoJsonLayer.current = layer;
 
-      if (fittedFor.current !== areaKey) {
-        const bounds = layer.getBounds();
-        if (bounds.isValid()) {
-          leafletMap.fitBounds(bounds, { padding: [50, 50] });
-          fittedFor.current = areaKey;
-        }
-      }
+      fitView();
     } catch (error) {
       console.error('Error updating GeoJSON:', error);
     }
-  }, [geoJsonData, valueField, areaKey, hasTooltip]);
+  }, [geoJsonData, valueField, areaKey, hasTooltip, fitView]);
+
+  // Re-fit when only the focus changes; the layer is not rebuilt for that.
+  useEffect(() => {
+    fitView();
+  }, [viewKey, fitView]);
 
   // Restyle in place when only the colours or the selection change, keeping the view where the user left it
   useEffect(() => {

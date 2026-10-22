@@ -12,6 +12,7 @@ import {
   Layers,
   LayoutDashboard,
   MapPin,
+  Target,
   Train,
   TrendingUp,
   Upload,
@@ -61,6 +62,7 @@ export const TASKS: TaskConfig[] = [
     icon: ClipboardList,
     description: 'Define needs and shape options',
     items: [
+      { href: '/needs', label: 'Needs Assessment', icon: Target },
       { href: '/problem-definition', label: 'Problem Definition', icon: ClipboardList },
       { href: '/strategic-alignment', label: 'Strategic Alignment', icon: Layers },
       { href: '/access-map', label: 'PT Access Map', icon: MapPin },

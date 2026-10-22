@@ -27,7 +27,7 @@ npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-dat
 ```
 
 ## Routes
-`/` · `/demographics` · `/transport` · `/economy` · `/education` · `/housing` · `/growth` · `/compare` · `/report` · `/upload` · `/admin`
+`/` · `/demographics` · `/transport` · `/economy` · `/education` · `/housing` · `/growth` · `/needs` · `/compare` · `/report` · `/upload` · `/admin`
 
 ## Key Conventions
 - All pages: `'use client'` + `useAppStore()` for global state
@@ -35,6 +35,7 @@ npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-dat
 - Maps: always `dynamic(() => import(...), { ssr: false })`
 - Charts: use `CHART_COLORS` from `@/lib/utils.ts`
 - Path alias: `@/` → `src/`
+- Needs engine: `src/lib/needs/` over `NEEDS_SNAPSHOT`; rebuild with `npm run build:needs`
 - Projections store: `useProjectionStore` (`@/store/projectionStore`) — Excel upload to localStorage
 - Live data hook: `useLiveData(areaId, year)` → `/api/live-data/[areaId]` → SQLite cache
 - No `preferRealData` toggle; all pages show refreshed live data where available and bundled official fallback data otherwise

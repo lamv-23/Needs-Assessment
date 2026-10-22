@@ -18,6 +18,8 @@ interface ChartWrapperProps {
   data?: Array<Record<string, unknown>>;
   dataKeys?: string[];
   xAxisKey?: string;
+  /** Excel header text by data key, for keys that `toHeaderLabel` would mangle (e.g. "City of Sydney" becomes "City OF Sydney"). */
+  headerLabels?: Record<string, string>;
   /** Optional summary stat shown when chart is collapsed */
   collapseSummary?: string;
   /** Start collapsed. Default: false (expanded) */
@@ -92,6 +94,7 @@ export default function ChartWrapper({
   data,
   dataKeys,
   xAxisKey = 'name',
+  headerLabels,
   collapseSummary,
   defaultCollapsed = false,
   caption,
@@ -227,7 +230,7 @@ export default function ChartWrapper({
       const allKeys = dataKeys && dataKeys.length > 0
         ? [xAxisKey, ...dataKeys].filter((k) => k in data[0])
         : Object.keys(data[0]);
-      const headerRow = allKeys.map(toHeaderLabel);
+      const headerRow = allKeys.map((k) => headerLabels?.[k] ?? toHeaderLabel(k));
       const dataRows = data.map((row) => allKeys.map((k) => row[k] ?? ''));
       const worksheet = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
       const workbook = XLSX.utils.book_new();
