@@ -4,16 +4,18 @@ import { usePathname } from 'next/navigation';
 import { useAppStore } from '@/store';
 import { MapPin, ChevronRight, Info } from 'lucide-react';
 
+/** Pages without the banner: the home dashboard, and /needs, which ignores the header area for its own LGA selection. */
+const HIDDEN_ON = ['/', '/needs'];
+
 /**
- * Shown at the top of every module page (not the home dashboard).
+ * Shown at the top of every module page that uses the header's area (not the home dashboard or /needs).
  * Tells users which area they're viewing and nudges them to pick their own.
  */
 export default function AreaContextBanner() {
   const pathname = usePathname();
   const { selectedArea } = useAppStore();
 
-  // Only show on module/tool pages, not the home dashboard
-  if (pathname === '/') return null;
+  if (HIDDEN_ON.includes(pathname)) return null;
 
   const isDefault = selectedArea?.id === 'lga_sydney';
 

@@ -21,7 +21,7 @@ npm run build:needs      # rebuild the LGA needs-assessment indicator snapshot (
 npm run build:geo        # regenerate public/geo/lga-nsw-simple.json (the /needs map's boundaries, ~1 MB) from public/geo/lga-nsw.json
 
 npm run parse:population  # regenerate src/lib/data/nsw-projections-data.ts from XLSX
-npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV
+npm run parse:employment  # regenerate src/lib/data/nsw-employment-projections.ts from CSV (does NOT reproduce the bundled file — see Data Sources)
 npm run parse:hts         # regenerate src/lib/data/hts-lga-data.ts (HTS all-purpose travel)
 npm run parse:jtw-flows -- <export.csv>  # regenerate src/lib/data/jtw-flows-data.ts from a TableBuilder export
 ```
