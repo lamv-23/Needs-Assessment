@@ -1,7 +1,7 @@
 import { INDICATOR_BY_ID } from './indicators';
 import { formatValue } from './format';
 import { settingOf, type Setting } from './peer-groups';
-import { needPercentile, universeRecords } from './scoring';
+import { SMALL_GROUP_SIZE, needPercentile, universeRecords } from './scoring';
 import type {
   AreaAssessment, IndicatorDef, IndicatorId, Insight, LgaIndicatorRecord, NeedsAssessment, Universe,
 } from './types';
@@ -189,13 +189,22 @@ export interface QuadrantData {
   yReversed: false;
 }
 
-/** The side of the median that means more need for `def`. */
-const pastMedian = (def: IndicatorDef, value: number, median: number): boolean =>
-  def.direction === 'higher' ? value > median : value < median;
+/** A value as the sentences print it, at the indicator's decimals. */
+const asPrinted = (def: IndicatorDef, value: number): number => Number(value.toFixed(def.decimals));
+
+/**
+ * The side of the median that means more need for `def`, decided on the printed values: one that prints the same
+ * as the median ("13.0% (median 13.0%)") is not past it, however far past it the unrounded value is.
+ */
+const pastMedian = (def: IndicatorDef, value: number, median: number): boolean => {
+  const [shown, shownMedian] = [asPrinted(def, value), asPrinted(def, median)];
+  return def.direction === 'higher' ? shown > shownMedian : shown < shownMedian;
+};
 
 /**
  * Both values are on the "more need" side of the group's medians: growth above and IRSD below the median,
- * departures per 1,000 residents below it. A value on the median is on neither side.
+ * departures per 1,000 residents below it, at the precision the sentences print (R54). A value on the median is on
+ * neither side.
  */
 export function inNeedQuadrant(spec: QuadrantSpec, x: number, y: number, medians: { x: number; y: number }): boolean {
   return pastMedian(INDICATOR_BY_ID[spec.x], x, medians.x) && pastMedian(INDICATOR_BY_ID[spec.y], y, medians.y);
@@ -269,9 +278,9 @@ export interface QuadrantPanel {
 }
 
 export interface QuadrantPanels {
-  /** One per comparison group of the selected areas, at most `MAX_QUADRANT_PANELS`, in selection order (metro before non-metro). */
+  /** At most `MAX_QUADRANT_PANELS` groups of the selected areas that are big enough, in selection order (metro before non-metro). */
   panels: QuadrantPanel[];
-  /** Under the panels: groups that are not drawn, and why a group is NSW as a whole. */
+  /** Under the panels: why the comparison is within a setting, groups too small to compare against and groups not drawn. */
   notes: string[];
 }
 
@@ -279,11 +288,21 @@ const SPANS_SETTINGS_NOTE = 'Selected LGAs span metropolitan and non-metropolita
 
 const hiddenGroupsNote = (n: number) => `${n} further comparison ${n === 1 ? 'group' : 'groups'} not shown.`;
 
+/** R56: against NSW a setting's panel is not what the radar's NSW percentiles rank the area in. */
+const settingNote = (labels: string[]) =>
+  `Compared with ${labels.join(' and ')} rather than all NSW LGAs, because NSW-wide service medians are set by rural `
+  + 'LGAs with little or no public transport.';
+
+const smallGroupsNote = (groups: Array<{ label: string; n: number }>) =>
+  `Too few LGAs to compare against a median: ${groups.map(g => `${g.label} (n = ${g.n})`).join(', ')}.`;
+
 /**
  * The scatter drawn once for each comparison group present among the selected areas (R51): against NSW the
- * metropolitan and non-metropolitan LGAs, otherwise the one group, or each region or peer group (at most
- * `MAX_QUADRANT_PANELS`; the rest are counted in a note). Each panel has its own grey points and medians, and holds
- * only the areas compared with it.
+ * metropolitan and non-metropolitan LGAs, otherwise the one group, or each region or peer group. A group with fewer
+ * than `SMALL_GROUP_SIZE` LGAs that have both values is not drawn (R55), as its median is a handful of points, and does
+ * not count towards the limit of `MAX_QUADRANT_PANELS`; it is named in a note. Of the others the groups with a selected
+ * area in a need quadrant are drawn first, then those in selection order; the rest are counted in a note. Each panel
+ * has its own grey points and medians, and holds only the areas compared with it.
  */
 export function quadrantPanels(a: NeedsAssessment, spec: QuadrantSpec): QuadrantPanels {
   const groups = new Map<string, QuadrantGroup>();
@@ -292,16 +311,26 @@ export function quadrantPanels(a: NeedsAssessment, spec: QuadrantSpec): Quadrant
     if (!groups.has(group.key)) groups.set(group.key, group);
   }
   // Metropolitan LGAs first, as the mismatch charts do (the sort is stable)
-  const ordered = Array.from(groups.values()).sort((p, q) => Number(q.key === 'metro') - Number(p.key === 'metro'));
-  const shown = ordered.slice(0, MAX_QUADRANT_PANELS);
+  const ordered = Array.from(groups.values())
+    .sort((p, q) => Number(q.key === 'metro') - Number(p.key === 'metro'))
+    .map(group => ({ group, n: statsOf(group, spec).complete.length }));
+  const small = ordered.filter(g => g.n < SMALL_GROUP_SIZE);
+  const large = ordered.filter(g => g.n >= SMALL_GROUP_SIZE);
+
+  const hasFinding = ({ group }: { group: QuadrantGroup }) => a.areas.some(
+    area => quadrantGroupOf(a, area).key === group.key && areaQuadrantInsights(a, area, '').length > 0,
+  );
+  const chosen = new Set([...large.filter(hasFinding), ...large.filter(g => !hasFinding(g))].slice(0, MAX_QUADRANT_PANELS));
+  const shown = large.filter(g => chosen.has(g));
+
+  const settings = shown.filter(g => g.group.key === 'metro' || g.group.key === 'non_metro').map(g => g.group.label);
   const notes = [
-    ...(shown.some(g => g.key === 'nsw') ? [SPANS_SETTINGS_NOTE] : []),
-    ...(ordered.length > shown.length ? [hiddenGroupsNote(ordered.length - shown.length)] : []),
+    ...(shown.some(g => g.group.key === 'nsw') ? [SPANS_SETTINGS_NOTE] : []),
+    ...(settings.length > 0 ? [settingNote(settings)] : []),
+    ...(small.length > 0 ? [smallGroupsNote(small.map(g => ({ label: g.group.label, n: g.n })))] : []),
+    ...(large.length > shown.length ? [hiddenGroupsNote(large.length - shown.length)] : []),
   ];
-  return {
-    panels: shown.map(group => ({ group, n: statsOf(group, spec).complete.length, data: quadrantData(a, spec, group) })),
-    notes,
-  };
+  return { panels: shown.map(({ group, n }) => ({ group, n, data: quadrantData(a, spec, group) })), notes };
 }
 
 // Quadrant findings
@@ -318,29 +347,24 @@ const QUADRANT_WORDING: Record<QuadrantSpec['id'], { group: string; measure: (x:
   },
 };
 
-/** The need percentile of `value` among the group's LGAs that have a value of `id`; null when none has. */
-function percentileInGroup(group: QuadrantGroup, id: IndicatorId, value: number): number | null {
-  const distribution = group.records.map(r => valueOf(r, id)).filter((v): v is number => v !== null);
-  return distribution.length > 0 ? needPercentile(value, distribution, INDICATOR_BY_ID[id].direction) : null;
-}
-
 /**
  * A cited insight for each chart whose need quadrant the area is in, against the same group, medians and label as
  * the chart's panel for the area, so the shading and the sentence always agree. `subject` starts the sentence
  * ("Blacktown", "The combined area"). Severity is the mean of the area's two need percentiles over 100, ranked
- * within that same group (R52), not in the universe the area is scored in: against NSW, Sydney's service looks good
- * and its findings would rank below the panel that shows them. Nothing for an area missing either value.
+ * within that same group (R52), among its LGAs with both values (the set the medians are over), not in the universe
+ * the area is scored in: against NSW, Sydney's service looks good and its findings would rank below the panel that
+ * shows them. Nothing for an area missing either value, nor for a group too small to have a median (R55).
  */
 export function areaQuadrantInsights(a: NeedsAssessment, area: AreaAssessment, subject: string): Insight[] {
   const group = quadrantGroupOf(a, area);
   return QUADRANT_SCATTERS.flatMap((spec): Insight[] => {
     const [x, y] = [scoreValue(area, spec.x), scoreValue(area, spec.y)];
-    const { medians } = statsOf(group, spec);
-    if (x === null || y === null || !inNeedQuadrant(spec, x, y, medians)) return [];
-    const [xPercentile, yPercentile] = [percentileInGroup(group, spec.x, x), percentileInGroup(group, spec.y, y)];
-    if (xPercentile === null || yPercentile === null) return [];
+    const { complete, medians } = statsOf(group, spec);
+    if (x === null || y === null || complete.length < SMALL_GROUP_SIZE || !inNeedQuadrant(spec, x, y, medians)) return [];
 
     const [xDef, yDef] = [INDICATOR_BY_ID[spec.x], INDICATOR_BY_ID[spec.y]];
+    const xPercentile = needPercentile(x, complete.map(c => c.x), xDef.direction);
+    const yPercentile = needPercentile(y, complete.map(c => c.y), yDef.direction);
     const wording = QUADRANT_WORDING[spec.id];
     return [{
       id: `quadrant:${area.areaId}:${spec.id}`,

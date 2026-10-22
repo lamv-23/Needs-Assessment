@@ -36,6 +36,9 @@ function makeRecord(areaId: string, name: string, growth: number | null, departu
   };
 }
 
+/** Five complete non-metropolitan LGAs: the least a comparison group needs to be drawn. */
+const FILLERS = [1, 2, 3, 4, 5].map(i => makeRecord(`lga_f${i}`, `F${i}`, i * 5, i));
+
 /** The first panel of the figure, for the tests of one panel. */
 const firstPanel = (a: NeedsAssessment, spec: QuadrantSpec, width?: number) => quadrantChartData(a, spec, width).panels[0];
 
@@ -48,7 +51,6 @@ describe('quadrantChartData: a panel', () => {
     expect(chart.others.map(d => d.id)).toEqual(data.points.map(p => p.areaId));
     expect(chart.selected.map(d => [d.name, d.color])).toEqual([['Blacktown', areaColor(0)], ['Penrith', areaColor(1)]]);
     expect(chart.groupLabel).toBe('Greater Sydney LGAs');
-    expect(chart.message).toBeNull();
   });
 
   test('tooltips name the area and both values', () => {
@@ -92,8 +94,8 @@ describe('quadrantChartData: a panel', () => {
 
   test('Greater Sydney is a marker with the benchmark values', () => {
     expect(chart.greaterSydney).toMatchObject({ name: 'Greater Sydney', x: data.greaterSydney!.x, y: data.greaterSydney!.y });
-    const fixture = [makeRecord('lga_a', 'A', 10, 5), makeRecord('lga_b', 'B', 20, 6)];
-    expect(firstPanel(assess(['lga_a'], 'separate', 'nsw', fixture), GROWTH_SERVICE).greaterSydney).toBeNull();
+    // a panel of non-metropolitan LGAs has no marker
+    expect(firstPanel(assess(['lga_f1'], 'separate', 'nsw', FILLERS), GROWTH_SERVICE).greaterSydney).toBeNull();
   });
 
   test('says which selected areas are in the need quadrant', () => {
@@ -102,8 +104,9 @@ describe('quadrantChartData: a panel', () => {
     expect(chart.inQuadrantText).toBe(
       inside.length === 1 ? `${inside[0]} is in the shaded group.` : `${inside.join(' and ')} are in the shaded group.`,
     );
+    // otherwise it names the panel's own selected areas
     const none = firstPanel(assess(['lga_sydney'], 'separate', 'gsyd'), GROWTH_SERVICE);
-    expect(none.inQuadrantText).toBe('None of the selected areas is in the shaded group.');
+    expect(none.inQuadrantText).toBe('City of Sydney is not in the shaded group.');
   });
 });
 
@@ -152,6 +155,7 @@ describe('quadrantChartData: a panel with missing values', () => {
     makeRecord('lga_b', 'B', 20, 6),
     makeRecord('lga_c', 'C', null, 7),
     makeRecord('lga_d', 'D', 30, null),
+    ...FILLERS.slice(0, 3),
   ];
 
   test('selected areas without both values are listed in a note, not plotted', () => {
@@ -166,14 +170,14 @@ describe('quadrantChartData: a panel with missing values', () => {
     expect(second.selected[0].color).toBe(areaColor(1));
   });
 
-  test('nothing to plot gives a message, not an empty chart', () => {
-    const chart = firstPanel(assess(['lga_c'], 'separate', 'nsw', [makeRecord('lga_c', 'C', null, 7)]), GROWTH_SERVICE);
-    expect(chart.message).toBe('There is no population growth or AM-peak service data to plot for non-metropolitan LGAs.');
-    expect(chart.selected).toEqual([]);
-    expect(chart.others).toEqual([]);
-    expect(chart.quadrant).toBeNull();
-    expect(firstPanel(assess(['lga_c'], 'separate', 'nsw', [makeRecord('lga_c', 'C', null, 7)]), DISADVANTAGE_SERVICE).message)
-      .toBeNull();
+  test('a group too small to have a median has no panel, only a note (R55)', () => {
+    const c = [makeRecord('lga_c', 'C', null, 7)];
+    expect(quadrantChartData(assess(['lga_c'], 'separate', 'nsw', c), GROWTH_SERVICE)).toEqual({
+      panels: [],
+      notes: ['Too few LGAs to compare against a median: non-metropolitan LGAs (n = 0).'],
+    });
+    expect(quadrantChartData(assess(['lga_c'], 'separate', 'nsw', c), DISADVANTAGE_SERVICE).notes)
+      .toEqual(['Too few LGAs to compare against a median: non-metropolitan LGAs (n = 1).']);
   });
 
   test('a combined area marks a population-weighted value as approximate', () => {
@@ -188,7 +192,10 @@ describe('quadrantChartData: a panel with missing values', () => {
 describe('quadrantChartData: panels', () => {
   test('one panel per comparison group, headed with its group and n, metropolitan first', () => {
     const { panels, notes } = quadrantChartData(assess(['lga_newcastle', 'lga_blacktown']), GROWTH_SERVICE);
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([
+      'Compared with metropolitan LGAs and non-metropolitan LGAs rather than all NSW LGAs, because NSW-wide service medians '
+      + 'are set by rural LGAs with little or no public transport.',
+    ]);
     expect(panels.map(p => p.key)).toEqual(['metro', 'non_metro']);
     expect(panels[0].heading).toBe('Metropolitan LGAs (n = 34)');
     expect(panels[1].heading).toMatch(/^Non-metropolitan LGAs \(n = \d+\)$/);
@@ -218,6 +225,20 @@ describe('quadrantChartData: panels', () => {
     const { panels } = quadrantChartData(assess(['lga_blacktown', 'lga_penrith']), GROWTH_SERVICE);
     expect(panels).toHaveLength(1);
     expect(panels[0].inQuadrantText).toBe('Blacktown and Penrith are in the shaded group.');
+  });
+
+  test('a panel says which of its own selected areas are not in the shaded group', () => {
+    const [metro, nonMetro] = quadrantChartData(assess(['lga_blacktown', 'lga_newcastle']), GROWTH_SERVICE).panels;
+    expect(metro.inQuadrantText).toBe('Blacktown is in the shaded group.');
+    expect(nonMetro.inQuadrantText).toBe('Newcastle is not in the shaded group.');
+    // Blacktown and Penrith are not past the medians of the outer metropolitan LGAs
+    const outer = quadrantChartData(assess(['lga_blacktown', 'lga_penrith'], 'separate', 'peer'), GROWTH_SERVICE).panels[0];
+    expect(outer.inQuadrantText).toBe('Blacktown and Penrith are not in the shaded group.');
+  });
+
+  test('an area with no data has nothing to say about the shaded group', () => {
+    const records = [makeRecord('lga_c', 'C', null, 7), ...FILLERS];
+    expect(firstPanel(assess(['lga_c'], 'separate', 'nsw', records), GROWTH_SERVICE).inQuadrantText).toBeNull();
   });
 
   test('the notes of the figure come from the panels', () => {

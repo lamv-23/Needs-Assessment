@@ -9,6 +9,7 @@ import {
   MAX_RADAR_AREAS, QUADRANT_SCATTERS, RADAR_AXES, inNeedQuadrant, quadrantData, quadrantGroupOf, quadrantInsights,
   quadrantPanels, radarData, radarGaps, typicalLabel, type QuadrantSpec,
 } from '@/lib/needs/project-need';
+import { SMALL_GROUP_SIZE } from '@/lib/needs/scoring';
 import type {
   IndicatorId, IndicatorValue, InsightSeries, LgaIndicatorRecord, NeedsAssessment, NeedsMode, Universe,
 } from '@/lib/needs/types';
@@ -274,7 +275,8 @@ describe('quadrantGroupOf', () => {
 describe('quadrantPanels: one panel per comparison group', () => {
   test('nsw, Blacktown and Penrith: one metropolitan panel with its own medians (R51)', () => {
     const { panels, notes } = quadrantPanels(assess(['lga_blacktown', 'lga_penrith']), GROWTH_SERVICE);
-    expect(notes).toEqual([]);
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatch(/^Compared with metropolitan LGAs rather than all NSW LGAs/);
     expect(panels).toHaveLength(1);
     const [panel] = panels;
     expect(panel.group.label).toBe('metropolitan LGAs');
@@ -319,20 +321,20 @@ describe('quadrantPanels: one panel per comparison group', () => {
     expect(panels[0].data.greaterSydney).not.toBeNull();
   });
 
-  test('region and peer: a panel for each distinct group in selection order, at most 3, the rest counted', () => {
-    for (const [universe, by] of [['region', 'region'], ['peer', 'peerGroup']] as const) {
-      const ids = onePerGroup(by, 5);
-      expect(ids).toHaveLength(5);
-      const a = assess(ids, 'separate', universe);
-      const { panels, notes } = quadrantPanels(a, GROWTH_SERVICE);
-      expect(panels.map(p => p.group.label)).toEqual(a.areas.slice(0, 3).map(area => area.universeLabel));
-      expect(panels.map(p => p.data.selected.map(s => s.areaId))).toEqual(ids.slice(0, 3).map(id => [id]));
-      expect(panels.every(p => p.data.greaterSydney === null)).toBe(true);
-      expect(notes).toEqual(['2 further comparison groups not shown.']);
-      expect(quadrantPanels(assess(ids.slice(0, 4), 'separate', universe), GROWTH_SERVICE).notes)
-        .toEqual(['1 further comparison group not shown.']);
-      expect(quadrantPanels(assess(ids.slice(0, 3), 'separate', universe), GROWTH_SERVICE).notes).toEqual([]);
-    }
+  test('peer groups: at most 3 panels, in selection order, the rest counted', () => {
+    const ids = onePerGroup('peerGroup', 5);
+    expect(ids).toHaveLength(5);
+    const a = assess(ids, 'separate', 'peer');
+    const { panels, notes } = quadrantPanels(a, GROWTH_SERVICE);
+    expect(panels).toHaveLength(3);
+    // which three is decided by findings (below); they are drawn in the order they were selected
+    const position = panels.map(p => ids.indexOf(p.data.selected[0].areaId));
+    expect(position).toEqual([...position].sort((x, y) => x - y));
+    expect(panels.every(p => p.data.selected.length === 1 && p.data.greaterSydney === null)).toBe(true);
+    expect(notes).toEqual(['2 further comparison groups not shown.']);
+    expect(quadrantPanels(assess(ids.slice(0, 4), 'separate', 'peer'), GROWTH_SERVICE).notes)
+      .toEqual(['1 further comparison group not shown.']);
+    expect(quadrantPanels(assess(ids.slice(0, 3), 'separate', 'peer'), GROWTH_SERVICE).notes).toEqual([]);
   });
 
   test('areas of one group share a panel', () => {
@@ -361,6 +363,93 @@ describe('quadrantPanels: one panel per comparison group', () => {
 
   test('no areas: no panels', () => {
     expect(quadrantPanels(assess([]), GROWTH_SERVICE)).toEqual({ panels: [], notes: [] });
+  });
+});
+
+/**
+ * Regions of five LGAs each, 'R1' to 'R4', plus small ones, every LGA at (growth, departures) = (10, 50), (20, 40), (30, 30),
+ * (40, 20) and (50, 10), so a region has medians of 30 and 30. The k-th LGA of a region is 'lga_r{n}_{k}': k = 0 is out
+ * of the need quadrant (low growth, high service) and k = 4 is in it.
+ */
+function regionRecords(sizes: Record<string, number> = { R1: 5, R2: 5, R3: 5, R4: 5, Tiny: 2, Tiny2: 3 }): LgaIndicatorRecord[] {
+  const pairs = [[10, 50], [20, 40], [30, 30], [40, 20], [50, 10]];
+  return Object.entries(sizes).flatMap(([region, size]) => pairs.slice(0, size).map(([growth, departures], k) => makeRecord(
+    `lga_${region.toLowerCase()}_${k}`,
+    { name: `${region} ${k}`, region, values: { pop_growth_2041: { value: growth }, am_peak_departures_per_1000: { value: departures } } },
+  )));
+}
+
+describe('quadrantPanels: small groups and which groups are drawn (R55)', () => {
+  const records = regionRecords();
+  const SMALL_NOTE = (what: string) => `Too few LGAs to compare against a median: ${what}.`;
+  const panelsOf = (ids: string[]) => quadrantPanels(assess(ids, 'separate', 'region', records), GROWTH_SERVICE);
+
+  test('a group with fewer than 5 LGAs is not drawn and is named in a note', () => {
+    expect(SMALL_GROUP_SIZE).toBe(5);
+    const { panels, notes } = panelsOf(['lga_r1_0', 'lga_tiny_1']);
+    expect(panels.map(p => p.group.label)).toEqual(['LGAs in the R1 region']);
+    expect(notes).toEqual([SMALL_NOTE('LGAs in the Tiny region (n = 2)')]);
+    // a group of exactly 5 is large enough
+    expect(panelsOf(['lga_r1_0']).panels).toHaveLength(1);
+  });
+
+  test('several small groups are listed together, comma-separated', () => {
+    const { panels, notes } = panelsOf(['lga_tiny_1', 'lga_tiny2_1']);
+    expect(panels).toEqual([]);
+    expect(notes).toEqual([SMALL_NOTE('LGAs in the Tiny region (n = 2), LGAs in the Tiny2 region (n = 3)')]);
+  });
+
+  test('a small group does not use up one of the 3 panel slots', () => {
+    const { panels, notes } = panelsOf(['lga_r1_0', 'lga_tiny_1', 'lga_r2_0', 'lga_r3_0']);
+    expect(panels.map(p => p.group.label)).toEqual(['LGAs in the R1 region', 'LGAs in the R2 region', 'LGAs in the R3 region']);
+    expect(notes).toEqual([SMALL_NOTE('LGAs in the Tiny region (n = 2)')]);
+  });
+
+  test('no finding for an area of a small group, though it would be in the quadrant of its own two LGAs', () => {
+    const a = assess(['lga_tiny_1'], 'separate', 'region', records);
+    // (20, 40) against the medians 15 and 45 of a group of two: above on growth and below on service
+    expect(quadrantData(a, GROWTH_SERVICE).selected[0].inNeedQuadrant).toBe(true);
+    expect(quadrantInsights(assess(['lga_tiny_1', 'lga_r3_4'], 'separate', 'region', records)).map(i => i.areaId)).toEqual(['lga_r3_4']);
+  });
+
+  test('groups with an area in a need quadrant are drawn first, then selection order; panels stay in selection order', () => {
+    // R1 and R2 have no area in the quadrant, R3 and R4 do: only three of the four are drawn
+    const { panels, notes } = panelsOf(['lga_r1_0', 'lga_r2_0', 'lga_r3_4', 'lga_r4_4']);
+    expect(panels.map(p => p.group.label)).toEqual(['LGAs in the R1 region', 'LGAs in the R3 region', 'LGAs in the R4 region']);
+    expect(notes).toEqual(['1 further comparison group not shown.']);
+    // when none has a finding the first three in selection order are drawn
+    const none = panelsOf(['lga_r4_0', 'lga_r3_0', 'lga_r2_0', 'lga_r1_0']);
+    expect(none.panels.map(p => p.group.label)).toEqual(['LGAs in the R4 region', 'LGAs in the R3 region', 'LGAs in the R2 region']);
+  });
+
+  test('on real data Central Coast, a region of one LGA, is not drawn and its area has no finding', () => {
+    const a = assess(['lga_blacktown', 'lga_newcastle', 'lga_central_coast', 'lga_shoalhaven'], 'separate', 'region');
+    const { panels, notes } = quadrantPanels(a, GROWTH_SERVICE);
+    expect(panels.length).toBeGreaterThan(0);
+    for (const panel of panels) expect(panel.n).toBeGreaterThanOrEqual(SMALL_GROUP_SIZE);
+    expect(notes.find(n => n.startsWith('Too few LGAs'))).toContain('LGAs in the Central Coast region (n = 1)');
+    expect(quadrantInsights(a).map(i => i.areaId)).not.toContain('lga_central_coast');
+  });
+});
+
+describe('quadrantPanels: the note on comparing within a setting (R56)', () => {
+  const NOTE = (labels: string) => `Compared with ${labels} rather than all NSW LGAs, because NSW-wide service medians are set by rural LGAs with little or no public transport.`;
+  const notesOf = (ids: string[], mode: NeedsMode = 'separate', universe: Universe = 'nsw') =>
+    quadrantPanels(assess(ids, mode, universe), GROWTH_SERVICE).notes;
+
+  test('against NSW the panel groups are named, once', () => {
+    expect(notesOf(['lga_blacktown', 'lga_penrith'])).toEqual([NOTE('metropolitan LGAs')]);
+    expect(notesOf(['lga_newcastle', 'lga_blacktown'])).toEqual([NOTE('metropolitan LGAs and non-metropolitan LGAs')]);
+    expect(notesOf(['lga_newcastle', 'lga_wollongong'])).toEqual([NOTE('non-metropolitan LGAs')]);
+    expect(notesOf(['lga_blacktown', 'lga_penrith'], 'combined')).toEqual([NOTE('metropolitan LGAs')]);
+  });
+
+  test('no note when the group is the universe asked for, or NSW as a whole', () => {
+    expect(notesOf(['lga_blacktown', 'lga_newcastle'], 'separate', 'gsyd')).toEqual([]);
+    expect(notesOf(['lga_blacktown', 'lga_penrith'], 'separate', 'peer')).toEqual([]);
+    expect(notesOf(['lga_blacktown', 'lga_newcastle'], 'combined')).toEqual([
+      'Selected LGAs span metropolitan and non-metropolitan settings; medians are NSW-wide.',
+    ]);
   });
 });
 
@@ -444,6 +533,21 @@ describe('inNeedQuadrant', () => {
   test('a value on the median is not past it', () => {
     expect(inNeedQuadrant(GROWTH_SERVICE, 24.8, 32.5, medians)).toBe(false);
     expect(inNeedQuadrant(GROWTH_SERVICE, 40.9, 35, medians)).toBe(false);
+  });
+
+  test('membership is decided at the precision the sentence prints, with a strict pass (R54)', () => {
+    // 24.84 prints as 24.8%, the median's own text, so it is not above it; 24.86 prints as 24.9%
+    expect(inNeedQuadrant(GROWTH_SERVICE, 24.84, 32.5, medians)).toBe(false);
+    expect(inNeedQuadrant(GROWTH_SERVICE, 24.86, 32.5, medians)).toBe(true);
+    // 34.96 prints as 35.0, the median's text; 34.94 prints as 34.9
+    expect(inNeedQuadrant(GROWTH_SERVICE, 40.9, 34.96, medians)).toBe(false);
+    expect(inNeedQuadrant(GROWTH_SERVICE, 40.9, 34.94, medians)).toBe(true);
+    // a median that is not itself a printed value is rounded too: 24.84 prints as 24.8
+    expect(inNeedQuadrant(GROWTH_SERVICE, 24.9, 32.5, { x: 24.84, y: 35 })).toBe(true);
+    // SEIFA prints whole numbers
+    const m = { x: 1000, y: 35 };
+    expect(inNeedQuadrant(DISADVANTAGE_SERVICE, 999.6, 32.5, m)).toBe(false);
+    expect(inNeedQuadrant(DISADVANTAGE_SERVICE, 999.4, 32.5, m)).toBe(true);
   });
 
   test('without medians (an empty group) nothing is in the quadrant', () => {
@@ -569,6 +673,51 @@ describe('quadrantInsights', () => {
     expect(growth.severity).toBeCloseTo(6 / 7, 12);
   });
 
+  test('a value just past the median that prints the same as it is not in the quadrant: no finding (R54)', () => {
+    const withValues = (values: Values) => fiveRecords().map(r => (r.areaId === 'lga_blacktown'
+      ? { ...r, values: { ...r.values, ...values } } : r));
+    const ids = (values: Values) => quadrantInsights(assess(['lga_blacktown'], 'separate', 'nsw', withValues(values))).map(i => i.id);
+    // growth 24.84 is above the median 24.8 but prints as 24.8%; only the disadvantage chart has a finding
+    expect(ids({ pop_growth_2041: { value: 24.84 } })).toEqual(['quadrant:lga_blacktown:disadvantage-service']);
+    expect(ids({ pop_growth_2041: { value: 24.86 } })).toEqual([
+      'quadrant:lga_blacktown:growth-service', 'quadrant:lga_blacktown:disadvantage-service',
+    ]);
+    // departures 34.96 is below the median 35.0 but prints as 35.0: neither chart has a finding
+    expect(ids({ am_peak_departures_per_1000: { value: 34.96 } })).toEqual([]);
+    expect(ids({ am_peak_departures_per_1000: { value: 34.94 } })).toHaveLength(2);
+  });
+
+  test('on real data no finding prints a value equal to its median (R54)', () => {
+    const equal: string[] = [];
+    let checked = 0;
+    for (const universe of ['nsw', 'gsyd', 'region', 'peer'] as const) {
+      for (const r of NEEDS_SNAPSHOT.records) {
+        for (const insight of quadrantInsights(assess([r.areaId], 'separate', universe))) {
+          const m = /of (\S+) \(median (\S+)\) and (\S+) AM-peak departures per 1,000 residents \(median (\S+)\)/.exec(insight.text);
+          expect(m).not.toBeNull();
+          checked++;
+          if (m && (m[1] === m[2] || m[3] === m[4])) equal.push(insight.text);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
+    expect(equal).toEqual([]);
+  });
+
+  test('Lockhart (region) and Cowra (peer), whose growth printed the same as the median, have no growth finding', () => {
+    const growth = (areaId: string, universe: Universe) => quadrantInsights(assess([areaId], 'separate', universe))
+      .filter(i => i.id.endsWith(':growth-service'));
+    expect(growth('lga_lockhart', 'region')).toEqual([]);
+    expect(growth('lga_cowra', 'peer')).toEqual([]);
+  });
+
+  test('severity ranks the area among the LGAs with both values, the set the medians are over (R54)', () => {
+    // 'lga_hills' has growth but no departures; counted, it would make Blacktown's growth percentile 75 rather than 90
+    const oneValue = makeRecord('lga_hills', { name: 'One value', values: { pop_growth_2041: { value: 100 } } });
+    const a = assess(['lga_blacktown'], 'separate', 'nsw', [...fiveRecords(), oneValue]);
+    expect(find('quadrant:lga_blacktown:growth-service', a).severity).toBeCloseTo((90 + 70) / 2 / 100, 12);
+  });
+
   test('an area outside the need quadrant has no insight', () => {
     const outside = assess(['lga_liverpool'], 'separate', 'nsw', fiveRecords());
     expect(quadrantInsights(outside)).toEqual([]);
@@ -653,6 +802,8 @@ describe('quadrant shading and findings always agree (R51)', () => {
     ['combined, peer', ['lga_blacktown', 'lga_penrith'], 'combined', 'peer', false],
     ['combined spanning peer groups, peer (falls back to NSW)', ['lga_blacktown', 'lga_newcastle'], 'combined', 'peer', false],
     ['combined, region', ['lga_blacktown', 'lga_penrith'], 'combined', 'region', true],
+    ['Blacktown, Newcastle, Central Coast and Shoalhaven, region', ['lga_blacktown', 'lga_newcastle', 'lga_central_coast', 'lga_shoalhaven'], 'separate', 'region', true],
+    ['every LGA, region (small regions among them)', allIds, 'separate', 'region', true],
   ];
 
   test.each(selections)('%s', (_name, ids, mode, universe, hasFindings) => {
@@ -661,21 +812,35 @@ describe('quadrant shading and findings always agree (R51)', () => {
     let shaded = 0;
     for (const spec of QUADRANT_SCATTERS) {
       const [xDef, yDef] = [INDICATOR_BY_ID[spec.x], INDICATOR_BY_ID[spec.y]];
-      for (const { group, data } of quadrantPanels(a, spec).panels) {
-        for (const s of data.selected) {
-          const insight = insights.find(i => i.id === `quadrant:${s.areaId}:${spec.id}`);
-          // the chart puts the area in the quadrant exactly when there is a finding about it
-          expect(insight !== undefined).toBe(s.inNeedQuadrant);
-          if (!insight) continue;
-          shaded++;
-          // ... which names the panel's group and quotes its medians
-          expect(insight.text.endsWith(` among ${group.label}.`)).toBe(true);
-          expect(insight.text).toContain(`(median ${formatValue(xDef, data.medians.x)})`);
-          expect(insight.text).toContain(`(median ${data.medians.y.toFixed(yDef.decimals)})`);
-          // ... and the values it states are the point the chart draws
-          expect(insight.text).toContain(`of ${formatValue(xDef, s.x!)} (median`);
-          expect(insight.text).toContain(`and ${s.y!.toFixed(yDef.decimals)} AM-peak departures`);
+      const { panels, notes } = quadrantPanels(a, spec);
+      const drawn = new Map(panels.map(p => [p.group.key, p]));
+      for (const area of a.areas) {
+        const group = quadrantGroupOf(a, area);
+        const insight = insights.find(i => i.id === `quadrant:${area.areaId}:${spec.id}`);
+        if (group.records.filter(both(spec)).length < SMALL_GROUP_SIZE) {
+          // a group too small to have a median has no panel and no finding
+          expect(insight).toBeUndefined();
+          expect(drawn.has(group.key)).toBe(false);
+          continue;
         }
+        const panel = drawn.get(group.key);
+        if (!panel) {
+          // a group that is not drawn is counted in the note under the panels
+          expect(notes.some(note => /further comparison groups? not shown/.test(note))).toBe(true);
+          continue;
+        }
+        const s = panel.data.selected.find(x => x.areaId === area.areaId)!;
+        // the chart puts the area in the quadrant exactly when there is a finding about it
+        expect(insight !== undefined).toBe(s.inNeedQuadrant);
+        if (!insight) continue;
+        shaded++;
+        // ... which names the panel's group and quotes its medians
+        expect(insight.text.endsWith(` among ${panel.group.label}.`)).toBe(true);
+        expect(insight.text).toContain(`(median ${formatValue(xDef, panel.data.medians.x)})`);
+        expect(insight.text).toContain(`(median ${panel.data.medians.y.toFixed(yDef.decimals)})`);
+        // ... and the values it states are the point the chart draws
+        expect(insight.text).toContain(`of ${formatValue(xDef, s.x!)} (median`);
+        expect(insight.text).toContain(`and ${s.y!.toFixed(yDef.decimals)} AM-peak departures`);
       }
     }
     // a selection with nothing in a quadrant would prove nothing

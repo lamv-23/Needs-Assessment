@@ -7,7 +7,8 @@ import type {
 } from './types';
 
 export const KEY_NEED_PERCENTILE = 80;
-const SMALL_GROUP_SIZE = 5;
+/** A comparison group with fewer LGAs than this is too small to rank in or to take a median of. */
+export const SMALL_GROUP_SIZE = 5;
 
 type UniverseTarget = { region: string; peerGroup: PeerGroup | null };
 

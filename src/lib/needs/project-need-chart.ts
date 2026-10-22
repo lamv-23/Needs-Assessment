@@ -64,12 +64,10 @@ export interface QuadrantChart {
   greaterSydney: QuadrantMarker | null;
   /** "2 of 5 selected LGAs have no ... and are not shown: A and B."; null when every selected area is plotted. */
   noDataText: string | null;
-  /** Which of the selected areas are in the need quadrant, as a sentence for the note under the chart. */
-  inQuadrantText: string;
+  /** Which of the panel's plotted areas are in the need quadrant, or are not, as a sentence for the note under it; null when none is plotted. */
+  inQuadrantText: string | null;
   /** Plotted areas drawn without a name. */
   unnamedCount: number;
-  /** Shown instead of the plot when there is nothing to plot. */
-  message: string | null;
 }
 
 const X_TITLES: Record<QuadrantSpec['id'], string> = {
@@ -83,10 +81,15 @@ const MISSING: Record<QuadrantSpec['id'], string> = {
   'disadvantage-service': 'SEIFA or AM-peak service data',
 };
 
-/** "A and B are in the shaded group." / "None of the selected areas is in the shaded group." */
-function inQuadrantText(names: string[]): string {
-  if (names.length === 0) return 'None of the selected areas is in the shaded group.';
-  return `${nameList(names)} ${names.length === 1 ? 'is' : 'are'} in the shaded group.`;
+/**
+ * "A and B are in the shaded group." for the areas in the need quadrant; when none is, "A and B are not in the shaded
+ * group." naming the panel's own areas. Null when no area is plotted.
+ */
+function inQuadrantText(plotted: Array<{ name: string; inNeedQuadrant: boolean }>): string | null {
+  const inside = plotted.filter(d => d.inNeedQuadrant).map(d => d.name);
+  const names = inside.length > 0 ? inside : plotted.map(d => d.name);
+  if (names.length === 0) return null;
+  return `${nameList(names)} ${names.length === 1 ? 'is' : 'are'}${inside.length > 0 ? '' : ' not'} in the shaded group.`;
 }
 
 /** The part of `axis` on the "more need" side of `median` for `def`. */
@@ -150,22 +153,7 @@ function panelChart(a: NeedsAssessment, spec: QuadrantSpec, { group, n, data }: 
 
   const xs = [...others, ...plotted].map(d => d.x).concat(gsyd ? [gsyd.x] : [], medians ? [medians.x] : []);
   const ys = [...others, ...plotted].map(d => d.y).concat(gsyd ? [gsyd.y] : [], medians ? [medians.y] : []);
-  if (xs.length === 0) {
-    return {
-      ...base,
-      xAxis: { lo: 0, hi: 1, ticks: [0, 1] },
-      yAxis: { lo: 0, hi: 1, ticks: [0, 1] },
-      medians: null,
-      quadrant: null,
-      others: [],
-      selected: [],
-      greaterSydney: null,
-      inQuadrantText: inQuadrantText([]),
-      unnamedCount: 0,
-      message: `There is no ${MISSING[spec.id]} to plot for ${group.label}.`,
-    };
-  }
-
+  // A drawn group has at least `SMALL_GROUP_SIZE` LGAs with both values, so its medians are among these values
   const [minX, maxX] = [Math.min(...xs), Math.max(...xs)];
   const xAxis = niceAxis(minX, maxX, { floor: minX >= 0 ? 0 : undefined });
   const yAxis = niceAxis(Math.min(...ys), Math.max(...ys), { floor: 0 });
@@ -218,9 +206,8 @@ function panelChart(a: NeedsAssessment, spec: QuadrantSpec, { group, n, data }: 
       tooltip: tooltip(gsydName, gsyd.x, gsyd.y),
       placement: placements[placements.length - 1],
     },
-    inQuadrantText: inQuadrantText(plotted.filter(d => d.inNeedQuadrant).map(d => d.name)),
+    inQuadrantText: inQuadrantText(plotted),
     unnamedCount: plotted.filter(d => d.placement === null).length,
-    message: null,
   };
 }
 
