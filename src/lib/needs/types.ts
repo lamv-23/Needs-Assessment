@@ -93,6 +93,34 @@ export interface AreaAssessment {
 
 export interface NeedsSnapshot { generatedAt: string; records: LgaIndicatorRecord[] }
 
+/** A combined selection or a benchmark, rolled up from the member LGAs it covers. */
+export type AggregatedRecord = AssessableRecord & {
+  memberIds: string[];
+  /** Weighted (non-additive) indicators with at least one member value: population-weighted means. */
+  approximate: IndicatorId[];
+  /** Indicators where some, but not all, members have no value. */
+  partial: IndicatorId[];
+};
+
+export type NeedsMode = 'separate' | 'combined';
+
+export interface NeedsAssessment {
+  mode: NeedsMode;
+  /** The universe actually used. Differs from the one requested only when `universeFallback` is true. */
+  universe: Universe;
+  /** A combined selection asked for a region or peer universe but spans several, so NSW was used instead. */
+  universeFallback: boolean;
+  /** One per LGA (separate), or exactly one with `areaId` 'combined' (combined); empty when nothing valid is selected. */
+  areas: AreaAssessment[];
+  memberIds: string[];
+  invalidIds: string[];
+  benchmarks: { gsyd: AreaAssessment; nsw: AreaAssessment };
+  benchmarkRecords: { gsyd: AggregatedRecord; nsw: AggregatedRecord };
+  /** The full snapshot, for strip plots and the map. */
+  records: LgaIndicatorRecord[];
+  generatedAt: string;
+}
+
 export interface LiveBundle {
   demographics: DemographicsData;
   transport: TransportData;
