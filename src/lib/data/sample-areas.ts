@@ -184,6 +184,24 @@ export const SAMPLE_AREAS: Area[] = [
   { id: 'sub_hornsby',         name: 'Hornsby',     type: 'suburb', parentId: 'lga_hornsby',              centroidLat: -33.7046, centroidLng: 151.0985 },
 ];
 
+/** NSW region names in display order (AreaSelector, /needs region quick-add). */
+export const NSW_REGIONS: readonly string[] = [
+  'Greater Sydney',
+  'Hunter',
+  'Central Coast',
+  'Illawarra-Shoalhaven',
+  'South East & Tablelands',
+  'New England & North West',
+  'North Coast',
+  'Central West & Orana',
+  'Riverina-Murray',
+  'Far West',
+];
+
+export function lgasInRegion(region: string): Area[] {
+  return SAMPLE_AREAS.filter((a) => a.type === 'lga' && a.region === region);
+}
+
 /**
  * LGAs making up the ABS Greater Sydney GCCSA — the definition used for every
  * Greater Sydney benchmark. This is the 'Greater Sydney' region above plus

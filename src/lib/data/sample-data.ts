@@ -19,6 +19,8 @@ export interface DemographicsData {
   limitedEnglish?: number;
   disabilityRate?: number;
   needsAssistance?: number;
+  /** Aboriginal and/or Torres Strait Islander persons, Census 2021 (G01 PCHAR A_T). */
+  indigenousPopulation?: number;
   familyComposition?: { name: string; value: number }[];
 }
 
