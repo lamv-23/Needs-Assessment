@@ -146,6 +146,12 @@ These figures show the case for transport projects in the selected areas, compar
 
 Medians are computed per panel. Quadrant findings compare each area against its own panel's group and use that group's label as {universeLabel}, so the chart shading and the text always agree.
 
+Further rules:
+- **R53 labelling:** areas in the need quadrant are named first, then the rest in selection order, up to `MAX_LABELLED`.
+- **R54 membership:** decided at display precision. The value and the median are rounded to the indicator's display decimals, and the value must be strictly past the median. Severity percentiles are taken over the same LGA set as the medians.
+- **R55 small groups:** groups with n < 5 get no panel and no quadrant finding, and don't use up the 3 panel slots. A note lists them: "Too few LGAs to compare against a median: {group} (n = N)."
+- **R56 comparison note:** when a panel group differs from the comparison universe, a note explains that NSW-wide service medians are set by rural LGAs with little or no public transport.
+
 **Quadrant findings.** Each selected area in a need quadrant gets a cited insight (kind `quadrant`), which can appear in Key findings. Exact templates:
 - "{Subject} is in the high-growth, low-service group: population growth to 2041 of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
 - "{Subject} is in the high-disadvantage, low-service group: a SEIFA IRSD score of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
