@@ -41,6 +41,9 @@ next-env.d.ts
 # SA2 boundaries: the unsimplified intermediate (npm run fetch:sa2-boundaries); sa2-nsw-simple.json ships
 public/geo/sa2-nsw.json
 
+# Build-time database (SA2 Census cache, mesh blocks, GTFS stop frequency); not shipped
+data/build.db*
+
 # IDE
 .idea/
 .vscode/

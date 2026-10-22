@@ -20,6 +20,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "seed:gtfs": "tsx scripts/seed-gtfs.ts",
+    "seed:sa2": "tsx scripts/seed-sa2.ts",
     "seed:transport": "tsx scripts/seed-official-transport.ts",
     "build:fallbacks": "tsx scripts/build-fallbacks.ts",
     "build:needs": "tsx scripts/build-needs-indicators.ts",
