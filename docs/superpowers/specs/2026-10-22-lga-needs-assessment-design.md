@@ -139,6 +139,13 @@ These figures show the case for transport projects in the selected areas, compar
 
 - The y axis is departures per 1,000 residents, not frequent-stop share, because 67 LGAs have a frequent-stop share of 0.
 
+**Panels (R51, 2026-10-23).** NSW-wide medians are set by rural LGAs with almost no service (median 5.6 AM-peak departures per 1,000), which would put no Sydney LGA in "low service". So each scatter draws one panel per comparison group present among the selected areas:
+- Universe `nsw`: one panel per setting. Metro means the 34 GCCSA LGAs, labelled "metropolitan LGAs"; non-metro means the other 94, labelled "non-metropolitan LGAs".
+- Universe `gsyd`: one panel.
+- Universe `region` or `peer`: one panel per distinct group, up to 3, with a note if more are hidden.
+
+Medians are computed per panel. Quadrant findings compare each area against its own panel's group and use that group's label as {universeLabel}, so the chart shading and the text always agree.
+
 **Quadrant findings.** Each selected area in a need quadrant gets a cited insight (kind `quadrant`), which can appear in Key findings. Exact templates:
 - "{Subject} is in the high-growth, low-service group: population growth to 2041 of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
 - "{Subject} is in the high-disadvantage, low-service group: a SEIFA IRSD score of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
