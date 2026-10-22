@@ -15,6 +15,7 @@ import DomainScoreChart from '@/components/needs/DomainScoreChart';
 import NeedsRadar from '@/components/needs/NeedsRadar';
 import IndicatorStripPlot from '@/components/needs/IndicatorStripPlot';
 import MismatchScatter from '@/components/needs/MismatchScatter';
+import QuadrantScatter from '@/components/needs/QuadrantScatter';
 import TrendSmallMultiples from '@/components/needs/TrendSmallMultiples';
 import GrowthServiceChart from '@/components/needs/GrowthServiceChart';
 import JobsHousingChart from '@/components/needs/JobsHousingChart';
@@ -29,6 +30,7 @@ import {
   JOBS_HOUSING_CAPTION, mismatchCaption, NEEDS_SOURCES, stripIndicatorIds, TRENDS_CAPTION,
 } from '@/lib/needs/page-data';
 import { PEER_GROUP_LABELS } from '@/lib/needs/peer-groups';
+import { QUADRANT_SCATTERS, RADAR_AXES, type QuadrantSpec } from '@/lib/needs/project-need';
 import type { NeedsMode, Universe } from '@/lib/needs/types';
 
 const NeedsMap = dynamic(() => import('@/components/needs/NeedsMap'), {
@@ -51,6 +53,16 @@ const UNIVERSES: { value: Universe; label: string }[] = [
   { value: 'region', label: 'Region' },
   { value: 'peer', label: 'Similar LGAs' },
 ];
+
+/** Under each quadrant scatter's title; the figure ids are the specs' (`growth-service`, `disadvantage-service`). */
+const QUADRANT_SUBTITLES: Record<QuadrantSpec['id'], string> = {
+  'growth-service':
+    'Projected population growth 2021–41 against weekday AM-peak departures per 1,000 residents, for the comparison group. '
+    + 'Shaded: above-median growth with below-median service.',
+  'disadvantage-service':
+    'SEIFA disadvantage against weekday AM-peak departures per 1,000 residents, for the comparison group. '
+    + 'Shaded: more disadvantage than the median with below-median service.',
+};
 
 const EMPTY_STATE = 'Select one or more LGAs, a region, or click the map to start an assessment.';
 
@@ -97,6 +109,7 @@ function NeedsContent() {
   const comparison = comparisonLabel(areas);
   // Every figure shows all the indicators, except a strip plot, which shows one.
   const allSources = figureCaption();
+  const radarSources = figureCaption(RADAR_AXES.map(axis => axis.id));
   const mismatchSources = useMemo(() => mismatchCaption(assessment), [assessment]);
 
   return (
@@ -207,12 +220,24 @@ function NeedsContent() {
 
             <ChartWrapper
               figureId="domain-profile"
-              title="Domain profile"
-              subtitle="The three domain scores of each area, with Greater Sydney."
-              caption={allSources}
+              title="Need profile"
+              subtitle="Need percentile of each area on five measures of the case for transport projects, against a typical LGA of the comparison group."
+              caption={radarSources}
             >
               <NeedsRadar assessment={assessment} />
             </ChartWrapper>
+
+            {QUADRANT_SCATTERS.map(spec => (
+              <ChartWrapper
+                key={spec.id}
+                figureId={spec.id}
+                title={spec.title}
+                subtitle={QUADRANT_SUBTITLES[spec.id]}
+                caption={figureCaption([spec.x, spec.y])}
+              >
+                <QuadrantScatter assessment={assessment} spec={spec} />
+              </ChartWrapper>
+            ))}
 
             {/* Slots, not indicators, are the figure ids: the plots change with the selection but keep their numbers. */}
             {stripIds.map((id, slot) => (

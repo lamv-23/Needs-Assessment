@@ -9,30 +9,24 @@ import { INDICATOR_BY_ID } from '@/lib/needs/indicators';
 import {
   DEFAULT_SCATTER_WIDTH, RING_RADIUS, SCATTER_HEIGHT, SCATTER_MARGIN, SCATTER_X_AXIS_HEIGHT, SCATTER_Y_AXIS_WIDTH,
   SELECTED_RADIUS, labelGeometry, mismatchChartData, predictorTickLabel,
-  type MismatchChart, type ScatterDot, type SelectedDot,
+  type MismatchChart, type SelectedDot,
 } from '@/lib/needs/insight-chart-data';
 import { BENCHMARK_COLOR } from '@/lib/needs/colors';
-import { CHART_TICK_STYLE, CHART_TOOLTIP_STYLE } from '@/lib/utils';
+import { CHART_TICK_STYLE } from '@/lib/utils';
 import type { NeedsAssessment } from '@/lib/needs/types';
 import {
   AXIS_TITLE_STYLE, ChartEmpty, ChartNotes, DARK_TEXT, DotSwatch, GRID_STROKE, Legend, LegendItem, LineSwatch,
+  DotTooltip, OTHER_DOT_COLOR, OTHER_DOT_OPACITY, OtherDot,
 } from './insightChartParts';
 
 const CAR = INDICATOR_BY_ID.car_dependency;
 const TICK_STYLE = { ...CHART_TICK_STYLE, fontSize: 12 };
-const OTHER_R = 4.5;
-const GREY = '#9ca3af';
 const FIT_STYLE = { stroke: DARK_TEXT, strokeWidth: 2 };
 const BAND_STYLE = { stroke: BENCHMARK_COLOR, strokeWidth: 1.25, strokeDasharray: '5 4' };
 /** The two end points of a line are not dots. */
 const NO_SHAPE = () => <g />;
 
 interface DotProps<T> { cx?: number; cy?: number; payload?: T }
-
-/** Every other LGA of the setting: small and translucent, so crowded stretches show up darker. */
-function GreyDot({ cx = 0, cy = 0 }: DotProps<ScatterDot>) {
-  return <circle cx={cx} cy={cy} r={OTHER_R} fill={GREY} fillOpacity={0.5} />;
-}
 
 /** A selected area: a coloured dot, ringed when its residual is at least one residual SD, named where a name fits. */
 function SelectedShape({ cx = 0, cy = 0, payload }: DotProps<SelectedDot>) {
@@ -59,16 +53,6 @@ function SelectedShape({ cx = 0, cy = 0, payload }: DotProps<SelectedDot>) {
         </text>
       )}
     </g>
-  );
-}
-
-function DotTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: ScatterDot }> }) {
-  const dot = active ? payload?.[0]?.payload : undefined;
-  if (!dot?.tooltip) return null;
-  return (
-    <div style={CHART_TOOLTIP_STYLE} className="p-2">
-      {dot.tooltip.map((line, i) => <div key={i} className={i === 0 ? 'font-semibold' : undefined}>{line}</div>)}
-    </div>
   );
 }
 
@@ -105,7 +89,7 @@ function MismatchPlot({ chart, onWidth }: { chart: MismatchChart; onWidth: (widt
         {chart.fitLine && (
           <Scatter data={chart.fitLine} line={FIT_STYLE} shape={NO_SHAPE} legendType="none" isAnimationActive={false} />
         )}
-        <Scatter name={chart.othersLabel} data={chart.others} shape={<GreyDot />} isAnimationActive={false} />
+        <Scatter name={chart.othersLabel} data={chart.others} shape={<OtherDot />} isAnimationActive={false} />
         <Scatter name="Selected" data={chart.selected} shape={<SelectedShape />} isAnimationActive={false} />
       </ScatterChart>
     </ResponsiveContainer>
@@ -135,7 +119,7 @@ export default function MismatchScatter({ assessment }: { assessment: NeedsAsses
             <>
               <MismatchPlot chart={chart} onWidth={setWidth} />
               <Legend label={`Key to the ${chart.heading.toLowerCase()} chart`}>
-                <LegendItem swatch={<DotSwatch color={GREY} opacity={0.5} />}>{chart.othersLabel} ({chart.others.length})</LegendItem>
+                <LegendItem swatch={<DotSwatch color={OTHER_DOT_COLOR} opacity={OTHER_DOT_OPACITY} />}>{chart.othersLabel} ({chart.others.length})</LegendItem>
                 <LegendItem swatch={<DotSwatch color={chart.selected[0]?.color ?? DARK_TEXT} />}>Selected area</LegendItem>
                 <LegendItem swatch={<DotSwatch color={DARK_TEXT} ring />}>
                   Ringed: {formatDiff(CAR, chart.fit.residualSd)} or more from expected (one residual SD)

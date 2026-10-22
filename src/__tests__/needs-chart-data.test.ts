@@ -1,8 +1,8 @@
 import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
 import { runAssessment } from '@/lib/needs/assess';
 import {
-  HEATMAP_LABEL_CHARS, LABEL_LEVELS, MAX_RADAR_AREAS, assignLabelLevels, domainChartData, heatmapRowLabel, labelSide,
-  axisFraction, niceAxis, radarData, stripData, wrapLabel,
+  HEATMAP_LABEL_CHARS, LABEL_LEVELS, assignLabelLevels, domainChartData, heatmapRowLabel, labelSide,
+  axisFraction, niceAxis, stripData, wrapLabel,
 } from '@/lib/needs/chart-data';
 import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
 import { AREA_PALETTE_SIZE, DOMAIN_COLORS, areaColor, labelledIds } from '@/lib/needs/colors';
@@ -256,33 +256,6 @@ describe('domainChartData for more areas than colours', () => {
   test('area names are unique across NSW, which the by-area axis relies on', () => {
     const names = NEEDS_SNAPSHOT.records.map(r => r.name);
     expect(new Set(names).size).toBe(names.length);
-  });
-});
-
-describe('radarData', () => {
-  test('plots the first 6 areas plus Greater Sydney and reports how many are hidden', () => {
-    const a = assess(NSW_LGAS.slice(0, 9));
-    const r = radarData(a);
-    expect(r.series).toHaveLength(MAX_RADAR_AREAS + 1);
-    expect(r.series.slice(0, 6).map(s => s.name)).toEqual(a.areas.slice(0, 6).map(x => x.name));
-    expect(r.series[6].name).toBe('Greater Sydney');
-    expect(r.hiddenCount).toBe(3);
-    expect(r.omitted).toEqual([]);
-  });
-
-  test('one row per domain', () => {
-    const r = radarData(assess(['lga_blacktown']));
-    expect(r.rows.map(row => row.axis)).toEqual(NEED_DOMAINS.map(d => DOMAIN_LABELS[d]));
-    expect(r.hiddenCount).toBe(0);
-  });
-
-  test('an area missing a domain score is left out and named, since a radar cannot show a gap', () => {
-    const a = withDomainScore(assess(['lga_blacktown', 'lga_sydney']), 1, 'transport', null);
-    const r = radarData(a);
-    expect(r.series.map(s => s.name)).toEqual(['Blacktown', 'Greater Sydney']);
-    expect(r.omitted).toEqual(['City of Sydney']);
-    // remaining series keep the colour of their position in the selection
-    expect(r.series[0].color).toBe(areaColor(0));
   });
 });
 

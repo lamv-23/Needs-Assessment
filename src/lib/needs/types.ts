@@ -126,11 +126,11 @@ export type AggregatedRecord = AssessableRecord & {
 
 /** A cited finding about one assessed area, ranked by severity for the key findings. */
 export interface Insight {
-  /** Unique within one assessment: kind, area and (for key needs and trends) the indicator or metric. */
+  /** Unique within one assessment: kind, area and (for key needs, trends and quadrants) the indicator, metric or chart. */
   id: string;
   /** The assessed area it is about ('combined' for a combined selection). */
   areaId: string;
-  kind: 'key_need' | 'mismatch' | 'trend' | 'growth_service' | 'jobs_housing';
+  kind: 'key_need' | 'mismatch' | 'trend' | 'growth_service' | 'quadrant' | 'jobs_housing';
   /** 0-1; higher is more notable. */
   severity: number;
   text: string;

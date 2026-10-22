@@ -820,7 +820,7 @@ describe('buildNarrative on real assessments', () => {
 describe('buildNarrative: key findings and further findings', () => {
   const run = (areaIds: string[], mode: NeedsMode = 'separate', universe: Universe = 'nsw') =>
     runAssessment({ snapshot: NEEDS_SNAPSHOT, areaIds, mode, universe });
-  const FURTHER_KINDS: Insight['kind'][] = ['mismatch', 'trend', 'growth_service', 'jobs_housing'];
+  const FURTHER_KINDS: Insight['kind'][] = ['mismatch', 'trend', 'growth_service', 'quadrant', 'jobs_housing'];
   const ids = (sections: NarrativeSection[]) => sections.map(s => s.id);
 
   const blacktownNewcastle = run(['lga_blacktown', 'lga_newcastle']);
@@ -900,6 +900,19 @@ describe('buildNarrative: key findings and further findings', () => {
     const findings = texts(section(combined, 'key_findings'));
     expect(findings.length).toBeGreaterThan(0);
     for (const text of findings) expect(text).toMatch(/combined area/);
+  });
+
+  test('quadrant insights outside the key findings are listed under further findings, after growth against service', () => {
+    const gsyd = run(NEEDS_SNAPSHOT.records.slice(0, 34).map(r => r.areaId), 'separate', 'gsyd');
+    const rest = buildInsights(gsyd).slice(5);
+    const quadrant = rest.filter(i => i.kind === 'quadrant');
+    expect(quadrant.length).toBeGreaterThan(0);
+    const further = texts(section(buildNarrative(gsyd), 'insights'));
+    for (const insight of quadrant) expect(further).toContain(insight.text);
+    const last = (kind: Insight['kind']) => Math.max(-1, ...rest.filter(i => i.kind === kind).map(i => further.indexOf(i.text)));
+    const first = (kind: Insight['kind']) => Math.min(...rest.filter(i => i.kind === kind).map(i => further.indexOf(i.text)));
+    expect(first('quadrant')).toBeGreaterThan(last('growth_service'));
+    if (rest.some(i => i.kind === 'jobs_housing')) expect(first('jobs_housing')).toBeGreaterThan(last('quadrant'));
   });
 
   test('findings that cannot be drawn leave no empty section', () => {

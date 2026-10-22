@@ -1,11 +1,32 @@
 import { wrapLabel } from '@/lib/needs/chart-data';
+import { CHART_TOOLTIP_STYLE } from '@/lib/utils';
 
-/** Pieces the four insight charts share: legend swatches, notes, the empty state and row names on an axis. */
+/** Pieces the insight charts and the quadrant scatters share: legend swatches, scatter dots, notes, the empty state and row names on an axis. */
 
 export const FONT = 'Inter, system-ui, sans-serif';
 export const AXIS_TITLE_STYLE = { fontSize: 12, fontFamily: FONT, fill: '#111827' } as const;
 export const GRID_STROKE = '#e5e7eb';
 export const DARK_TEXT = '#111827';
+
+/** The other LGAs of a comparison group on a scatter: small and translucent, so crowded stretches show up darker. */
+export const OTHER_DOT_COLOR = '#9ca3af';
+export const OTHER_DOT_OPACITY = 0.5;
+const OTHER_DOT_RADIUS = 4.5;
+
+export function OtherDot({ cx = 0, cy = 0 }: { cx?: number; cy?: number }) {
+  return <circle cx={cx} cy={cy} r={OTHER_DOT_RADIUS} fill={OTHER_DOT_COLOR} fillOpacity={OTHER_DOT_OPACITY} />;
+}
+
+/** The tooltip of a scatter dot: the lines its data carry, the first in bold. */
+export function DotTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { tooltip?: string[] } }> }) {
+  const dot = active ? payload?.[0]?.payload : undefined;
+  if (!dot?.tooltip) return null;
+  return (
+    <div style={CHART_TOOLTIP_STYLE} className="p-2">
+      {dot.tooltip.map((line, i) => <div key={i} className={i === 0 ? 'font-semibold' : undefined}>{line}</div>)}
+    </div>
+  );
+}
 
 /** Shown inside the figure when there is nothing to draw, so the page can mount every figure in a fixed order (R48). */
 export function ChartEmpty({ children }: { children: React.ReactNode }) {
@@ -70,10 +91,10 @@ export function LineSwatch({ color, dash, width = 2 }: { color: string; dash?: s
   );
 }
 
-export function BarSwatch({ color }: { color: string }) {
+export function BarSwatch({ color, opacity = 1 }: { color: string; opacity?: number }) {
   return (
     <Swatch>
-      <rect x={4} y={2} width={18} height={10} fill={color} />
+      <rect x={4} y={2} width={18} height={10} fill={color} fillOpacity={opacity} />
     </Swatch>
   );
 }

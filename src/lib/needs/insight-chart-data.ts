@@ -172,7 +172,7 @@ export const SELECTED_RADIUS = 6;
 export const RING_RADIUS = 11;
 /** Longest name drawn on the scatter, in characters. */
 export const SCATTER_NAME_CHARS = 24;
-const NAME_PX_PER_CHAR = 6.6;
+export const NAME_PX_PER_CHAR = 6.6;
 /** Chart width assumed until the chart has been measured. */
 export const DEFAULT_SCATTER_WIDTH = 900;
 

@@ -20,7 +20,7 @@ const MAX_KEY_FINDINGS = 5;
  * The kinds of insight listed under "Further findings", in order. Key needs are left out: each is already a
  * sentence of its domain's paragraphs, so listing it again would repeat it in a report.
  */
-const FURTHER_KINDS: Insight['kind'][] = ['mismatch', 'trend', 'growth_service', 'jobs_housing'];
+const FURTHER_KINDS: Insight['kind'][] = ['mismatch', 'trend', 'growth_service', 'quadrant', 'jobs_housing'];
 
 /** How sentences refer to the areas being narrated. */
 interface Wording {
@@ -199,7 +199,7 @@ const insightParagraph = ({ text, citations }: Insight): NarrativeParagraph => (
 
 /**
  * Key findings (the most severe insights, at most 5) and further findings (the other mismatch, trend, growth
- * against service and jobs-housing insights, grouped by kind, most severe first within a kind). A section with no
+ * against service, quadrant and jobs-housing insights, grouped by kind, most severe first within a kind). A section with no
  * insight to hold is left out.
  */
 function insightSections(assessment: NeedsAssessment): { keyFindings: NarrativeSection[]; further: NarrativeSection[] } {

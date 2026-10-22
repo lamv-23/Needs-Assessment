@@ -638,8 +638,8 @@ describe('buildInsights', () => {
 
     const a = assess(['lga_blacktown', 'lga_newcastle', 'lga_sydney', 'lga_brewarrina']);
     const insights = buildInsights(a);
-    expect(new Set(insights.map(i => i.kind)).size).toBe(5);
-    const kinds: Insight['kind'][] = ['key_need', 'mismatch', 'trend', 'growth_service', 'jobs_housing'];
+    expect(new Set(insights.map(i => i.kind)).size).toBe(6);
+    const kinds: Insight['kind'][] = ['key_need', 'mismatch', 'trend', 'growth_service', 'quadrant', 'jobs_housing'];
     const areaIndex = (i: Insight) => a.areas.findIndex(x => x.areaId === i.areaId);
     for (let k = 1; k < insights.length; k++) {
       const [prev, next] = [insights[k - 1], insights[k]];
@@ -652,6 +652,17 @@ describe('buildInsights', () => {
       }
     }
     expect(new Set(insights.map(i => i.id)).size).toBe(insights.length);
+  });
+
+  test('buildInsights includes the quadrant insights, with both indicators cited', () => {
+    const insights = buildInsights(assess(['lga_blacktown', 'lga_penrith'], 'separate', 'gsyd'));
+    const quadrant = of(insights, 'quadrant');
+    expect(quadrant.length).toBeGreaterThan(0);
+    for (const insight of quadrant) {
+      expect(insight.text).toMatch(/^(Blacktown|Penrith) is in the high-(growth|disadvantage), low-service group: /);
+      expect(insight.text.endsWith(' among Greater Sydney LGAs.')).toBe(true);
+      expect(insight.citations).toHaveLength(2);
+    }
   });
 
   test('ties keep kind order, then area order', () => {

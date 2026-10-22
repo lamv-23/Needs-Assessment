@@ -197,37 +197,6 @@ export function domainChartData(assessment: NeedsAssessment) {
   };
 }
 
-/** The radar plots at most this many areas, so the shapes stay readable. */
-export const MAX_RADAR_AREAS = 6;
-
-/**
- * Radar over the three domains: the first `MAX_RADAR_AREAS` areas plus Greater Sydney. A radar
- * cannot show a gap (a missing axis would collapse to the centre, i.e. read as 0), so an area
- * without all three domain scores is left out and listed in `omitted`.
- */
-export function radarData(assessment: NeedsAssessment) {
-  const shown = assessment.areas.slice(0, MAX_RADAR_AREAS);
-  const candidates: Array<{ area: AreaAssessment; color: string; benchmark?: true }> = [
-    ...shown.map((area, i) => ({ area, color: areaColor(i) })),
-    { area: assessment.benchmarks.gsyd, color: BENCHMARK_COLOR, benchmark: true },
-  ];
-  const complete = candidates.filter(c => NEED_DOMAINS.every(d => domainScore(c.area, d) !== null));
-  const series: ChartSeries[] = complete.map((c, i) => ({
-    key: `r${i}`, name: c.area.name, color: c.color, ...(c.benchmark && { benchmark: true as const }),
-  }));
-  const rows = NEED_DOMAINS.map(domain => {
-    const row: Record<string, string | number | null> = { axis: DOMAIN_LABELS[domain] };
-    complete.forEach((c, i) => { row[series[i].key] = domainScore(c.area, domain); });
-    return row;
-  });
-  return {
-    rows,
-    series,
-    hiddenCount: assessment.areas.length - shown.length,
-    omitted: candidates.filter(c => !complete.includes(c)).map(c => c.area.name),
-  };
-}
-
 export interface NiceAxis { lo: number; hi: number; ticks: number[] }
 
 /**
