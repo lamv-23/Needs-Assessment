@@ -6,7 +6,7 @@
 
 **Structure:**
 - **Part A (Tasks 1–11)** delivers the scored assessment, the page and the Word export.
-- **Part B (Tasks 12–16)** adds the insights layer on top.
+- **Part B (Tasks 12–17)** adds the insights layer on top. Task 17 (the need-profile radar and project-need quadrant scatters) was added at the user's request on 2026-10-23.
 - **Phase 2** (SA2 data and walking catchments) is a separate plan: `docs/superpowers/plans/2026-10-22-sa2-catchments.md`.
 
 **Architecture:**
@@ -1004,6 +1004,107 @@ Only 29 of 128 LGAs resolve TZP24 job projections through `getEmploymentProjecti
   Then run `npm test && npm run build`. Expected: all pass.
 
 - [ ] **Step 7: Commit** `feat(needs): key findings and insight figures in page and Word export`
+
+---
+
+### Task 17: Project-need radar and quadrant scatters (user request, 2026-10-23)
+
+**Files:**
+- Create: `src/lib/needs/project-need.ts`, `src/components/needs/QuadrantScatter.tsx`
+- Modify: `src/components/needs/NeedsRadar.tsx` (becomes the 5-axis need profile), `src/lib/needs/insights.ts` (adds quadrant insights), `src/lib/needs/types.ts` (`Insight['kind']` gains `'quadrant'`), `src/app/needs/page.tsx`
+- Test: `src/__tests__/needs-project-need.test.ts`, plus updates to `src/__tests__/needs-insights.test.ts`
+
+**Interfaces:**
+- Consumes:
+  - `NeedsAssessment` and `universeRecords` (Task 3).
+  - `INDICATOR_BY_ID`, `formatValue`, `displayScore`, `MAX_LABELLED`, `labelledIds`, `areaColor`.
+  - `buildInsights` (Task 14).
+  - The spec section "Project-need figures".
+- Produces:
+
+  ```ts
+  export const RADAR_AXES: readonly { id: IndicatorId; label: string }[]   // the spec's 5 axes, in order, with the spec's labels
+  export interface RadarRow { axis: string; typical: 50; [series: string]: string | number | null }
+  export function radarData(a: NeedsAssessment): { rows: RadarRow[]; series: { key: string; name: string; isBenchmark: boolean }[]; hiddenAreas: number }
+  export interface QuadrantSpec { id: 'growth-service' | 'disadvantage-service'; x: IndicatorId; y: IndicatorId; title: string; quadrantLabel: string }
+  export const QUADRANT_SCATTERS: readonly QuadrantSpec[]
+  export interface QuadrantData {
+    points: { areaId: string; name: string; x: number; y: number }[];          // the comparison group, excluding selected areas
+    selected: { areaId: string; name: string; x: number | null; y: number | null; inNeedQuadrant: boolean }[];
+    medians: { x: number; y: number };
+    greaterSydney: { x: number; y: number } | null;
+    xReversed: boolean;          // true when the x indicator's direction is 'lower'
+    yReversed: false;            // y stays natural; the need quadrant is the low-service side
+  }
+  export function quadrantData(a: NeedsAssessment, spec: QuadrantSpec): QuadrantData
+  export function inNeedQuadrant(spec: QuadrantSpec, x: number, y: number, medians: { x: number; y: number }): boolean
+  export function quadrantInsights(a: NeedsAssessment): Insight[]   // kind 'quadrant'
+  ```
+
+- [ ] **Step 1: Write failing tests**
+
+  ```ts
+  test('RADAR_AXES are the spec five, in order', () => {
+    expect(RADAR_AXES.map(a => a.id)).toEqual(['car_dependency', 'frequent_stop_share', 'zero_car_households', 'seifa_irsd', 'pop_growth_2041']);
+  });
+  test('radar rows hold need percentiles, typical = 50, null stays null', ...)
+  test('radar includes Greater Sydney only for universe nsw or gsyd', ...)
+  test('radar caps at 6 areas and reports hiddenAreas', ...)
+  test('quadrant group follows the universe', ...)   // nsw: 128 minus the selected LGAs and any missing x/y; gsyd: 34; peer: same peer group
+  test('medians are the comparison group medians', ...)
+  test('inNeedQuadrant: growth-service = growth above median AND departures below median', ...)
+  test('inNeedQuadrant: disadvantage-service = IRSD below median AND departures below median', ...)
+  test('disadvantage-service x axis is reversed', ...)
+  test('selected area with a null x or y is listed with nulls and is never in the quadrant', ...)
+  test('combined mode plots one combined point', ...)
+  test('quadrant insight text, exact', () => {
+    // fixture: Blacktown growth 40.9, departures 32.5; medians 24.8 and 35.0; universeLabel 'NSW LGAs'
+    expect(text).toBe('Blacktown is in the high-growth, low-service group: population growth to 2041 of 40.9% (median 24.8%) and 32.5 AM-peak departures per 1,000 residents (median 35.0) among NSW LGAs.');
+  });
+  test('quadrant insights carry both indicators citations and severity = mean percentile / 100', ...)
+  test('buildInsights includes quadrant insights', ...)
+  ```
+
+  Formatting in the exact-text tests:
+  - {x} and {mx} use `formatValue`, with its unit (40.9%, and a SEIFA score such as 987).
+  - {y} and {my} are the bare number at the indicator's decimals (32.5, 35.0), because the template already says "AM-peak departures per 1,000 residents".
+  - For combined areas, {Subject} is "The combined area", per R15.
+
+- [ ] **Step 2: Run** `npx jest src/__tests__/needs-project-need.test.ts`. Expected: FAIL. **Step 3:** implement `project-need.ts` and wire `quadrantInsights` into `buildInsights`. **Step 4:** run it, plus `needs-insights`. Expected: PASS.
+
+- [ ] **Step 5: Build the components**
+
+  - **`NeedsRadar`:** five axes from `radarData`.
+    - Selected areas are filled at about 20% opacity, using `areaColor`.
+    - The typical-LGA ring is dashed grey and labelled in the legend "Typical LGA ({universeLabel})".
+    - The Greater Sydney outline is dashed `BENCHMARK_COLOR`.
+    - Use `PolarRadiusAxis` with domain [0, 100], tooltips through `displayScore`, and `isAnimationActive={false}`.
+  - **`QuadrantScatter`** (props `{ assessment, spec }`): a Recharts `ScatterChart`.
+    - Grey group points.
+    - Coloured selected points, labelled up to `MAX_LABELLED`.
+    - Median `ReferenceLine`s.
+    - The need quadrant shaded with a `ReferenceArea` and labelled.
+    - Greater Sydney as a distinct marker.
+    - `XAxis reversed` when `xReversed`.
+    - Axis titles from the indicator labels plus units.
+    - `isAnimationActive={false}`.
+
+- [ ] **Step 6: Wire the page**
+
+  - Retitle the radar figure "Need profile".
+  - Insert two figures straight after it: "Population growth vs public transport service" and "Socio-economic disadvantage vs public transport service".
+  - Both are always mounted when areas are selected (R21), with captions per R31.
+  - Figure order becomes: map, domain scores, heatmap, need profile, growth-service, disadvantage-service, strips ×6, then the Part B insight figures.
+
+- [ ] **Step 7: Verify in the running app** (headless browser) for Blacktown + Penrith, a 33-LGA Greater Sydney selection, and `universe=peer`:
+  - The radar has 5 axes and a ring at 50.
+  - Each scatter shades its quadrant, and the selected points and labels are visible.
+  - Key findings include a quadrant sentence when one applies.
+  - The Word export contains both new figures.
+
+  Then run `npx tsc --noEmit`, lint, `npx jest` and `npm run build`.
+
+- [ ] **Step 8: Commit** `feat(needs): need-profile radar and project-need quadrant scatters`
 
 ---
 

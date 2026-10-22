@@ -111,6 +111,44 @@ Analysis beyond rankings, built from data already in the cache. The figures in t
 4. **Jobs–housing balance.** TZP24 jobs per resident, 2021 and 2041. Only 29 of 128 LGAs currently resolve TZP24 projections through `getEmploymentProjections`. Part B includes a data check, and the insight is shown only where data exists.
 5. **Key findings.** Each insight gets a severity. The top 5 across the selection become a "Key findings" section at the top of the narrative and the Word document, and every finding is cited.
 
+## Project-need figures (user request, 2026-10-23)
+
+These figures show the case for transport projects in the selected areas, compared with the other LGAs.
+
+**Need profile radar (5 axes).** It replaces the 3-axis "Domain profile" radar.
+- Axes, in this order:
+  1. Car dependency (`car_dependency`)
+  2. Public transport service gap (`frequent_stop_share`; lower share = more need)
+  3. Households without a car (`zero_car_households`)
+  4. Socio-economic disadvantage (`seifa_irsd`)
+  5. Population growth to 2041 (`pop_growth_2041`)
+- Values are need percentiles (0–100) within the current comparison group. Raw values can't share axes across these units.
+- Reference: a dashed ring at 50, labelled "Typical LGA ({universeLabel})". Add a Greater Sydney outline when the universe is `nsw` or `gsyd`. Benchmarks are always scored against NSW, so the outline would be inconsistent with `region` or `peer`.
+- Up to 6 areas are drawn. A null percentile is plotted as a gap, never as 0.
+
+**Quadrant scatters (2).**
+- Points: every LGA in the current comparison group with both values (grey), with the selected areas coloured and the combined area as one point. The first `MAX_LABELLED` selected areas are labelled. Greater Sydney is marked when its value is available.
+- Lines: dashed median lines at the comparison group's medians.
+- Need quadrant: shaded and labelled where both x and y are on the "more need" side of their medians.
+- The two charts:
+
+  | id | x | y | Need quadrant label |
+  |---|---|---|---|
+  | `growth-service` | `pop_growth_2041` | `am_peak_departures_per_1000` | High growth, low service |
+  | `disadvantage-service` | `seifa_irsd` (axis reversed so more disadvantage is to the right) | `am_peak_departures_per_1000` | High disadvantage, low service |
+
+- The y axis is departures per 1,000 residents, not frequent-stop share, because 67 LGAs have a frequent-stop share of 0.
+
+**Quadrant findings.** Each selected area in a need quadrant gets a cited insight (kind `quadrant`), which can appear in Key findings. Exact templates:
+- "{Subject} is in the high-growth, low-service group: population growth to 2041 of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
+- "{Subject} is in the high-disadvantage, low-service group: a SEIFA IRSD score of {x} (median {mx}) and {y} AM-peak departures per 1,000 residents (median {my}) among {universeLabel}."
+
+Severity is the mean of the two need percentiles ÷ 100.
+
+Formatting:
+- {x} and {mx} use `formatValue`, with its unit.
+- {y} and {my} are bare numbers at the indicator's decimals.
+
 ## Phase 2 (separate plan)
 
 SA2-level indicators (644 NSW SA2s) and population within walking distance of a frequent stop. See `docs/superpowers/specs/2026-10-22-sa2-catchments-design.md`.
