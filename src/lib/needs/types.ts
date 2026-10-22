@@ -34,7 +34,10 @@ export interface IndicatorValue { value: number | null; numerator?: number; deno
 
 /** The time series behind the Part B insights. Missing values are `null` or omitted from an array, never 0. */
 export interface InsightSeries {
-  /** Car share of commuters who travel to a workplace, (car ÷ (100 − wfh)) × 100, for the Census years that have data. */
+  /**
+   * Car share of commuters who travel to a workplace, (car ÷ (100 − wfh)) × 100, for the Census years that have
+   * data. The 2021 point is the car_dependency indicator value; 2011 and 2016 come from the mode share trend.
+   */
   carDependencyByYear: { year: 2011 | 2016 | 2021; value: number }[];
   /** Total crashes per year (TfNSW). */
   crashesByYear: { year: number; total: number }[];
@@ -61,9 +64,8 @@ export interface LgaIndicatorRecord {
   series: InsightSeries;
 }
 
-/** A record that may describe a combined selection, which can span several peer groups and has no series until they are aggregated. */
-export type AssessableRecord =
-  Omit<LgaIndicatorRecord, 'peerGroup' | 'series'> & { peerGroup: PeerGroup | null; series?: InsightSeries };
+/** A record that may describe a combined selection or benchmark, which can span several peer groups. */
+export type AssessableRecord = Omit<LgaIndicatorRecord, 'peerGroup'> & { peerGroup: PeerGroup | null };
 
 /** Comparison universe: all NSW LGAs, Greater Sydney LGAs, the same region, or the same peer group. */
 export type Universe = 'nsw' | 'gsyd' | 'region' | 'peer';
@@ -113,7 +115,7 @@ export interface AreaAssessment {
 
 export interface NeedsSnapshot { generatedAt: string; records: LgaIndicatorRecord[] }
 
-/** A combined selection or a benchmark, rolled up from the member LGAs it covers. */
+/** A combined selection or a benchmark, rolled up (values and series) from the member LGAs it covers. */
 export type AggregatedRecord = AssessableRecord & {
   memberIds: string[];
   /** Weighted (non-additive) indicators with at least one member value: population-weighted means. */
@@ -121,6 +123,19 @@ export type AggregatedRecord = AssessableRecord & {
   /** Indicators where some, but not all, members have no value. */
   partial: IndicatorId[];
 };
+
+/** A cited finding about one assessed area, ranked by severity for the key findings. */
+export interface Insight {
+  /** Unique within one assessment: kind, area and (for key needs and trends) the indicator or metric. */
+  id: string;
+  /** The assessed area it is about ('combined' for a combined selection). */
+  areaId: string;
+  kind: 'key_need' | 'mismatch' | 'trend' | 'growth_service' | 'jobs_housing';
+  /** 0-1; higher is more notable. */
+  severity: number;
+  text: string;
+  citations: SourceRef[];
+}
 
 export type NeedsMode = 'separate' | 'combined';
 

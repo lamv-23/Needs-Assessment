@@ -30,6 +30,17 @@ export function formatValue(def: IndicatorDef, value: number | null): string {
   }
 }
 
+/** "Blacktown's", "Blue Mountains'". */
+export function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}'` : `${name}'s`;
+}
+
+/** A label inside a sentence: "Car dependency" becomes "car dependency", but "SEIFA ..." and "AM-peak ..." keep their capitals. */
+export function inSentence(label: string): string {
+  const firstWord = label.split(' ')[0];
+  return /[A-Z]/.test(firstWord.slice(1)) ? label : label.charAt(0).toLowerCase() + label.slice(1);
+}
+
 /** A difference between two values of `def`: percentage points for %, points for scores, else the unit. */
 export function formatDiff(def: IndicatorDef, diff: number): string {
   const text = fixed(diff, def.decimals);

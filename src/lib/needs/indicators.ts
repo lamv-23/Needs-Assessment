@@ -9,7 +9,8 @@ const censusSource = (table: string, title: string): SourceRef => ({
   url: ABS_CENSUS_URL,
 });
 
-const SOURCES = {
+/** Every source the assessment cites: the indicators use all but `erp`, which the insights use. */
+export const SOURCES = {
   g01: censusSource('G01', 'Selected person characteristics'),
   g13: censusSource('G13', 'Language used at home by proficiency in spoken English'),
   g18: censusSource('G18', 'Core activity need for assistance'),
@@ -51,6 +52,11 @@ const SOURCES = {
     short: 'ABS Building Approvals',
     full: 'Australian Bureau of Statistics, Building Approvals, Australia: dwelling approvals by local government area',
     url: 'https://www.abs.gov.au/statistics/industry/building-and-construction/building-approvals-australia',
+  },
+  erp: {
+    short: 'ABS ERP',
+    full: 'Australian Bureau of Statistics, Regional population: estimated resident population (ERP) by local government area',
+    url: 'https://www.abs.gov.au/statistics/people/population/regional-population/latest-release',
   },
 } satisfies Record<string, SourceRef>;
 

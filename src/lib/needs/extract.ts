@@ -36,20 +36,29 @@ function growth(base: number | null, target: number | null): IndicatorValue {
   return isNum(base) && isNum(target) ? ratio(target - base, base, 100) : missing();
 }
 
+/** Car share of commuters who travel to a workplace, car ÷ (100 − wfh) × 100; null without a usable denominator. */
+function carShareOfTravellers(car: number | undefined, workFromHome: number | undefined): number | null {
+  return isNum(car) && isNum(workFromHome) && workFromHome < 100 ? (car * 100) / (100 - workFromHome) : null;
+}
+
+/** 2021 car dependency (work from home excluded) from method of travel to work: the car_dependency indicator. */
+function carDependency2021(transport: LiveBundle['transport']): number | null {
+  const modeShare = (name: string) => transport.journeyToWork.find(m => m.name === name)?.value;
+  const carDriver = modeShare('Car (driver)');
+  const carPassenger = modeShare('Car (passenger)');
+  return isNum(carDriver) && isNum(carPassenger)
+    ? carShareOfTravellers(carDriver + carPassenger, modeShare('Work from home'))
+    : null;
+}
+
 /** Turn one LGA's live data into the 16 indicator values. */
 export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, IndicatorValue> {
   const { demographics, transport, economy, growth: growthData } = bundle;
   const population = demographics.totalPopulation;
 
   // Car dependency: car share of commuters who travel to a workplace (work from home excluded)
-  const modeShare = (name: string) => transport.journeyToWork.find(m => m.name === name)?.value;
-  const carDriver = modeShare('Car (driver)');
-  const carPassenger = modeShare('Car (passenger)');
-  const workFromHome = modeShare('Work from home');
-  const carDependency: IndicatorValue =
-    isNum(carDriver) && isNum(carPassenger) && isNum(workFromHome) && workFromHome < 100
-      ? { value: ((carDriver + carPassenger) * 100) / (100 - workFromHome) }
-      : missing();
+  const carDependencyValue = carDependency2021(transport);
+  const carDependency: IndicatorValue = carDependencyValue === null ? missing() : { value: carDependencyValue };
 
   // Service frequency: the published (1 dp) values, with the parts needed to aggregate them.
   // Departures per 1,000 use the latest ERP year, the same denominator the pipeline used.
@@ -105,7 +114,8 @@ export function extractIndicators(bundle: LiveBundle): Record<IndicatorId, Indic
   };
 }
 
-const CENSUS_YEARS = [2011, 2016, 2021] as const;
+/** Census years whose car dependency comes from modeShareTrend; 2021 is the car_dependency indicator. */
+const EARLIER_CENSUS_YEARS = [2011, 2016] as const;
 
 /** Building approvals over the latest 12 months and the 12 before; null unless the latest 24 months are consecutive. */
 function approvalsWindows(
@@ -126,13 +136,17 @@ function approvalsWindows(
 export function extractSeries(bundle: LiveBundle): InsightSeries {
   const { transport, growth: growthData } = bundle;
 
-  // Same definition as car_dependency: work from home excluded. modeShareTrend's car share is of all workers.
-  const carDependencyByYear = CENSUS_YEARS.flatMap(year => {
+  // Same definition as car_dependency: work from home excluded (modeShareTrend's car share is of all workers).
+  // The 2021 point is the car_dependency indicator itself (journeyToWork), so one 2021 figure is used everywhere;
+  // modeShareTrend's own 2021 point can differ from it by a few tenths of a percentage point.
+  const earlier = EARLIER_CENSUS_YEARS.flatMap(year => {
     const point = transport.modeShareTrend.find(p => p.year === year);
-    return point && isNum(point.car) && isNum(point.wfh) && point.wfh < 100
-      ? [{ year, value: (point.car * 100) / (100 - point.wfh) }]
-      : [];
+    const value = point ? carShareOfTravellers(point.car, point.wfh) : null;
+    return value === null ? [] : [{ year, value }];
   });
+  const latest2021 = carDependency2021(transport);
+  const carDependencyByYear: InsightSeries['carDependencyByYear'] =
+    latest2021 === null ? earlier : [...earlier, { year: 2021, value: latest2021 }];
 
   const crashesByYear = (transport.crashTrend ?? [])
     .filter(c => isNum(c.year) && isNum(c.totalCrashes))

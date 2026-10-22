@@ -1,5 +1,6 @@
-import { displayScore, formatDiff, formatValue } from './format';
+import { displayScore, inSentence, possessive } from './format';
 import { DOMAIN_LABELS, INDICATOR_BY_ID, NEED_DOMAINS } from './indicators';
+import { keyNeedText, WFH_CAVEAT } from './insights';
 import { KEY_NEED_PERCENTILE } from './scoring';
 import type { AreaAssessment, IndicatorId, IndicatorScore, NeedDomain, NeedsAssessment, SourceRef } from './types';
 
@@ -15,10 +16,6 @@ interface Wording {
   /** One area standing for two or more selected LGAs, which the sentences call "the combined area". */
   combined: boolean;
 }
-
-const WFH_CAVEAT =
-  "The 2021 Census was held during Sydney's COVID-19 lockdown, which inflated working from home. "
-  + 'Car dependency is therefore measured as a share of people who travelled to work.';
 
 const METHOD_NOTE =
   'Need scores are the equally weighted mean of indicator percentiles within each domain, and of domain scores overall. '
@@ -39,12 +36,6 @@ function paragraph(text: string, ids: IndicatorId[] = []): NarrativeParagraph {
   return { text, citations: Array.from(sources.values()) };
 }
 
-/** A label inside a sentence: "Car dependency" becomes "car dependency", but "SEIFA ..." and "AM-peak ..." keep their capitals. */
-function inSentence(label: string): string {
-  const firstWord = label.split(' ')[0];
-  return /[A-Z]/.test(firstWord.slice(1)) ? label : label.charAt(0).toLowerCase() + label.slice(1);
-}
-
 /** Indicator labels as a list: "a", "a and b", "a, b and c". */
 function labelList(ids: IndicatorId[]): string {
   const labels = ids.map(id => inSentence(INDICATOR_BY_ID[id].label));
@@ -52,10 +43,6 @@ function labelList(ids: IndicatorId[]): string {
 }
 
 const isScored = (score: IndicatorScore): boolean => INDICATOR_BY_ID[score.id].scored;
-
-function possessive(name: string): string {
-  return name.endsWith('s') ? `${name}'` : `${name}'s`;
-}
 
 const scoredIdsWithValue = (area: AreaAssessment, domain?: NeedDomain): IndicatorId[] => area.indicators
   .filter(s => {
@@ -107,20 +94,8 @@ function keyNeedSentence(
   greaterSydney: number | null,
   wording: Wording,
 ): NarrativeParagraph {
-  const def = INDICATOR_BY_ID[need.id];
-  const rank = Math.max(1, Math.round(100 - need.percentile));
   const subject = wording.combined ? 'the combined area' : area.name;
-  let text = `On ${inSentence(def.label)}, ${subject} (${formatValue(def, need.value)}) `
-    + `ranks in the highest-need ${rank}% of ${area.universeLabel}`;
-  if (greaterSydney !== null) {
-    const diff = need.value - greaterSydney;
-    const figure = `the Greater Sydney figure of ${formatValue(def, greaterSydney)}`;
-    // A difference that rounds to zero is not "above" or "below" anything.
-    text += Number(Math.abs(diff).toFixed(def.decimals)) === 0
-      ? `, level with ${figure}`
-      : `, ${formatDiff(def, Math.abs(diff))} ${diff > 0 ? 'above' : 'below'} ${figure}`;
-  }
-  return paragraph(`${text}.`, [need.id]);
+  return paragraph(keyNeedText(subject, need, area.universeLabel, greaterSydney), [need.id]);
 }
 
 function domainParagraphs(

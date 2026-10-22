@@ -1,0 +1,555 @@
+import { NEEDS_SNAPSHOT } from '@/lib/data/needs-indicators-data';
+import { GREATER_SYDNEY_GCCSA_AREA_IDS } from '@/lib/data/sample-areas';
+import { aggregateRecords } from '@/lib/needs/aggregate';
+import { runAssessment } from '@/lib/needs/assess';
+import { formatDiff, formatValue } from '@/lib/needs/format';
+import { INDICATOR_BY_ID, INDICATORS } from '@/lib/needs/indicators';
+import {
+  buildInsights, carDependencyMismatch, expectedCarDependencyModel, fitLinear, growthVsService, jobsHousing, trends,
+  WFH_CAVEAT_CITATION,
+} from '@/lib/needs/insights';
+import { buildNarrative } from '@/lib/needs/narrative';
+import type {
+  IndicatorId, IndicatorValue, Insight, InsightSeries, LgaIndicatorRecord, NeedsMode, Universe,
+} from '@/lib/needs/types';
+import { EMPTY_SERIES } from './fixtures/needs';
+
+type Values = Partial<Record<IndicatorId, IndicatorValue>>;
+
+function makeRecord(
+  areaId: string,
+  { values = {}, series = {}, ...extra }:
+    { values?: Values; series?: Partial<InsightSeries> } & Omit<Partial<LgaIndicatorRecord>, 'values' | 'series'> = {},
+): LgaIndicatorRecord {
+  const all = {} as Record<IndicatorId, IndicatorValue>;
+  for (const def of INDICATORS) all[def.id] = values[def.id] ?? { value: null };
+  return {
+    areaId, name: areaId, region: 'Hunter', population: 100000, densityPerKm2: 500, peerGroup: 'regional_city',
+    values: all, series: { ...EMPTY_SERIES, ...series }, ...extra,
+  };
+}
+
+const snapshotRecord = (id: string) => NEEDS_SNAPSHOT.records.find(r => r.areaId === id)!;
+
+function assess(areaIds: string[], mode: NeedsMode = 'separate', universe: Universe = 'nsw', records = NEEDS_SNAPSHOT.records) {
+  return runAssessment({ snapshot: { generatedAt: '2026-10-23T00:00:00.000Z', records }, areaIds, mode, universe });
+}
+
+const of = (insights: Insight[], kind: Insight['kind'], areaId?: string) =>
+  insights.filter(i => i.kind === kind && (areaId === undefined || i.areaId === areaId));
+
+const CAR = INDICATOR_BY_ID.car_dependency;
+const METRO_IDS = GREATER_SYDNEY_GCCSA_AREA_IDS;
+
+/**
+ * 25 metropolitan LGAs whose car dependency is unrelated to frequent-stop share (R² near 0), with the last
+ * one far above the rest at the mean share, so its residual is large but the model is too weak to use.
+ */
+function weakMetroRecords(): LgaIndicatorRecord[] {
+  return METRO_IDS.slice(0, 25).map((id, i) => makeRecord(id, {
+    name: `Metro ${i}`, region: 'Greater Sydney', peerGroup: 'metro_middle',
+    values: {
+      frequent_stop_share: { value: i === 24 ? 48 : i * 4 },
+      car_dependency: { value: i === 24 ? 95 : 70 + (i % 2 === 0 ? 5 : -5) },
+    },
+  }));
+}
+
+/**
+ * 31 non-metropolitan LGAs where car dependency rises with ln(population) plus ±1 pp noise; 'lga_test_target'
+ * (Testville) sits 10 pp below the line.
+ */
+function nonMetroRecords(): LgaIndicatorRecord[] {
+  const records = Array.from({ length: 30 }, (_, i) => {
+    const population = 10000 * (i + 1);
+    return makeRecord(`lga_test_${i}`, {
+      population,
+      values: { car_dependency: { value: 60 + 3 * Math.log(population) + (i % 2 === 0 ? 1 : -1) } },
+    });
+  });
+  const population = 155000;
+  records.push(makeRecord('lga_test_target', {
+    name: 'Testville', population,
+    values: { car_dependency: { value: 60 + 3 * Math.log(population) - 10 } },
+  }));
+  return records;
+}
+
+describe('fitLinear', () => {
+  test('an exact line', () => {
+    expect(fitLinear([{ x: 0, y: 1 }, { x: 1, y: 3 }, { x: 2, y: 5 }])).toMatchObject({ intercept: 1, slope: 2, r2: 1, n: 3 });
+  });
+
+  test('a noisy fit: R² and residual SD on n − 2 degrees of freedom', () => {
+    const fit = fitLinear([{ x: 0, y: 0 }, { x: 1, y: 2 }, { x: 2, y: 1 }, { x: 3, y: 3 }]);
+    expect(fit.slope).toBeCloseTo(0.8, 10);
+    expect(fit.intercept).toBeCloseTo(0.3, 10);
+    expect(fit.r2).toBeCloseTo(0.64, 10);                    // 1 − SSE 1.8 ÷ SST 5
+    expect(fit.residualSd).toBeCloseTo(Math.sqrt(0.9), 10);  // √(1.8 ÷ 2)
+  });
+
+  test('degenerate inputs give finite numbers', () => {
+    for (const points of [[], [{ x: 1, y: 2 }], [{ x: 1, y: 2 }, { x: 1, y: 4 }], [{ x: 0, y: 3 }, { x: 1, y: 3 }, { x: 2, y: 3 }]]) {
+      const fit = fitLinear(points);
+      expect([fit.intercept, fit.slope, fit.r2, fit.residualSd].every(Number.isFinite)).toBe(true);
+      expect(fit.n).toBe(points.length);
+    }
+  });
+});
+
+describe('expectedCarDependencyModel', () => {
+  test('metro model on the real snapshot', () => {
+    const m = expectedCarDependencyModel(NEEDS_SNAPSHOT.records, 'metro');
+    expect(m.n).toBe(34); expect(m.predictor).toBe('frequent_stop_share'); expect(m.setting).toBe('metro');
+    expect(m.r2).toBeGreaterThan(0.4); expect(m.slope).toBeLessThan(0);      // probe: R² 0.51, slope −0.52
+    expect(m.residualSd).toBeCloseTo(8.8, 1);                              // spec: residual SD 8.8 pp
+  });
+
+  test('non-metro model uses ln(population)', () => {
+    const m = expectedCarDependencyModel(NEEDS_SNAPSHOT.records, 'non_metro');
+    expect(m.n).toBe(94); expect(m.predictor).toBe('ln_population'); expect(m.setting).toBe('non_metro');
+    expect(m.r2).toBeGreaterThan(0.4);                                     // probe: R² 0.52
+    expect(m.residualSd).toBeCloseTo(3.3, 1);                              // spec: residual SD 3.3 pp
+  });
+
+  test('records without the predictor or car dependency are left out of the fit', () => {
+    const records = [
+      ...weakMetroRecords(),
+      makeRecord(METRO_IDS[25], { values: { car_dependency: { value: 80 } } }),       // no frequent-stop share
+      makeRecord(METRO_IDS[26], { values: { frequent_stop_share: { value: 10 } } }),  // no car dependency
+      makeRecord('lga_test_0', { values: { car_dependency: { value: 90 }, frequent_stop_share: { value: 5 } } }),
+    ];
+    expect(expectedCarDependencyModel(records, 'metro').n).toBe(25);
+    expect(expectedCarDependencyModel(records, 'non_metro').n).toBe(1);
+  });
+});
+
+describe('carDependencyMismatch', () => {
+  test('mismatch is unusable when the fit is weak', () => {
+    const records = weakMetroRecords();
+    const m = carDependencyMismatch(records[24], records)!;
+    expect(m.fit.n).toBe(25);
+    expect(m.fit.r2).toBeLessThan(0.3);
+    expect(Math.abs(m.z)).toBeGreaterThanOrEqual(1);
+    expect(m.usable).toBe(false);
+  });
+
+  test('mismatch is unusable with fewer than 20 LGAs, however strong the fit', () => {
+    const records = METRO_IDS.slice(0, 19).map((id, i) => makeRecord(id, {
+      values: { frequent_stop_share: { value: i * 5 }, car_dependency: { value: 90 - i + (i % 2 === 0 ? 0.5 : -0.5) } },
+    }));
+    const m = carDependencyMismatch(records[0], records)!;
+    expect(m.fit.r2).toBeGreaterThan(0.9);
+    expect(m.usable).toBe(false);
+  });
+
+  test('mismatch z = residual / residualSd', () => {
+    const blacktown = snapshotRecord('lga_blacktown');
+    const m = carDependencyMismatch(blacktown, NEEDS_SNAPSHOT.records)!;
+    const fit = expectedCarDependencyModel(NEEDS_SNAPSHOT.records, 'metro');
+    expect(m.areaId).toBe('lga_blacktown');
+    expect(m.fit).toEqual(fit);
+    expect(m.actual).toBe(blacktown.values.car_dependency.value);
+    expect(m.expected).toBeCloseTo(fit.intercept + fit.slope * blacktown.values.frequent_stop_share.value!, 10);
+    expect(m.residual).toBeCloseTo(m.actual - m.expected, 10);
+    expect(m.z).toBeCloseTo(m.residual / fit.residualSd, 10);
+    expect(m.usable).toBe(true);
+  });
+
+  test('non-metropolitan LGAs use the ln(population) model', () => {
+    const newcastle = snapshotRecord('lga_newcastle');
+    const m = carDependencyMismatch(newcastle, NEEDS_SNAPSHOT.records)!;
+    expect(m.fit.setting).toBe('non_metro');
+    expect(m.expected).toBeCloseTo(m.fit.intercept + m.fit.slope * Math.log(newcastle.population), 10);
+  });
+
+  test('null when the record has no car dependency or no predictor', () => {
+    const records = weakMetroRecords();
+    expect(carDependencyMismatch(makeRecord(METRO_IDS[0], { values: { frequent_stop_share: { value: 20 } } }), records)).toBeNull();
+    expect(carDependencyMismatch(makeRecord(METRO_IDS[0], { values: { car_dependency: { value: 80 } } }), records)).toBeNull();
+  });
+
+  test('a combined area is compared with the population-weighted mean of its members\' expected values', () => {
+    const records = NEEDS_SNAPSHOT.records;
+    const members = [snapshotRecord('lga_blacktown'), snapshotRecord('lga_penrith')];
+    const combined = aggregateRecords(members, 'Blacktown + Penrith', 'combined');
+    const m = carDependencyMismatch(combined, records)!;
+    const one = members.map(r => carDependencyMismatch(r, records)!);
+    const weight = members[0].population + members[1].population;
+    expect(m.areaId).toBe('combined');
+    expect(m.actual).toBe(combined.values.car_dependency.value);
+    expect(m.expected).toBeCloseTo((one[0].expected * members[0].population + one[1].expected * members[1].population) / weight, 10);
+    expect(m.residual).toBeCloseTo(m.actual - m.expected, 10);
+  });
+
+  test('a combined area spanning metropolitan and non-metropolitan LGAs has no single model', () => {
+    const combined = aggregateRecords([snapshotRecord('lga_blacktown'), snapshotRecord('lga_newcastle')], 'x', 'combined');
+    expect(carDependencyMismatch(combined, NEEDS_SNAPSHOT.records)).toBeNull();
+  });
+});
+
+describe('trends', () => {
+  const carSeries = (from: [2011 | 2016, number], to: number): Partial<InsightSeries> => ({
+    carDependencyByYear: [{ year: from[0], value: from[1] }, { year: 2021, value: to }],
+  });
+
+  test('trend change compares with the universe median change', () => {
+    const subject = makeRecord('s', { series: carSeries([2011, 70], 80) });
+    const universe = [
+      subject,
+      makeRecord('a', { series: carSeries([2011, 60], 62) }),
+      makeRecord('b', { series: carSeries([2011, 60], 64) }),
+      makeRecord('c', { series: carSeries([2011, 60], 66) }),
+      makeRecord('d', { series: carSeries([2016, 60], 90) }),   // no 2011: not measured over 2011 → 2021
+    ];
+    const [car] = trends(subject, universe).filter(t => t.metric === 'car_dependency');
+    expect(car).toEqual({
+      areaId: 's', metric: 'car_dependency',
+      from: { label: '2011', value: 70 }, to: { label: '2021', value: 80 },
+      change: 10, universeMedianChange: 5,                      // median of 10, 2, 4, 6
+    });
+  });
+
+  test('population_growth trend (R39): from = actual annual growth 2021→latest ERP year, to = DPE projected annual growth 2021→2041', () => {
+    const record = makeRecord('s', {
+      series: {
+        populationHistory: [{ year: 2021, population: 400000 }, { year: 2023, population: 410000 }, { year: 2025, population: 432000 }],
+        population2041: 500000,
+      },
+    });
+    const [growth] = trends(record, [record]).filter(t => t.metric === 'population_growth');
+    const actual = (Math.pow(432000 / 400000, 1 / 4) - 1) * 100;      // 1.94% a year
+    const projected = (Math.pow(500000 / 400000, 1 / 20) - 1) * 100;  // 1.12% a year
+    expect(growth.from.label).toBe('2021–2025 actual');
+    expect(growth.to.label).toBe('2021–2041 projected');
+    expect(growth.from.value).toBeCloseTo(actual, 10);
+    expect(growth.to.value).toBeCloseTo(projected, 10);
+    expect(growth.change).toBeCloseTo(projected - actual, 10);
+    expect(growth.universeMedianChange).toBeCloseTo(projected - actual, 10);
+  });
+
+  test('crash and approval trends are rates on the indicator denominators', () => {
+    const blacktown = snapshotRecord('lga_blacktown');
+    const all = trends(blacktown, NEEDS_SNAPSHOT.records);
+    const crash = all.find(t => t.metric === 'crash_rate')!;
+    expect([crash.from.label, crash.to.label]).toEqual(['2020', '2024']);
+    expect(crash.from.value).toBeCloseTo(blacktown.series.crashesByYear[0].total / blacktown.population * 10000, 10);
+    expect(crash.to.value).toBeCloseTo(blacktown.values.crash_rate.value!, 3);
+    const approvals = all.find(t => t.metric === 'approvals')!;
+    expect([approvals.from.label, approvals.to.label]).toEqual(['previous 12 months', 'last 12 months']);
+    expect(approvals.from.value).toBeCloseTo(blacktown.series.approvalsPrev12! / blacktown.population * 1000, 10);
+    expect(approvals.to.value).toBeCloseTo(blacktown.values.approvals_per_1000.value!, 3);
+    expect(all.map(t => t.metric)).toEqual(['car_dependency', 'crash_rate', 'population_growth', 'approvals']);
+  });
+
+  test('trends skip metrics without both endpoints', () => {
+    const no2011 = makeRecord('s', { series: carSeries([2016, 70], 75) });
+    expect(trends(no2011, [no2011]).map(t => [t.metric, t.from.label, t.to.label])).toEqual([['car_dependency', '2016', '2021']]);
+
+    const oneEach = makeRecord('s', {
+      series: {
+        carDependencyByYear: [{ year: 2021, value: 80 }],
+        crashesByYear: [{ year: 2024, total: 100 }],
+        populationHistory: [{ year: 2021, population: 1000 }],
+        population2041: 2000,
+        approvalsLast12: 50,
+        approvalsPrev12: null,
+      },
+    });
+    expect(trends(oneEach, [oneEach])).toEqual([]);
+
+    const no2041 = makeRecord('s', {
+      series: { populationHistory: [{ year: 2021, population: 1000 }, { year: 2025, population: 1100 }], population2041: null },
+    });
+    expect(trends(no2041, [no2041])).toEqual([]);
+    expect(trends(makeRecord('s'), [makeRecord('s')])).toEqual([]);
+  });
+});
+
+describe('growthVsService', () => {
+  const withService = (amPeakDepartures: number | null, population2041: number | null = 500000) => makeRecord('s', {
+    series: {
+      populationHistory: [{ year: 2021, population: 380000 }, { year: 2025, population: 400000 }],
+      population2041, amPeakDepartures,
+    },
+  });
+
+  test('growthVsService', () => {
+    expect(growthVsService(withService(6000))).toEqual({
+      areaId: 's', per1000Now: 15, per1000In2041: 12, extraDeparturesNeeded: 1500,
+    });
+    expect(growthVsService(withService(0))).toBeNull();
+    expect(growthVsService(withService(null))).toBeNull();
+    expect(growthVsService(withService(6000, null))).toBeNull();
+  });
+
+  test('today is the latest ERP year, the denominator of am_peak_departures_per_1000', () => {
+    const blacktown = snapshotRecord('lga_blacktown');
+    expect(growthVsService(blacktown)!.per1000Now).toBeCloseTo(blacktown.values.am_peak_departures_per_1000.value!, 1);
+  });
+});
+
+describe('jobsHousing', () => {
+  test('jobs per resident from TZP24 jobs, ERP 2021 and the 2041 projection', () => {
+    const record = makeRecord('s', {
+      series: { populationHistory: [{ year: 2021, population: 400000 }], population2041: 500000, jobs2021: 140000, jobs2041: 200000 },
+    });
+    expect(jobsHousing(record)).toEqual({ areaId: 's', jobsPerResident2021: 0.35, jobsPerResident2041: 0.4 });
+  });
+
+  test('jobsHousing null without TZP24 data', () => {
+    const base = { populationHistory: [{ year: 2021, population: 400000 }], population2041: 500000, jobs2021: 140000, jobs2041: 200000 };
+    expect(jobsHousing(makeRecord('s', { series: { ...base, jobs2021: null, jobs2041: null } }))).toBeNull();
+    expect(jobsHousing(makeRecord('s', { series: { ...base, jobs2041: null } }))).toBeNull();
+    expect(jobsHousing(makeRecord('s', { series: { ...base, population2041: null } }))).toBeNull();
+    expect(jobsHousing(makeRecord('s', { series: { ...base, populationHistory: [] } }))).toBeNull();
+    const noTzp = NEEDS_SNAPSHOT.records.find(r => r.values.job_growth_2041.value === null)!;
+    expect(jobsHousing(noTzp)).toBeNull();
+  });
+});
+
+describe('buildInsights', () => {
+  test('buildInsights: mismatch text', () => {
+    const insights = buildInsights(assess(['lga_blacktown']));
+    const m = carDependencyMismatch(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records)!;
+    expect(m.usable).toBe(true);
+    const [mismatch] = of(insights, 'mismatch');
+    expect(mismatch.text).toBe(
+      `Blacktown's car dependency (${formatValue(CAR, m.actual)}) is ${formatDiff(CAR, Math.abs(m.residual))} higher than expected `
+      + `for its level of frequent public transport service (model across 34 metropolitan LGAs, R² ${m.fit.r2.toFixed(2)}).`,
+    );
+    expect(mismatch.severity).toBeCloseTo(Math.min(1, Math.abs(m.z) / 2), 10);
+    expect(mismatch.citations.map(c => c.short)).toEqual(['ABS Census 2021 G62', 'TfNSW GTFS']);
+  });
+
+  test('non-metropolitan mismatch text, with a negative residual', () => {
+    const records = nonMetroRecords();
+    const target = records.find(r => r.areaId === 'lga_test_target')!;
+    const m = carDependencyMismatch(target, records)!;
+    expect(m.usable).toBe(true);
+    expect(m.z).toBeLessThanOrEqual(-1);
+    const [mismatch] = of(buildInsights(assess(['lga_test_target'], 'separate', 'nsw', records)), 'mismatch');
+    expect(mismatch.text).toBe(
+      `Testville's car dependency (${formatValue(CAR, m.actual)}) is ${formatDiff(CAR, Math.abs(m.residual))} lower than expected `
+      + `for an LGA of its population size (model across 31 non-metropolitan LGAs, R² ${m.fit.r2.toFixed(2)}).`,
+    );
+    expect(mismatch.citations.map(c => c.short)).toEqual(['ABS Census 2021 G62', 'ABS Census 2021 G01']);
+  });
+
+  test('no mismatch insight when the residual rounds to 0.0 pp', () => {
+    // A point on the other LGAs' fitted line leaves the line unchanged, so its residual is 0.
+    const records = nonMetroRecords().filter(r => r.areaId !== 'lga_test_target');
+    const fit = expectedCarDependencyModel(records, 'non_metro');
+    const population = 123456;
+    records.push(makeRecord('lga_test_on_line', {
+      population, values: { car_dependency: { value: fit.intercept + fit.slope * Math.log(population) } },
+    }));
+    expect(carDependencyMismatch(records[records.length - 1], records)!.residual).toBeCloseTo(0, 10);
+    expect(of(buildInsights(assess(['lga_test_on_line'], 'separate', 'nsw', records)), 'mismatch')).toEqual([]);
+  });
+
+  test('buildInsights: growth vs service text', () => {
+    const insights = buildInsights(assess(['lga_blacktown']));
+    const g = growthVsService(snapshotRecord('lga_blacktown'))!;
+    const extra = (Math.round(g.extraDeparturesNeeded / 100) * 100).toLocaleString('en-AU');
+    const [growth] = of(insights, 'growth_service');
+    expect(growth.text).toBe(
+      `If AM-peak service stays at today's level, departures per 1,000 residents in Blacktown fall from ${g.per1000Now.toFixed(1)} `
+      + `to ${g.per1000In2041.toFixed(1)} by 2041; holding today's rate needs about ${extra} more AM-peak departures.`,
+    );
+    expect(extra).toMatch(/^\d{1,3}(,\d{3})*$/);
+    expect(growth.severity).toBeCloseTo(Math.min(1, (1 - g.per1000In2041 / g.per1000Now) * 2), 10);
+    expect(growth.citations.length).toBeGreaterThan(0);
+  });
+
+  test('no growth vs service insight where the population is projected to fall', () => {
+    const shrinking = NEEDS_SNAPSHOT.records.find(r => {
+      const g = growthVsService(r);
+      return g !== null && g.extraDeparturesNeeded < 0;
+    })!;
+    expect(of(buildInsights(assess([shrinking.areaId])), 'growth_service')).toEqual([]);
+  });
+
+  test('car trend text carries the WFH caveat citation', () => {
+    const a = assess(['lga_blacktown']);
+    const [car] = trends(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records).filter(t => t.metric === 'car_dependency');
+    const [insight] = of(buildInsights(a), 'trend').filter(i => i.id.endsWith(':car_dependency'));
+    const faster = Math.abs(car.change) > Math.abs(car.universeMedianChange!) ? 'faster' : 'slower';
+    expect(insight.text).toBe(
+      `Blacktown's car dependency changed from ${formatValue(CAR, car.from.value)} (2011) to ${formatValue(CAR, car.to.value)} (2021), `
+      + `${faster} than the median change of ${formatDiff(CAR, car.universeMedianChange!)} across NSW LGAs.`,
+    );
+    expect(insight.citations).toContainEqual(WFH_CAVEAT_CITATION);
+    expect(insight.citations).toContainEqual(CAR.source);
+  });
+
+  test('crash and approval trend texts', () => {
+    const insights = of(buildInsights(assess(['lga_blacktown'], 'separate', 'gsyd')), 'trend');
+    const all = trends(snapshotRecord('lga_blacktown'), NEEDS_SNAPSHOT.records.filter(r => METRO_IDS.includes(r.areaId)));
+    const text = (metric: string) => insights.find(i => i.id.endsWith(`:${metric}`))!.text;
+    const speed = (t: (typeof all)[number]) => (Math.abs(t.change) > Math.abs(t.universeMedianChange!) ? 'faster' : 'slower');
+
+    const crash = all.find(t => t.metric === 'crash_rate')!;
+    const crashDef = INDICATOR_BY_ID.crash_rate;
+    expect(text('crash_rate')).toBe(
+      `Blacktown's road crashes per 10,000 residents changed from ${formatValue(crashDef, crash.from.value)} (2020) `
+      + `to ${formatValue(crashDef, crash.to.value)} (2024), ${speed(crash)} than the median change of `
+      + `${formatDiff(crashDef, crash.universeMedianChange!)} across Greater Sydney LGAs.`,
+    );
+    const approvals = all.find(t => t.metric === 'approvals')!;
+    const approvalsDef = INDICATOR_BY_ID.approvals_per_1000;
+    expect(text('approvals')).toBe(
+      `Blacktown's dwelling approvals per 1,000 residents changed from ${formatValue(approvalsDef, approvals.from.value)} `
+      + `(previous 12 months) to ${formatValue(approvalsDef, approvals.to.value)} (last 12 months), ${speed(approvals)} `
+      + `than the median change of ${formatDiff(approvalsDef, approvals.universeMedianChange!)} across Greater Sydney LGAs.`,
+    );
+  });
+
+  describe('population trend text (R39)', () => {
+    /** One LGA growing at `actual` % a year 2021–2025, projected at `projected` % a year 2021–2041. */
+    function populationText(actual: number, projected: number): string {
+      const base = 100000;
+      const record = makeRecord('lga_test_pop', {
+        name: 'Testville',
+        series: {
+          populationHistory: [{ year: 2021, population: base }, { year: 2025, population: base * Math.pow(1 + actual / 100, 4) }],
+          population2041: base * Math.pow(1 + projected / 100, 20),
+        },
+      });
+      const insights = buildInsights(assess(['lga_test_pop'], 'separate', 'nsw', [record]));
+      return insights.find(i => i.id.endsWith(':population_growth'))!.text;
+    }
+
+    test('growth faster than, slower than and in line with the projection', () => {
+      expect(populationText(1.94, 1.12)).toBe(
+        "Testville's population grew by 1.9% a year between 2021 and 2025, faster than the 1.1% a year projected for 2021–2041.",
+      );
+      expect(populationText(0.5, 1.2)).toBe(
+        "Testville's population grew by 0.5% a year between 2021 and 2025, slower than the 1.2% a year projected for 2021–2041.",
+      );
+      expect(populationText(1.27, 1.19)).toBe(
+        "Testville's population grew by 1.3% a year between 2021 and 2025, in line with the 1.2% a year projected for 2021–2041.",
+      );
+    });
+
+    test('a falling population is never said to grow by a negative rate', () => {
+      expect(populationText(-0.3, 0.5)).toBe(
+        "Testville's population fell by 0.3% a year between 2021 and 2025, against growth of 0.5% a year projected for 2021–2041.",
+      );
+      expect(populationText(0.4, -0.2)).toBe(
+        "Testville's population grew by 0.4% a year between 2021 and 2025, against a decline of 0.2% a year projected for 2021–2041.",
+      );
+      expect(populationText(-0.6, -0.2)).toBe(
+        "Testville's population fell by 0.6% a year between 2021 and 2025, faster than the 0.2% a year decline projected for 2021–2041.",
+      );
+      expect(populationText(-0.1, -0.4)).toBe(
+        "Testville's population fell by 0.1% a year between 2021 and 2025, slower than the 0.4% a year decline projected for 2021–2041.",
+      );
+    });
+
+    test('population trend cites ABS ERP and the DPE projections', () => {
+      const insights = buildInsights(assess(['lga_blacktown']));
+      const growth = insights.find(i => i.id.endsWith(':population_growth'))!;
+      expect(growth.citations.map(c => c.short)).toEqual(['ABS ERP', 'NSW DPE projections']);
+    });
+  });
+
+  test('jobs–housing text', () => {
+    const j = jobsHousing(snapshotRecord('lga_blacktown'))!;
+    const [jobs] = of(buildInsights(assess(['lga_blacktown'])), 'jobs_housing');
+    expect(jobs.text).toBe(
+      `Blacktown has ${j.jobsPerResident2021.toFixed(2)} local jobs per resident in 2021, `
+      + `projected to be ${j.jobsPerResident2041.toFixed(2)} in 2041 (TfNSW TZP24).`,
+    );
+    expect(jobs.severity).toBeCloseTo(Math.min(1, Math.abs(j.jobsPerResident2041 - j.jobsPerResident2021) * 2), 10);
+    expect(jobs.citations.map(c => c.short)).toContain('TfNSW TZP24');
+  });
+
+  test('key needs: the narrative\'s key-need sentence, severity = percentile / 100, never an unscored indicator', () => {
+    const a = assess(['lga_brewarrina', 'lga_blacktown', 'lga_sydney']);
+    const keyNeeds = of(buildInsights(a), 'key_need');
+    const paragraphs = buildNarrative(a).flatMap(s => s.paragraphs.map(p => p.text));
+    const expected = a.areas.flatMap(area => area.indicators.filter(s => s.keyNeed));
+    expect(keyNeeds).toHaveLength(expected.length);
+    for (const insight of keyNeeds) {
+      expect(paragraphs).toContain(insight.text);
+      const area = a.areas.find(x => x.areaId === insight.areaId)!;
+      const score = area.indicators.find(s => insight.id.endsWith(`:${s.id}`))!;
+      expect(insight.severity).toBeCloseTo(score.percentile! / 100, 10);
+      expect(insight.citations).toEqual([INDICATOR_BY_ID[score.id].source]);
+    }
+    const brewarrina = a.areas[0].indicators.find(s => s.id === 'indigenous_share')!;
+    expect(brewarrina.percentile).toBeGreaterThanOrEqual(80);
+    expect(keyNeeds.some(i => i.id.endsWith(':indigenous_share'))).toBe(false);
+  });
+
+  test('a combined area is "The combined area" in every insight', () => {
+    const a = assess(['lga_blacktown', 'lga_penrith'], 'combined', 'gsyd');
+    const insights = buildInsights(a);
+    expect(insights.every(i => i.areaId === 'combined')).toBe(true);
+    expect(insights.some(i => i.text.includes('Blacktown') || i.text.includes('Penrith'))).toBe(false);
+    expect(insights.find(i => i.id.endsWith(':car_dependency') && i.kind === 'trend')!.text)
+      .toMatch(/^The combined area's car dependency changed from /);
+    expect(insights.find(i => i.id.endsWith(':population_growth'))!.text).toMatch(/^The combined area's population /);
+    expect(of(insights, 'mismatch')[0].text).toMatch(/^The combined area's car dependency \(/);
+    expect(of(insights, 'growth_service')[0].text).toContain(' in the combined area fall from ');
+    expect(of(insights, 'jobs_housing')[0].text).toMatch(/^The combined area has /);
+  });
+
+  test('a combined selection of one LGA uses its name', () => {
+    const insights = buildInsights(assess(['lga_blacktown'], 'combined'));
+    expect(of(insights, 'jobs_housing')[0].text).toMatch(/^Blacktown has /);
+  });
+
+  test('buildInsights omits unusable mismatches and sorts by severity', () => {
+    const records = weakMetroRecords();
+    expect(carDependencyMismatch(records[24], records)!.usable).toBe(false);
+    expect(of(buildInsights(assess([records[24].areaId], 'separate', 'nsw', records)), 'mismatch')).toEqual([]);
+
+    const a = assess(['lga_blacktown', 'lga_newcastle', 'lga_sydney', 'lga_brewarrina']);
+    const insights = buildInsights(a);
+    expect(new Set(insights.map(i => i.kind)).size).toBe(5);
+    const kinds: Insight['kind'][] = ['key_need', 'mismatch', 'trend', 'growth_service', 'jobs_housing'];
+    const areaIndex = (i: Insight) => a.areas.findIndex(x => x.areaId === i.areaId);
+    for (let k = 1; k < insights.length; k++) {
+      const [prev, next] = [insights[k - 1], insights[k]];
+      expect(prev.severity).toBeGreaterThanOrEqual(next.severity);
+      if (prev.severity === next.severity) {
+        const order = (i: Insight) => [kinds.indexOf(i.kind), areaIndex(i)];
+        const [pk, pa] = order(prev);
+        const [nk, na] = order(next);
+        expect(pk < nk || (pk === nk && pa <= na)).toBe(true);
+      }
+    }
+    expect(new Set(insights.map(i => i.id)).size).toBe(insights.length);
+  });
+
+  test('ties keep kind order, then area order', () => {
+    // Twins A and B tie with each other, and each one's key need (p87.5 of 8) ties with its jobs–housing
+    // severity (|0.9375 − 0.5| × 2 = 0.875). All values are exact in binary floating point.
+    const twin = (id: string, name: string) => makeRecord(id, {
+      name,
+      values: { zero_car_households: { value: 50 } },
+      series: { populationHistory: [{ year: 2021, population: 1000 }], population2041: 1000, jobs2021: 500, jobs2041: 937.5 },
+    });
+    const others = Array.from({ length: 6 }, (_, i) => makeRecord(`lga_test_${i}`, { values: { zero_car_households: { value: 5 } } }));
+    const records = [...others, twin('lga_test_a', 'A'), twin('lga_test_b', 'B')];
+    const insights = buildInsights(assess(['lga_test_b', 'lga_test_a'], 'separate', 'nsw', records));
+    expect(insights.map(i => [i.kind, i.areaId, i.severity])).toEqual([
+      ['key_need', 'lga_test_b', 0.875], ['key_need', 'lga_test_a', 0.875],
+      ['jobs_housing', 'lga_test_b', 0.875], ['jobs_housing', 'lga_test_a', 0.875],
+    ]);
+  });
+
+  test('never an insight from missing data', () => {
+    const empty = makeRecord('lga_test_empty');
+    expect(buildInsights(assess(['lga_test_empty'], 'separate', 'nsw', [empty]))).toEqual([]);
+    expect(buildInsights(assess([]))).toEqual([]);
+  });
+
+  test('every insight is cited', () => {
+    const insights = buildInsights(assess(['lga_blacktown', 'lga_newcastle']));
+    expect(insights.length).toBeGreaterThan(0);
+    expect(insights.every(i => i.citations.length > 0 && i.citations.every(c => c.full.length > 0))).toBe(true);
+  });
+});

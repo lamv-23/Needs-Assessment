@@ -1,5 +1,5 @@
 import { INDICATORS } from './indicators';
-import type { AggregatedRecord, IndicatorId, IndicatorValue, LgaIndicatorRecord } from './types';
+import type { AggregatedRecord, IndicatorId, IndicatorValue, InsightSeries, LgaIndicatorRecord } from './types';
 
 /** `region` of an aggregate whose members are not all in one region. */
 export const MULTIPLE_REGIONS = 'Multiple regions';
@@ -18,6 +18,60 @@ function shared<T>(items: T[]): T | null {
   return items.length > 0 && items.every(item => item === items[0]) ? items[0] : null;
 }
 
+/** The sum of every member's count; null when any member has none, so a partial sum is never shown. */
+function sumAll(values: (number | null)[]): number | null {
+  if (values.length === 0 || !values.every(isNum)) return null;
+  return (values as number[]).reduce((sum, v) => sum + v, 0);
+}
+
+/** The years every member has a point for, ascending. */
+function sharedYears<Y extends number>(perMember: { year: Y }[][]): Y[] {
+  if (perMember.length === 0) return [];
+  return perMember[0]
+    .map(p => p.year)
+    .filter(year => perMember.every(points => points.some(p => p.year === year)))
+    .sort((a, b) => a - b);
+}
+
+/**
+ * Members' insight series rolled up. Counts are summed and yearly series are summed per year, both only
+ * where every member has a value (else null, or the year is left out). Car dependency by year is the
+ * population-weighted mean, with the same weights as the car_dependency indicator, so its 2021 point is the
+ * aggregated indicator value; like the indicator, it is an approximation (`approximate` lists car_dependency).
+ */
+function aggregateSeries(members: LgaIndicatorRecord[]): InsightSeries {
+  const population = members.reduce((sum, m) => sum + m.population, 0);
+  const pointIn = <T extends { year: number }>(points: T[], year: number): T => points.find(p => p.year === year)!;
+
+  const carYears = sharedYears(members.map(m => m.series.carDependencyByYear));
+  const crashYears = sharedYears(members.map(m => m.series.crashesByYear));
+  const populationYears = sharedYears(members.map(m => m.series.populationHistory));
+
+  return {
+    carDependencyByYear: population > 0
+      ? carYears.map(year => ({
+        year,
+        value: members.reduce((sum, m) => sum + pointIn(m.series.carDependencyByYear, year).value * m.population, 0)
+          / population,
+      }))
+      : [],
+    crashesByYear: crashYears.map(year => ({
+      year,
+      total: members.reduce((sum, m) => sum + pointIn(m.series.crashesByYear, year).total, 0),
+    })),
+    populationHistory: populationYears.map(year => ({
+      year,
+      population: members.reduce((sum, m) => sum + pointIn(m.series.populationHistory, year).population, 0),
+    })),
+    population2041: sumAll(members.map(m => m.series.population2041)),
+    amPeakDepartures: sumAll(members.map(m => m.series.amPeakDepartures)),
+    approvalsLast12: sumAll(members.map(m => m.series.approvalsLast12)),
+    approvalsPrev12: sumAll(members.map(m => m.series.approvalsPrev12)),
+    jobs2021: sumAll(members.map(m => m.series.jobs2021)),
+    jobs2041: sumAll(members.map(m => m.series.jobs2041)),
+  };
+}
+
 /**
  * Rolls member LGAs up into one record: a combined selection or a benchmark. An empty `members` gives
  * an all-null record.
@@ -29,6 +83,7 @@ function shared<T>(items: T[]): T | null {
  * - A member with no value is skipped and the indicator is flagged `partial`; if every member lacks
  *   one, the value is null (never 0).
  * - Density is Σ population ÷ Σ area, with each member's area recovered as population ÷ density.
+ * - The insight series are rolled up as described at `aggregateSeries`.
  *
  * `peerGroup` is the members' shared group, else null; `region` is their shared region, else
  * `MULTIPLE_REGIONS`. The members are not modified.
@@ -88,6 +143,7 @@ export function aggregateRecords(members: LgaIndicatorRecord[], name: string, ar
     densityPerKm2: area > 0 ? population / area : 0,
     peerGroup: shared(members.map(m => m.peerGroup)),
     values,
+    series: aggregateSeries(members),
     memberIds: members.map(m => m.areaId),
     approximate,
     partial,

@@ -178,19 +178,23 @@ describe('extractSeries', () => {
   }
   const sum = (from: number, to: number) => (from + to) * (to - from + 1) / 2;
 
-  test('car dependency by year excludes WFH', () => {
+  /** The fixture's car_dependency indicator: (47 + 4.1) ÷ (100 − 39) × 100 = 83.77. */
+  const indicator2021 = extractIndicators(makeBundle()).car_dependency.value!;
+
+  test('car dependency by year excludes WFH; 2021 is the car_dependency indicator, not modeShareTrend', () => {
     const s = extractSeries(makeBundle({
       transport: {
         modeShareTrend: [
           { year: 2011, car: 70, train: 8, bus: 5, active: 5, wfh: 5 },
-          { year: 2021, car: 60, train: 5, bus: 3, active: 4, wfh: 25 },
+          { year: 2021, car: 60, train: 5, bus: 3, active: 4, wfh: 25 },   // would be 80
         ],
       },
     }));
     expect(s.carDependencyByYear).toHaveLength(2);
     expect(s.carDependencyByYear[0].year).toBe(2011);
     expect(s.carDependencyByYear[0].value).toBeCloseTo(73.684, 3);
-    expect(s.carDependencyByYear[1]).toEqual({ year: 2021, value: 80 });
+    expect(s.carDependencyByYear[1]).toEqual({ year: 2021, value: indicator2021 });
+    expect(indicator2021).toBeCloseTo(83.77, 2);
   });
 
   test('car dependency by year omits years with no data, never 0', () => {
@@ -200,11 +204,24 @@ describe('extractSeries', () => {
         modeShareTrend: [
           point(2011, 70, 100),                                   // everyone works from home: no denominator
           point(2016, undefined as unknown as number, 10),        // car share missing
-          point(2021, 54, 10),
         ],
       },
     }));
-    expect(s.carDependencyByYear).toEqual([{ year: 2021, value: 60 }]);
+    expect(s.carDependencyByYear).toEqual([{ year: 2021, value: indicator2021 }]);
+  });
+
+  test('no 2021 point without a car_dependency indicator value, whatever modeShareTrend holds', () => {
+    const bundle = makeBundle({
+      transport: {
+        journeyToWork: [{ name: 'Car (driver)', value: 47 }, { name: 'Car (passenger)', value: 4.1 }],   // no WFH
+        modeShareTrend: [
+          { year: 2016, car: 60, train: 5, bus: 3, active: 4, wfh: 4 },
+          { year: 2021, car: 60, train: 5, bus: 3, active: 4, wfh: 25 },
+        ],
+      },
+    });
+    expect(extractIndicators(bundle).car_dependency.value).toBeNull();
+    expect(extractSeries(bundle).carDependencyByYear).toEqual([{ year: 2016, value: 62.5 }]);
   });
 
   test('car dependency by year is sorted and limited to the Census years', () => {
@@ -213,9 +230,9 @@ describe('extractSeries', () => {
       transport: { modeShareTrend: [point(2021, 60), point(2019, 99), point(2011, 50), point(2016, 55)] },
     }));
     expect(s.carDependencyByYear).toEqual([
-      { year: 2011, value: 50 }, { year: 2016, value: 55 }, { year: 2021, value: 60 },
+      { year: 2011, value: 50 }, { year: 2016, value: 55 }, { year: 2021, value: indicator2021 },
     ]);
-    expect(extractSeries(makeBundle()).carDependencyByYear).toEqual([]);
+    expect(extractSeries(makeBundle()).carDependencyByYear).toEqual([{ year: 2021, value: indicator2021 }]);
   });
 
   test('crashes by year come from crashTrend in year order, skipping years with no count', () => {
